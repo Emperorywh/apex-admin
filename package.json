@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
+    "@sentry/react": "^10.29.0",
     "@tailwindcss/vite": "^4.1.17",
     "@types/lodash-es": "^4.17.12",
     "antd": "^6.0.0",
