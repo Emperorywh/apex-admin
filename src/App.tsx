@@ -1,7 +1,7 @@
 import { MenuFoldOutlined, MenuUnfoldOutlined, UploadOutlined, UserOutlined } from "@ant-design/icons";
 import { Button, Layout, Menu, theme } from "antd";
 import { useState } from "react";
-import { Outlet, useNavigate, useMatches } from "react-router";
+import { Outlet, useMatches } from "react-router";
 import type { AppRouteMeta } from "@/types/router";
 
 const { Header, Sider, Content } = Layout;
@@ -10,7 +10,7 @@ function App() {
 
 	const [collapsed, setCollapsed] = useState(false);
 
-	const navigate = useNavigate();
+	// const navigate = useNavigate();
 
 	const matches = useMatches();
 
