@@ -6,6 +6,8 @@ import type { AppRouteMeta } from "@/types/router";
 
 const { Header, Sider, Content } = Layout;
 
+import { SentryErrorBoundary } from "@/components/ErrorBoundary";
+
 function App() {
 
 	const [collapsed, setCollapsed] = useState(false);
@@ -27,6 +29,7 @@ function App() {
 	return (
 		<Layout className="w-screen h-screen">
 			<Sider trigger={null} collapsible collapsed={collapsed} theme="light">
+                {/* 侧边栏内容保持不变 */}
 				<Menu
 					theme="light"
 					mode="inline"
@@ -161,7 +164,10 @@ function App() {
 						borderRadius: borderRadiusLG,
 					}}
 				>
-					<Outlet />
+                    {/* 使用 ErrorBoundary 包裹 Outlet，这样子路由崩溃时只影响 Content 区域 */}
+                    <SentryErrorBoundary>
+					    <Outlet />
+                    </SentryErrorBoundary>
 				</Content>
 			</Layout>
 		</Layout>
