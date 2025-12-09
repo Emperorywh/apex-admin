@@ -37,6 +37,15 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       sourcemap: true,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'react-vendor': ['react', 'react-dom', 'react-router'],
+            'antd': ['antd'],
+            'lodash': ['lodash-es'],
+          },
+        },
+      },
     },
     define: {
       // 注入版本号到前端代码

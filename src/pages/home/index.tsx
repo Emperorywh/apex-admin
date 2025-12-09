@@ -15,7 +15,7 @@ const Home = () => {
                 错误上报测试
             </Button>
             <Button type="primary" danger onClick={() => {
-                throw new Error("Type Error");
+                throw new Error("Test Error");
             }}>报错啦</Button>
         </>
     )
