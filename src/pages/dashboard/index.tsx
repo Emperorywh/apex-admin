@@ -3,8 +3,6 @@ import React from "react";
 
 const Page: React.FC = () => {
 
-    console.log("Dashboard");
-
     const onError = () => {
         throw new Error("测试错误");
     }

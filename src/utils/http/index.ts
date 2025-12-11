@@ -301,7 +301,6 @@ const defaultOptions: CreateAxiosOptions = {
 					return new Promise((resolve) => {
 						// 这里替换为真实的 refresh token 请求
 						// simulateRefreshToken()
-						console.log('Refresh Token Triggered');
 						const newToken = 'simulated_new_token_' + Date.now();
 
 						setTimeout(() => {

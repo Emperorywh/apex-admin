@@ -1,18 +1,21 @@
-import Dashboard from "@/pages/dashboard";
-import UserProfile from "@/pages/user/profile";
-import UserAccount from "@/pages/user/account";
-import SystemPermission from "@/pages/system/permission";
-import SystemRole from "@/pages/system/role";
-import MultiLevel31 from "@/pages/multi/level-3-1";
-import MultiLevel321 from "@/pages/multi/level-3-2/level-3-2-1";
-import MultiLevel3221 from "@/pages/multi/level-3-2/level-3-2-2/level-3-2-2-1";
-import MultiLevel3222 from "@/pages/multi/level-3-2/level-3-2-2/level-3-2-2-2";
-import MultiLevel3223 from "@/pages/multi/level-3-2/level-3-2-2/level-3-2-2-3";
-import MultiLevel323 from "@/pages/multi/level-3-2/level-3-2-3";
-import Exception403 from "@/pages/exception/403";
-import Exception404 from "@/pages/exception/404";
-import Exception500 from "@/pages/exception/500";
+import { lazy } from "react";
 import type { AppRouteObject } from "@/types/router";
+
+// 使用 React.lazy 进行懒加载
+const Dashboard = lazy(() => import("@/pages/dashboard"));
+const UserProfile = lazy(() => import("@/pages/user/profile"));
+const UserAccount = lazy(() => import("@/pages/user/account"));
+const SystemPermission = lazy(() => import("@/pages/system/permission"));
+const SystemRole = lazy(() => import("@/pages/system/role"));
+const MultiLevel31 = lazy(() => import("@/pages/multi/level-3-1"));
+const MultiLevel321 = lazy(() => import("@/pages/multi/level-3-2/level-3-2-1"));
+const MultiLevel3221 = lazy(() => import("@/pages/multi/level-3-2/level-3-2-2/level-3-2-2-1"));
+const MultiLevel3222 = lazy(() => import("@/pages/multi/level-3-2/level-3-2-2/level-3-2-2-2"));
+const MultiLevel3223 = lazy(() => import("@/pages/multi/level-3-2/level-3-2-2/level-3-2-2-3"));
+const MultiLevel323 = lazy(() => import("@/pages/multi/level-3-2/level-3-2-3"));
+const Exception403 = lazy(() => import("@/pages/exception/403"));
+const Exception404 = lazy(() => import("@/pages/exception/404"));
+const Exception500 = lazy(() => import("@/pages/exception/500"));
 
 export const routeChildren: AppRouteObject[] = [
     { index: true, Component: Dashboard },

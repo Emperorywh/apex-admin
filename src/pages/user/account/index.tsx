@@ -2,8 +2,6 @@
 
 const Account: React.FC = () => {
 
-    console.log("Account")
-
     return (
         <>
             <h1>Account</h1>

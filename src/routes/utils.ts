@@ -42,19 +42,20 @@ const generateMenuItems = (routes: AppRouteObject[], parentPath = ""): MenuItem[
             currentPath = prefix + (route.path || '');
         }
 
-        const item: MenuItem = {
+        let childrenItems: MenuItem[] | undefined;
+        if (route.children) {
+            const items = generateMenuItems(route.children, currentPath);
+            if (items.length > 0) {
+                childrenItems = items;
+            }
+        }
+
+        const item = {
             key: currentPath || '',
             label: route.handle.title,
             icon: renderIcon(route.handle.icon),
+            children: childrenItems,
         } as MenuItem;
-
-        if (route.children) {
-            const childrenItems = generateMenuItems(route.children, currentPath);
-            if (childrenItems.length > 0) {
-                // @ts-ignore
-                item.children = childrenItems;
-            }
-        }
 
         items.push(item);
     });
