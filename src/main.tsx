@@ -10,25 +10,27 @@ declare const __APP_VERSION__: string;
 declare const __APP_NAME__: string;
 
 Sentry.init({
-  dsn: "https://115312e36450246c6f2cab50c5432314@o4510499341008896.ingest.us.sentry.io/4510499342385152",
-  sendDefaultPii: true,
-  // 使用与构建时一致的 Release 名称
-  release: `${__APP_NAME__}@${__APP_VERSION__}`,
-  integrations: [
-    Sentry.reactRouterV6BrowserTracingIntegration({
-      useEffect,
-      useLocation,
-      useNavigationType,
-      createRoutesFromChildren,
-      matchRoutes,
-    }),
-    Sentry.replayIntegration(),
-  ],
-  // 生产环境建议调整为 0.1 或更低
-  tracesSampleRate: 1.0, 
-  // 生产环境建议调整为 0.1
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1.0,
+	dsn: "https://115312e36450246c6f2cab50c5432314@o4510499341008896.ingest.us.sentry.io/4510499342385152",
+	// 仅在生产环境下启用 Sentry
+	enabled: import.meta.env.PROD,
+	sendDefaultPii: true,
+	// 使用与构建时一致的 Release 名称
+	release: `${__APP_NAME__}@${__APP_VERSION__}`,
+	integrations: [
+		Sentry.reactRouterV6BrowserTracingIntegration({
+			useEffect,
+			useLocation,
+			useNavigationType,
+			createRoutesFromChildren,
+			matchRoutes,
+		}),
+		Sentry.replayIntegration(),
+	],
+	// 生产环境建议调整为 0.1 或更低
+	tracesSampleRate: 1.0,
+	// 生产环境建议调整为 0.1
+	replaysSessionSampleRate: 0.1,
+	replaysOnErrorSampleRate: 1.0,
 });
 
 const container = document.getElementById('root');

@@ -31,6 +31,14 @@ const Home = () => {
                 <Button type="primary" danger onClick={() => setExplode(true)}>
                     触发渲染错误 (触发UI降级)
                 </Button>
+                <Button danger onClick={() => {
+                    // Sentry 会自动捕获未处理的 Promise Rejection
+                    setTimeout(() => {
+                        Promise.reject(new Error("Promise reject 测试 (异步)"));
+                    }, 1000)
+                }}>
+                    异步 Promise Reject
+                </Button>
             </div>
             
             {explode && <Bomb />}
