@@ -1,3 +1,4 @@
+import { Input } from "antd"
 
 
 const Personal = () => {
@@ -5,6 +6,7 @@ const Personal = () => {
     return (
         <>
             <h1>Personal</h1>
+            <Input />
         </>
     )
 }

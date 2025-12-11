@@ -1,4 +1,4 @@
-﻿import { Button } from "antd"
+﻿import { Button, Input } from "antd"
 import React from "react";
 
 const Page: React.FC = () => {
@@ -16,6 +16,7 @@ const Page: React.FC = () => {
 
     return (
         <>
+            <Input />
             <h1>Dashboard</h1>
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                 <Button onClick={onError}>
@@ -38,7 +39,7 @@ const Page: React.FC = () => {
                     异步 Promise Reject
                 </Button>
             </div>
-            
+
             {explode && <Bomb />}
         </>
     )

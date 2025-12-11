@@ -24,14 +24,14 @@ export const routeChildren: AppRouteObject[] = [
         Component: Dashboard,
         handle: {
             title: "首页",
-            icon: "UserOutlined"
+            icon: "HomeOutlined"
         }
     },
     {
         path: 'user',
         handle: {
             title: "用户管理",
-            icon: "UserOutlined"
+            icon: "UsergroupDeleteOutlined"
         },
         children: [
             {
@@ -54,7 +54,7 @@ export const routeChildren: AppRouteObject[] = [
         path: 'system',
         handle: {
             title: "系统管理",
-            icon: "UserOutlined"
+            icon: "SettingOutlined"
         },
         children: [
             {
@@ -77,7 +77,7 @@ export const routeChildren: AppRouteObject[] = [
         path: 'multi',
         handle: {
             title: "多级菜单",
-            icon: "UploadOutlined"
+            icon: "MenuOutlined"
         },
         children: [
             {
@@ -144,7 +144,7 @@ export const routeChildren: AppRouteObject[] = [
         path: 'exception',
         handle: {
             title: "异常页",
-            icon: "UploadOutlined"
+            icon: "WarningOutlined"
         },
         children: [
             {
