@@ -1,6 +1,6 @@
 
 
-const Account = () => {
+const Account: React.FC = () => {
 
     console.log("Account")
 

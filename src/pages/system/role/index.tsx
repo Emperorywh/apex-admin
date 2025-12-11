@@ -1,6 +1,6 @@
 
 
-const Role = () => {
+const Role: React.FC = () => {
 
     console.log("Role")
 

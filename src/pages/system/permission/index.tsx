@@ -1,6 +1,6 @@
 
 
-const Permission = () => {
+const Permission: React.FC = () => {
 
     console.log("Permission")
 

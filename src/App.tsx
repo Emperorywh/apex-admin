@@ -1,25 +1,22 @@
-import { MenuFoldOutlined, MenuUnfoldOutlined, UploadOutlined, UserOutlined } from "@ant-design/icons";
+import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
 import { Button, Layout, Menu, theme } from "antd";
 import { useState } from "react";
-import { Outlet, useMatches } from "react-router";
+import { Outlet, useMatches, useNavigate } from "react-router";
 import type { AppRouteMeta } from "@/types/router";
-
 const { Header, Sider, Content } = Layout;
-
 import { SentryErrorBoundary } from "@/components/ErrorBoundary";
+import { menuItems } from "./routes/utils";
 
 function App() {
 
 	const [collapsed, setCollapsed] = useState(false);
 
-	// const navigate = useNavigate();
+	const navigate = useNavigate();
 
 	const matches = useMatches();
 
 	// 获取当前路由的 handle 数据
 	const currentRouteMeta = matches.at(-1)?.handle as AppRouteMeta | undefined;
-
-	console.log("matches", matches)
 
 	const {
 		token: { colorBgContainer, borderRadiusLG },
@@ -29,114 +26,14 @@ function App() {
 	return (
 		<Layout className="w-screen h-screen">
 			<Sider trigger={null} collapsible collapsed={collapsed} theme="light">
-                {/* 侧边栏内容保持不变 */}
 				<Menu
 					theme="light"
 					mode="inline"
 					defaultSelectedKeys={['1']}
-					// onClick={({ key, keyPath }) => {
-					// 	console.log(key, keyPath);
-					// 	navigate("/about");
-					// }}
-					items={[
-						{
-							key: '0',
-							label: '首页',
-							icon: <UserOutlined />,
-						},
-						{
-							key: '1',
-							label: '用户管理',
-							icon: <UserOutlined />,
-							children: [
-								{
-									key: '1-1',
-									label: '个人资料',
-								},
-								{
-									key: '1-2',
-									label: '账户',
-								},
-							]
-						},
-						{
-							key: '2',
-							label: '系统管理',
-							icon: <UserOutlined />,
-							children: [
-								{
-									key: '2-1',
-									label: '权限',
-								},
-								{
-									key: '2-2',
-									label: '角色',
-								}
-							]
-						},
-						{
-							key: '3',
-							icon: <UploadOutlined />,
-							label: '多级菜单',
-							children: [
-								{
-									key: '3-1',
-									label: '多级菜单3-1',
-								},
-								{
-									key: '3-2',
-									label: '多级菜单3-2',
-									children: [
-										{
-											key: '3-2-1',
-											label: '多级菜单3-2-1',
-										},
-										{
-											key: '3-2-2',
-											label: '多级菜单3-2-2',
-											children: [
-												{
-													key: '3-2-2-1',
-													label: '多级菜单3-2-2-1',
-												},
-												{
-													key: '3-2-2-2',
-													label: '多级菜单3-2-2-2',
-												},
-												{
-													key: '3-2-2-3',
-													label: '多级菜单3-2-2-3',
-												},
-											]
-										},
-										{
-											key: '3-2-3',
-											label: '多级菜单3-2-2',
-										},
-									]
-								},
-							]
-						},
-						{
-							key: '4',
-							icon: <UploadOutlined />,
-							label: '异常页',
-							children: [
-								{
-									key: '4-1',
-									label: '403',
-								},
-								{
-									key: '4-2',
-									label: '404',
-								},
-								{
-									key: '4-3',
-									label: '500',
-								},
-							]
-						}
-					]}
+					onClick={({ key }) => {
+						navigate(key);
+					}}
+					items={menuItems}
 				/>
 			</Sider>
 			<Layout>
@@ -164,7 +61,6 @@ function App() {
 						borderRadius: borderRadiusLG,
 					}}
 				>
-                    {/* 使用 ErrorBoundary 包裹 Outlet，这样子路由崩溃时只影响 Content 区域 */}
                     <SentryErrorBoundary>
 					    <Outlet />
                     </SentryErrorBoundary>

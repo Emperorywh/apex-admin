@@ -1,9 +1,9 @@
-import { Button } from "antd"
+﻿import { Button } from "antd"
 import React from "react";
 
-const Home = () => {
+const Page: React.FC = () => {
 
-    console.log("Home");
+    console.log("Dashboard");
 
     const onError = () => {
         throw new Error("测试错误");
@@ -18,7 +18,7 @@ const Home = () => {
 
     return (
         <>
-            <h1>Home</h1>
+            <h1>Dashboard</h1>
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                 <Button onClick={onError}>
                     普通JS报错 (不触发UI降级)
@@ -46,4 +46,4 @@ const Home = () => {
     )
 }
 
-export default Home
+export default Page
