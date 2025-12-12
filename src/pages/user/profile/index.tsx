@@ -13,7 +13,7 @@ const Page: React.FC = () => {
     return (
         <div>
             <h1>个人资料</h1>
-            <Input />
+            <Input placeholder='profile'/>
         </div>
     );
 };

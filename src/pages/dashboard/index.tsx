@@ -16,7 +16,7 @@ const Page: React.FC = () => {
 
     return (
         <>
-            <Input />
+            <Input placeholder="dashboard"/>
             <h1>Dashboard</h1>
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                 <Button onClick={onError}>

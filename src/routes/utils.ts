@@ -63,5 +63,26 @@ const generateMenuItems = (routes: AppRouteObject[], parentPath = ""): MenuItem[
     return items;
 };
 
+const generateFlatMenus = (items: any[]) => {
+    const flatItems: any[] = [];
+
+    items.forEach((item) => {
+        flatItems.push({
+            key: item.key,
+            label: item.label
+        });
+        if (item?.children) {
+            flatItems.push(...generateFlatMenus(item.children));
+        }
+    });
+
+    return flatItems;
+}
+
 // 生成菜单数据
 export const menuItems = generateMenuItems(routeChildren);
+
+/**
+ * 平面化菜单
+ */
+export const flatMenuItems = generateFlatMenus(menuItems);
