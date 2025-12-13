@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200">
+  <defs>
+    <path id="star" d="M 0 -1 L 0.587785 0.809017 L -0.951057 -0.309017 L 0.951057 -0.309017 L -0.587785 0.809017 Z" fill="#FFDE00"/>
+  </defs>
+  <rect width="300" height="200" fill="#DE2910"/>
+  <!-- 大五角星: 中心(50, 50), 半径30 -->
+  <use href="#star" transform="translate(50, 50) scale(30)"/>
+  <!-- 小五角星1: 中心(100, 20), 半径10, 旋转角度使一角对准大星中心 -->
+  <use href="#star" transform="translate(100, 20) rotate(239.036) scale(10)"/>
+  <!-- 小五角星2: 中心(120, 40), 半径10 -->
+  <use href="#star" transform="translate(120, 40) rotate(261.870) scale(10)"/>
+  <!-- 小五角星3: 中心(120, 70), 半径10 -->
+  <use href="#star" transform="translate(120, 70) rotate(285.945) scale(10)"/>
+  <!-- 小五角星4: 中心(100, 90), 半径10 -->
+  <use href="#star" transform="translate(100, 90) rotate(308.660) scale(10)"/>
+</svg>
