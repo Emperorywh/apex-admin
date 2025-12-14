@@ -1,5 +1,6 @@
 ﻿import { Button, Input } from "antd"
 import React from "react";
+import { useNavigate } from "react-router";
 
 const Page: React.FC = () => {
 
@@ -12,12 +13,19 @@ const Page: React.FC = () => {
         throw new Error("渲染期间发生的错误 (React Error Boundary 测试)");
     }
 
+    const navigate = useNavigate();
+
     const [explode, setExplode] = React.useState(false);
 
     return (
         <>
-            <Input placeholder="dashboard"/>
+            <Input placeholder="dashboard" />
             <h1>Dashboard</h1>
+            <Button onClick={() => {
+                navigate("/user/profile")
+            }}>
+                个人资料
+            </Button>
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                 <Button onClick={onError}>
                     普通JS报错 (不触发UI降级)
