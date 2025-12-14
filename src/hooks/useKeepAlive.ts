@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode, useCallback, useRef } from "react";
-import { useLocation, useNavigate, useOutlet } from "react-router";
+import { useLocation, useOutlet } from "react-router";
 import { flatMenuItems } from "@/routes/utils";
+import { useAppNavigate } from "./useAppNavigate";
 
 export interface KeepAliveTab {
     key: string;
@@ -8,7 +9,7 @@ export interface KeepAliveTab {
 }
 
 export const useKeepAlive = () => {
-    const navigate = useNavigate();
+    const { push } = useAppNavigate();
     const location = useLocation();
     const currentElement = useOutlet();
     // 使用 pathname + search 作为唯一标识，支持同一路由不同参数多开
@@ -96,13 +97,6 @@ export const useKeepAlive = () => {
     }, [cachedNodes]);
 
     /**
-     * 路由跳转封装
-     */
-    const keepAliveNavigate = useCallback((key: string) => {
-        navigate(key);
-    }, [navigate]);
-
-    /**
      * 移除 Tab
      */
     const onRemove = useCallback((key: string) => {
@@ -117,7 +111,7 @@ export const useKeepAlive = () => {
                 // 尝试取后一个，如果没有则取前一个
                 const nextTab = tabItems[findTabIndex + 1] || tabItems[findTabIndex - 1];
                 if (nextTab) {
-                    keepAliveNavigate(nextTab.key);
+                    push(nextTab.key);
                 }
             }
         }
@@ -138,14 +132,14 @@ export const useKeepAlive = () => {
             }
             return prev;
         });
-    }, [tabItems, uniqueId, keepAliveNavigate]);
+    }, [tabItems, uniqueId, push]);
 
     /**
      * 切换 Tab
      */
     const onChange = useCallback((key: string) => {
-        keepAliveNavigate(key);
-    }, [keepAliveNavigate]);
+        push(key);
+    }, [push]);
 
     /**
      * 关闭所有
@@ -156,8 +150,8 @@ export const useKeepAlive = () => {
         // 我们可以优化为：如果有 dashboard，保留 dashboard；否则全清空并跳转 dashboard
         setCachedNodes(new Map());
         setRefreshKeys(new Map());
-        keepAliveNavigate("/dashboard");
-    }, [keepAliveNavigate]);
+        push("/dashboard");
+    }, [push]);
 
     /**
      * 关闭其他
@@ -176,9 +170,9 @@ export const useKeepAlive = () => {
         // 不过依靠 useEffect 同步是更单一数据源的做法
         
         if (uniqueId !== key) {
-            keepAliveNavigate(key);
+            push(key);
         }
-    }, [uniqueId, keepAliveNavigate]);
+    }, [uniqueId, push]);
 
     /**
      * 刷新 Tab
@@ -190,9 +184,9 @@ export const useKeepAlive = () => {
             return newMap;
         });
         if (uniqueId !== key) {
-            keepAliveNavigate(key);
+            push(key);
         }
-    }, [uniqueId, keepAliveNavigate]);
+    }, [uniqueId, push]);
 
     return {
         activeKey: uniqueId,
