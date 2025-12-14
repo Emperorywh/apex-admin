@@ -11,7 +11,8 @@ export const useKeepAlive = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const currentElement = useOutlet();
-    const uniqueId = location.pathname;
+    // 使用 pathname + search 作为唯一标识，支持同一路由不同参数多开
+    const uniqueId = location.pathname + location.search;
 
     // 缓存的组件节点
     const [cachedNodes, setCachedNodes] = useState<Map<string, ReactNode>>(new Map());
@@ -65,9 +66,20 @@ export const useKeepAlive = () => {
             let hasNewTab = false;
             for (const key of cachedNodes.keys()) {
                 if (!currentTabKeys.has(key)) {
-                    const label = flatMenusMap.current?.get(key);
+                    // 移除 query 参数来匹配菜单中的 path
+                    const [path] = key.split('?');
+                    let label = flatMenusMap.current?.get(path);
+                    
                     // 只添加在菜单中定义过的页面
                     if (label) {
+                        // 如果有 query 参数，可以考虑在 label 后添加标识，这里暂且保持原样或由业务决定
+                        // 简单实现：如果是多开页面，尝试从 query 中获取 title 参数，或者直接显示原标题
+                        const searchParams = new URLSearchParams(key.split('?')[1]);
+                        const queryTitle = searchParams.get('title');
+                        if (queryTitle) {
+                            label = queryTitle;
+                        }
+
                         filteredTabs.push({ key, label });
                         hasNewTab = true;
                     }

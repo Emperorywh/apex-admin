@@ -1,6 +1,6 @@
-﻿import { Button, Input } from "antd"
+﻿import { useAppNavigate } from "@/hooks/useAppNavigate";
+import { Button, Input } from "antd"
 import React from "react";
-import { useNavigate } from "react-router";
 
 const Page: React.FC = () => {
 
@@ -13,16 +13,21 @@ const Page: React.FC = () => {
         throw new Error("渲染期间发生的错误 (React Error Boundary 测试)");
     }
 
-    const navigate = useNavigate();
-
     const [explode, setExplode] = React.useState(false);
+
+    const { push } = useAppNavigate();
 
     return (
         <>
             <Input placeholder="dashboard" />
             <h1>Dashboard</h1>
             <Button onClick={() => {
-                navigate("/user/profile")
+                push("/user/profile", {
+                    query: {
+                        tab: 1,
+                    },
+                    title: "新个人资料"
+                })
             }}>
                 个人资料
             </Button>
