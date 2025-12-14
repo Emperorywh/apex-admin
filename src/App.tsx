@@ -4,8 +4,8 @@ import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useOutlet } from "react-router";
 const { Header, Sider, Content } = Layout;
 import { SentryErrorBoundary } from "@/components/ErrorBoundary";
-import { flatMenuItems, menuItems } from "./routes/utils";
-import KeepAliveTabs from "./components/KeepAliveTabs";
+import { flatMenuItems, menuItems } from "@/routes/utils";
+import KeepAliveTabs from "@/components/KeepAliveTabs";
 import ReactLogo from "@/assets/react.svg?react";
 import CnLogo from "@/assets/svg/cn.svg?react";
 import GbLogo from "@/assets/svg/gb.svg?react";
@@ -123,6 +123,7 @@ function App() {
 						<div className="flex-1 overflow-hidden min-w-0">
 							<KeepAliveTabs
 								items={tabItems}
+								setItems={setTabItems}
 								onRemove={key => {
 									if (tabItems.length <= 1) {
 										return;
@@ -218,7 +219,7 @@ function App() {
 							}
 							trigger="click"
 						>
-							<Avatar size={"small"} src="https://gw.alipayobjects.com/zos/rmsportal/KDpgvguMpGfqaHPjicRK.svg" />
+							<Avatar className="cursor-pointer" size={"small"} src="https://gw.alipayobjects.com/zos/rmsportal/KDpgvguMpGfqaHPjicRK.svg" />
 						</Popover>
 					</div>
 				</Header>
