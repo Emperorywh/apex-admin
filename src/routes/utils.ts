@@ -22,8 +22,9 @@ const renderIcon = (icon?: string) => {
  * 递归生成菜单项
  * @param routes 路由数组
  * @param parentPath 父级路径
+ * @param t 翻译函数
  */
-const generateMenuItems = (routes: AppRouteObject[], parentPath = ""): MenuItem[] => {
+export const generateMenuItems = (routes: AppRouteObject[], parentPath = "", t?: (key: string) => string): MenuItem[] => {
     const items: MenuItem[] = [];
 
     routes.forEach((route) => {
@@ -44,7 +45,7 @@ const generateMenuItems = (routes: AppRouteObject[], parentPath = ""): MenuItem[
 
         let childrenItems: MenuItem[] | undefined;
         if (route.children) {
-            const items = generateMenuItems(route.children, currentPath);
+            const items = generateMenuItems(route.children, currentPath, t);
             if (items.length > 0) {
                 childrenItems = items;
             }
@@ -52,7 +53,7 @@ const generateMenuItems = (routes: AppRouteObject[], parentPath = ""): MenuItem[
 
         const item = {
             key: currentPath || '',
-            label: route.handle.title,
+            label: t ? t(route.handle.title) : route.handle.title,
             icon: renderIcon(route.handle.icon),
             children: childrenItems,
         } as MenuItem;
@@ -63,7 +64,7 @@ const generateMenuItems = (routes: AppRouteObject[], parentPath = ""): MenuItem[
     return items;
 };
 
-const generateFlatMenus = (items: any[]) => {
+export const generateFlatMenus = (items: any[]) => {
     const flatItems: any[] = [];
 
     items.forEach((item) => {

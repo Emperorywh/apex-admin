@@ -5,7 +5,6 @@ import { RouterProvider, useLocation, useNavigationType, createRoutesFromChildre
 import { router } from './routes'
 import * as Sentry from "@sentry/react";
 import { ConfigProvider } from 'antd';
-
 // 声明 Vite 注入的全局变量
 declare const __APP_VERSION__: string;
 declare const __APP_NAME__: string;

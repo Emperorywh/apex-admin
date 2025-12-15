@@ -7,6 +7,7 @@ import { arrayMove, horizontalListSortingStrategy, SortableContext, useSortable 
 import { CSS } from '@dnd-kit/utilities';
 import React, { useState } from "react";
 import { ReloadOutlined, CloseOutlined, StopOutlined, PicCenterOutlined } from "@ant-design/icons";
+import { useTranslation } from "react-i18next";
 
 interface DraggableTabPaneProps extends React.HTMLAttributes<HTMLDivElement> {
     'data-node-key': string;
@@ -23,6 +24,8 @@ const DraggableTabNode: React.FC<Readonly<DraggableTabPaneProps>> = ({ className
     });
 
     const [open, setOpen] = useState(false);
+
+    const { t } = useTranslation();
 
     const style: React.CSSProperties = {
         ...props.style,
@@ -65,22 +68,22 @@ const DraggableTabNode: React.FC<Readonly<DraggableTabPaneProps>> = ({ className
             items={[
                 {
                     key: 'refresh',
-                    label: '刷新此页',
+                    label: t('刷新此页'),
                     icon: <ReloadOutlined />
                 },
                 {
                     key: 'close',
-                    label: '关闭当前',
+                    label: t('关闭当前'),
                     icon: <CloseOutlined />
                 },
                 {
                     key: 'closeOthers',
-                    label: '关闭其他',
+                    label: t('关闭其他'),
                     icon: <PicCenterOutlined />
                 },
                 {
                     key: 'closeAll',
-                    label: '关闭所有',
+                    label: t('关闭所有'),
                     icon: <StopOutlined />
                 }
             ]}

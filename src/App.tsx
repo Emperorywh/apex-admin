@@ -1,21 +1,30 @@
 import { BellFilled, GithubFilled, MenuFoldOutlined, MenuUnfoldOutlined, SettingFilled } from "@ant-design/icons";
 import { Avatar, Badge, Button, Divider, Dropdown, Layout, Menu, Popover, theme, Spin } from "antd";
-import { useState, Suspense } from "react";
+import { useState, Suspense, useMemo } from "react";
 import { useNavigate } from "react-router";
 const { Header, Sider, Content } = Layout;
-import { menuItems } from "@/routes/utils";
+import { generateMenuItems } from "@/routes/utils";
+import { routeChildren } from "@/routes/config";
 import ReactLogo from "@/assets/react.svg?react";
 import CnLogo from "@/assets/svg/cn.svg?react";
 import GbLogo from "@/assets/svg/gb.svg?react";
 import { useKeepAlive } from "./hooks/useKeepAlive";
 import KeepAliveTabs from "@/components/KeepAliveTabs";
 import { SentryErrorBoundary } from "@/components/ErrorBoundary";
+import "@/i18n/i18n";
+import { useTranslation } from "react-i18next";
 
 function App() {
 
 	const [collapsed, setCollapsed] = useState(false);
 
 	const navigate = useNavigate();
+
+	const { i18n, t } = useTranslation();
+
+	const menuItems = useMemo(() => generateMenuItems(routeChildren, "", t), [i18n.language, t]);
+
+	const [language, setLanguage] = useState<"zh-CN" | "en-US">("zh-CN");
 
 	const {
 		token: { colorBgContainer, borderRadiusLG },
@@ -98,7 +107,7 @@ function App() {
 												<span>中文</span>
 											</div>
 										),
-										key: '1',
+										key: 'zh-CN',
 									},
 									{
 										label: (
@@ -107,16 +116,26 @@ function App() {
 												<span>English</span>
 											</div>
 										),
-										key: '2',
+										key: 'en-US',
 									},
-								]
+								],
+								onClick: ({ key }) => {
+									setLanguage(key as "zh-CN" | "en-US");
+									i18n.changeLanguage(key);
+								}
 							}}
 							placement="bottom"
 							arrow
 							trigger={['click']}
+
 						>
 							<div className="flex items-center cursor-pointer hover:bg-gray-100 p-1 rounded-sm transition-colors">
-								<CnLogo className="w-5 h-5 rounded-sm" />
+								{
+									language === "zh-CN" && <CnLogo className="w-5 h-5 rounded-sm" />
+								}
+								{
+									language === "en-US" && <GbLogo className="w-5 h-5 rounded-sm" />
+								}
 							</div>
 						</Dropdown>
 						<div className="group w-[35px] h-[35px] flex items-center justify-center cursor-pointer hover:bg-gray-100 p-1 rounded-full transition-colors">
@@ -135,14 +154,14 @@ function App() {
 								<div className="">
 									<Divider size="small" />
 									<div className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded-sm transition-colors">
-										<span>个人资料</span>
+										<span>{t("个人资料")}</span>
 									</div>
 									<div className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded-sm transition-colors">
-										<span>账户</span>
+										<span>{t("账户")}</span>
 									</div>
 									<Divider size="small" />
 									<div className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded-sm transition-colors text-[#ff4d4f] hover:text-[#232222]">
-										<span>退出</span>
+										<span>{t("退出")}</span>
 									</div>
 								</div>
 							}

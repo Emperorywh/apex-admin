@@ -1,7 +1,9 @@
-import { useEffect, useState, type ReactNode, useCallback, useRef } from "react";
+import { useEffect, useState, type ReactNode, useCallback, useMemo } from "react";
 import { useLocation, useOutlet } from "react-router";
-import { flatMenuItems } from "@/routes/utils";
+import { generateMenuItems, generateFlatMenus } from "@/routes/utils";
+import { routeChildren } from "@/routes/config";
 import { useAppNavigate } from "./useAppNavigate";
+import { useTranslation } from "react-i18next";
 
 export interface KeepAliveTab {
     key: string;
@@ -9,6 +11,7 @@ export interface KeepAliveTab {
 }
 
 export const useKeepAlive = () => {
+    const { t } = useTranslation();
     const { push } = useAppNavigate();
     const location = useLocation();
     const currentElement = useOutlet();
@@ -22,15 +25,35 @@ export const useKeepAlive = () => {
     // 刷新 Key 用于强制重新渲染
     const [refreshKeys, setRefreshKeys] = useState<Map<string, number>>(new Map());
 
-    // 使用 Ref 存储 flatMenusMap，避免每次渲染都重建 Map
-    // 这里假设 flatMenuItems 是静态的，不会在运行时改变
-    const flatMenusMap = useRef<Map<string, string>>(null);
-    if (!flatMenusMap.current) {
-        flatMenusMap.current = new Map();
-        flatMenuItems.forEach((item: any) => {
-            flatMenusMap.current?.set(item.key, item.label);
-        });
-    }
+    // 使用 useMemo 动态生成 flatMenusMap，依赖于 t 函数
+    const flatMenusMap = useMemo(() => {
+        const menus = generateMenuItems(routeChildren, "", t);
+        const flatMenus = generateFlatMenus(menus);
+        const map = new Map<string, string>();
+        flatMenus.forEach((item: any) => map.set(item.key, item.label));
+        return map;
+    }, [t]);
+
+    /**
+     * 监听语言变化，更新已存在的 Tab 标题
+     */
+    useEffect(() => {
+        setTabItems(prev => prev.map(tab => {
+            const [path] = tab.key.split('?');
+            // 如果 url 中有 title 参数，优先使用 title 参数（不翻译）
+            const searchParams = new URLSearchParams(tab.key.split('?')[1]);
+            const queryTitle = searchParams.get('title');
+            if (queryTitle) {
+                return tab;
+            }
+
+            const newLabel = flatMenusMap.get(path);
+            if (newLabel && newLabel !== tab.label) {
+                return { ...tab, label: newLabel };
+            }
+            return tab;
+        }));
+    }, [flatMenusMap]);
 
     /**
      * 监听路由变化，更新缓存
@@ -69,7 +92,7 @@ export const useKeepAlive = () => {
                 if (!currentTabKeys.has(key)) {
                     // 移除 query 参数来匹配菜单中的 path
                     const [path] = key.split('?');
-                    let label = flatMenusMap.current?.get(path);
+                    let label = flatMenusMap.get(path);
                     
                     // 只添加在菜单中定义过的页面
                     if (label) {
@@ -94,7 +117,7 @@ export const useKeepAlive = () => {
 
             return filteredTabs;
         });
-    }, [cachedNodes]);
+    }, [cachedNodes, flatMenusMap]);
 
     /**
      * 移除 Tab
@@ -194,11 +217,11 @@ export const useKeepAlive = () => {
         setTabItems,
         cachedNodes,
         refreshKeys,
+        uniqueId,
         onRemove,
         onChange,
         onCloseAll,
         onCloseOthers,
-        onRefresh,
-        uniqueId
+        onRefresh
     };
 };

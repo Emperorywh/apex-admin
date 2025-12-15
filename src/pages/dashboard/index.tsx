@@ -1,8 +1,11 @@
 ﻿import { useAppNavigate } from "@/hooks/useAppNavigate";
 import { Button, Input } from "antd"
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 const Page: React.FC = () => {
+
+    const { t } = useTranslation();
 
     const onError = () => {
         throw new Error("测试错误");
@@ -29,7 +32,7 @@ const Page: React.FC = () => {
                     title: "新个人资料"
                 })
             }}>
-                个人资料
+                个人资料：{t("欢迎", { a: "管理员" })}
             </Button>
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                 <Button onClick={onError}>
