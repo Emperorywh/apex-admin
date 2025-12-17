@@ -1,73 +1,114 @@
-# React + TypeScript + Vite
+# Apex Admin
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Apex Admin 是一个基于 React 19、Vite 7、Ant Design 6 和 TailwindCSS 4 构建的现代化后台管理系统。它提供了丰富的功能和灵活的配置，旨在为开发者提供一个**开箱即用**的高效开发平台。
 
-Currently, two official plugins are available:
+## ✨ 特性
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### 🚀 核心功能
 
-## React Compiler
+-   **多标签页 KeepAlive (Multi-tab KeepAlive)**
+    -   支持页面缓存，切换标签页不丢失状态。
+    -   支持标签页拖拽排序。
+    -   支持右键菜单：刷新、关闭当前、关闭其他、关闭所有。
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+-   **同页面多开 (Multi-instance)**
+    -   支持同一个路由通过不同参数（Query Parameters）开启多个独立的标签页，状态互不干扰。
+    -   例如：`/user/detail?id=1` 和 `/user/detail?id=2` 会被视为两个独立的标签页进行缓存。
 
-## Expanding the ESLint configuration
+-   **开箱即用 (Out of the box)**
+    -   集成最新的技术栈，配置完善，下载即用。
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 📡 网络请求 (Axios 封装)
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+项目内置了功能强大的 Axios 封装，位于 `src/utils/http`，导出默认的 Axios 实例。具备以下特性：
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+-   **拦截器配置**：自动处理 Token 注入、请求参数转换。
+-   **自动取消重复请求**：防止短时间内重复提交。
+-   **全局错误处理**：统一处理 HTTP 状态码和业务逻辑错误。
+-   **Token 无感刷新**：自动处理 401 过期，队列重发请求。
+-   **Sentry 集成**：自动上报 API 错误和业务异常。
+-   **类型支持**：完善的 TypeScript 类型定义，扩展了 `AxiosRequestConfig`。
+-   **灵活配置**：支持通过 `requestOptions` 自定义请求行为。
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+#### 使用示例
+
+直接导入默认实例（通常命名为 `request` 或 `http`）进行使用。
+
+```typescript
+import request from '@/utils/http';
+
+enum Api {
+  Login = '/login',
+  GetUserInfo = '/user/info',
+}
+
+// GET 请求
+export const getUserInfo = () => {
+  return request.get<UserInfo>(Api.GetUserInfo);
+};
+
+// POST 请求，自定义选项
+export const login = (data: LoginParams) => {
+  return request.post<LoginResult>(Api.Login, data, {
+    // 自定义请求配置
+    requestOptions: {
+      errorMessageMode: 'modal', // 错误弹窗显示
+      withToken: false,          // 不携带 Token
+    }
+  });
+};
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+#### 配置项 (RequestOptions)
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+`requestOptions` 作为 `AxiosRequestConfig` 的扩展属性传入：
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| 选项 | 类型 | 默认值 | 描述 |
+| --- | --- | --- | --- |
+| `joinParamsToUrl` | `boolean` | `true` | 是否将 params 拼接到 URL |
+| `isTransformResponse` | `boolean` | `true` | 是否处理响应数据（直接返回 data.data） |
+| `isReturnNativeResponse` | `boolean` | `false` | 是否返回原生响应头 |
+| `ignoreCancelToken` | `boolean` | `false` | 是否忽略取消重复请求 |
+| `withToken` | `boolean` | `true` | 是否携带 Token |
+| `errorMessageMode` | `'none' \| 'modal' \| 'message'` | `'message'` | 错误消息提示方式 |
+
+### 🎨 主题与个性化
+
+通过内置的设置抽屉（Settings Drawer），您可以实时预览并修改系统外观：
+
+-   **明暗主题 (Light/Dark Mode)**：一键切换亮色和暗色模式，适配不同光照环境。
+-   **布局切换 (Layout Options)**：支持侧边菜单和顶部菜单布局，满足不同场景需求。
+-   **主题色变更 (Theme Color)**：预置多种主题色，也可自定义主色调。
+-   **字体设置 (Font Settings)**：支持全局字体大小调整。
+-   **紧凑模式 (Compact Mode)**：提供更紧凑的界面布局，展示更多信息。
+-   **圆角设置 (Border Radius)**：全局控制组件的圆角大小，风格随心定制。
+
+### 🛠️ 技术栈
+
+-   **React 19**
+-   **Vite 7**
+-   **Ant Design 6**
+-   **TailwindCSS 4**
+-   **TypeScript**
+-   **React Router 7**
+
+## 📦 安装与启动
+
+```bash
+# 安装依赖
+npm install
+
+# 启动开发服务器
+npm run dev
+
+# 构建生产环境
+npm run build
 ```
+
+## 预览
+
+> (在此处添加项目截图)
+
+---
+
+**Apex Admin** - 您的下一代后台管理系统解决方案。
