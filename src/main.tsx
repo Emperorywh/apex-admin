@@ -4,7 +4,9 @@ import './index.css'
 import { RouterProvider, useLocation, useNavigationType, createRoutesFromChildren, matchRoutes } from 'react-router'
 import { router } from './routes'
 import * as Sentry from "@sentry/react";
-import { ConfigProvider } from 'antd';
+import { ThemeProvider } from '@/context/ThemeContext';
+import { GlobalConfig } from '@/components/GlobalConfig';
+
 // 声明 Vite 注入的全局变量
 declare const __APP_VERSION__: string;
 declare const __APP_NAME__: string;
@@ -37,8 +39,10 @@ const container = document.getElementById('root');
 
 createRoot(container!).render(
 	<StrictMode>
-		<ConfigProvider theme={{ token: { fontFamily: "'Open Sans', sans-serif" } }}>
-			<RouterProvider router={router} />
-		</ConfigProvider>
+		<ThemeProvider>
+			<GlobalConfig>
+				<RouterProvider router={router} />
+			</GlobalConfig>
+		</ThemeProvider>
 	</StrictMode>
 )

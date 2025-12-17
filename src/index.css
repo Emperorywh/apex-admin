@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @font-face {
   font-family: 'Open Sans';
   src: url('./assets/font/open-sans-latin-wght-normal-CYuRH5ug.woff2') format('woff2');
