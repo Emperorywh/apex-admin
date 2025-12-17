@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Drawer, Slider, Row, Col, Typography, Button, Tooltip, ColorPicker } from 'antd';
-import { SettingFilled, SunOutlined, MoonOutlined, CheckOutlined, FullscreenOutlined, FullscreenExitOutlined, FontSizeOutlined } from '@ant-design/icons';
+import { Drawer, Slider, Row, Col, Typography, Button, Tooltip, ColorPicker, Switch, InputNumber } from 'antd';
+import { SettingFilled, SunOutlined, MoonOutlined, CheckOutlined, FullscreenOutlined, FullscreenExitOutlined, FontSizeOutlined, ExpandOutlined, BorderOuterOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
-import type { SettingsDrawerProps, SettingsState, ThemeMode } from './index.types';
+import type { SettingsDrawerProps, SettingsState, ThemeMode, LayoutMode } from './index.types';
 
 const { Text } = Typography;
 
@@ -20,25 +20,44 @@ const PRESET_COLORS = [
 
 const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ children, onSettingChange }) => {
 	const { t } = useTranslation();
-	const { themeMode: globalThemeMode, primaryColor: globalPrimaryColor, setThemeMode, setPrimaryColor } = useTheme();
+	const { 
+		themeMode: globalThemeMode, 
+		layoutMode: globalLayoutMode, 
+		primaryColor: globalPrimaryColor, 
+		fontSize: globalFontSize,
+		compactMode: globalCompactMode,
+		borderRadius: globalBorderRadius,
+		setThemeMode, 
+		setLayoutMode, 
+		setPrimaryColor,
+		setFontSize,
+		setCompactMode,
+		setBorderRadius
+	} = useTheme();
 
 	const [open, setOpen] = useState(false);
 	const [isFullscreen, setIsFullscreen] = useState(false);
 
 	const [settings, setSettings] = useState<SettingsState>({
 		themeMode: globalThemeMode,
-		layoutMode: 'side',
+		layoutMode: globalLayoutMode,
 		primaryColor: globalPrimaryColor,
-		fontSize: 14,
+		fontSize: globalFontSize,
+		compactMode: globalCompactMode,
+		borderRadius: globalBorderRadius,
 	});
 
 	useEffect(() => {
 		setSettings((prev) => ({
 			...prev,
 			themeMode: globalThemeMode,
+			layoutMode: globalLayoutMode,
 			primaryColor: globalPrimaryColor,
+			fontSize: globalFontSize,
+			compactMode: globalCompactMode,
+			borderRadius: globalBorderRadius,
 		}));
-	}, [globalThemeMode, globalPrimaryColor]);
+	}, [globalThemeMode, globalLayoutMode, globalPrimaryColor, globalFontSize, globalCompactMode, globalBorderRadius]);
 
 	const handleUpdateSettings = <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => {
 		const newSettings = { ...settings, [key]: value };
@@ -48,8 +67,20 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ children, onSettingChan
 		if (key === 'themeMode') {
 			setThemeMode(value as ThemeMode);
 		}
+		if (key === 'layoutMode') {
+			setLayoutMode(value as LayoutMode);
+		}
 		if (key === 'primaryColor') {
 			setPrimaryColor(value as string);
+		}
+		if (key === 'fontSize') {
+			setFontSize(value as number);
+		}
+		if (key === 'compactMode') {
+			setCompactMode(value as boolean);
+		}
+		if (key === 'borderRadius') {
+			setBorderRadius(value as number);
 		}
 	};
 
@@ -133,16 +164,28 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ children, onSettingChan
 								<div
 									className={`group relative w-1/3 h-16 rounded-xl border-2 cursor-pointer transition-all duration-300 overflow-hidden ${
 										settings.layoutMode === 'side'
-											? 'border-blue-500 shadow-lg shadow-blue-100'
+											? 'shadow-lg shadow-blue-100'
 											: 'border-gray-100 hover:border-blue-200 hover:shadow-md'
 									}`}
+									style={{
+										borderColor: settings.layoutMode === 'side' ? settings.primaryColor : undefined
+									}}
 									onClick={() => handleUpdateSettings('layoutMode', 'side')}
 								>
-									<div className="absolute top-0 left-0 w-[20%] h-full bg-gray-800 opacity-20 group-hover:opacity-30 transition-opacity"></div>
-									<div className="absolute top-0 right-0 w-[80%] h-[20%] bg-gray-300 opacity-20 group-hover:opacity-30 transition-opacity"></div>
+									<div 
+										className="absolute top-0 left-0 w-[20%] h-full opacity-80 group-hover:opacity-100 transition-opacity"
+										style={{ backgroundColor: settings.primaryColor }}
+									></div>
+									<div 
+										className="absolute top-0 right-0 w-[80%] h-[20%] opacity-10 group-hover:opacity-20 transition-opacity"
+										style={{ backgroundColor: settings.primaryColor }}
+									></div>
 									<div className="absolute bottom-0 right-0 w-[80%] h-[80%] bg-gray-100 opacity-20 group-hover:opacity-30 transition-opacity"></div>
 									{settings.layoutMode === 'side' && (
-										<div className="absolute bottom-1 right-1 text-blue-500 bg-white rounded-full p-0.5 shadow-sm">
+										<div 
+											className="absolute bottom-1 right-1 bg-white rounded-full p-0.5 shadow-sm"
+											style={{ color: settings.primaryColor }}
+										>
 											<CheckOutlined />
 										</div>
 									)}
@@ -154,36 +197,24 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ children, onSettingChan
 								<div
 									className={`group relative w-1/3 h-16 rounded-xl border-2 cursor-pointer transition-all duration-300 overflow-hidden ${
 										settings.layoutMode === 'top'
-											? 'border-blue-500 shadow-lg shadow-blue-100'
+											? 'shadow-lg shadow-blue-100'
 											: 'border-gray-100 hover:border-blue-200 hover:shadow-md'
 									}`}
+									style={{
+										borderColor: settings.layoutMode === 'top' ? settings.primaryColor : undefined
+									}}
 									onClick={() => handleUpdateSettings('layoutMode', 'top')}
 								>
-									<div className="absolute top-0 left-0 w-full h-[20%] bg-gray-800 opacity-20 group-hover:opacity-30 transition-opacity"></div>
+									<div 
+										className="absolute top-0 left-0 w-full h-[20%] opacity-80 group-hover:opacity-100 transition-opacity"
+										style={{ backgroundColor: settings.primaryColor }}
+									></div>
 									<div className="absolute bottom-0 left-0 w-full h-[80%] bg-gray-100 opacity-20 group-hover:opacity-30 transition-opacity"></div>
 									{settings.layoutMode === 'top' && (
-										<div className="absolute bottom-1 right-1 text-blue-500 bg-white rounded-full p-0.5 shadow-sm">
-											<CheckOutlined />
-										</div>
-									)}
-								</div>
-							</Tooltip>
-
-							{/* Mix Menu */}
-							<Tooltip title={t('混合菜单')}>
-								<div
-									className={`group relative w-1/3 h-16 rounded-xl border-2 cursor-pointer transition-all duration-300 overflow-hidden ${
-										settings.layoutMode === 'mix'
-											? 'border-blue-500 shadow-lg shadow-blue-100'
-											: 'border-gray-100 hover:border-blue-200 hover:shadow-md'
-									}`}
-									onClick={() => handleUpdateSettings('layoutMode', 'mix')}
-								>
-									<div className="absolute top-0 left-0 w-full h-[20%] bg-gray-800 opacity-20 group-hover:opacity-30 transition-opacity"></div>
-									<div className="absolute bottom-0 left-0 w-[20%] h-[80%] bg-gray-300 opacity-20 group-hover:opacity-30 transition-opacity"></div>
-									<div className="absolute bottom-0 right-0 w-[80%] h-[80%] bg-gray-100 opacity-20 group-hover:opacity-30 transition-opacity"></div>
-									{settings.layoutMode === 'mix' && (
-										<div className="absolute bottom-1 right-1 text-blue-500 bg-white rounded-full p-0.5 shadow-sm">
+										<div 
+											className="absolute bottom-1 right-1 bg-white rounded-full p-0.5 shadow-sm"
+											style={{ color: settings.primaryColor }}
+										>
 											<CheckOutlined />
 										</div>
 									)}
@@ -244,6 +275,51 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ children, onSettingChan
 								</Col>
 								<Col flex="none">
 									<Text code className="ml-2">{settings.fontSize}px</Text>
+								</Col>
+							</Row>
+						</div>
+					</div>
+
+					{/* Compact Mode */}
+					<div>
+						<h3 className="mb-3 text-base font-medium text-gray-800 dark:text-gray-200">{t('紧凑模式')}</h3>
+						<div className="bg-gray-50 rounded-lg p-4 flex justify-between items-center">
+							<div className="flex items-center gap-2">
+								<ExpandOutlined />
+								<span>{t('开启紧凑模式')}</span>
+							</div>
+							<Switch
+								checked={settings.compactMode}
+								onChange={(checked) => handleUpdateSettings('compactMode', checked)}
+							/>
+						</div>
+					</div>
+
+					{/* Border Radius */}
+					<div>
+						<h3 className="mb-3 text-base font-medium text-gray-800 dark:text-gray-200">{t('圆角设置')}</h3>
+						<div className="bg-gray-50 rounded-lg p-4">
+							<Row align="middle" gutter={16}>
+								<Col flex="none">
+									<BorderOuterOutlined />
+								</Col>
+								<Col flex="auto">
+									<Slider
+										min={0}
+										max={20}
+										value={settings.borderRadius}
+										onChange={(value) => handleUpdateSettings('borderRadius', value)}
+										tooltip={{ formatter: (value) => `${value}px` }}
+									/>
+								</Col>
+								<Col flex="none">
+									<InputNumber
+										min={0}
+										max={20}
+										style={{ width: 60 }}
+										value={settings.borderRadius}
+										onChange={(value) => handleUpdateSettings('borderRadius', value || 0)}
+									/>
 								</Col>
 							</Row>
 						</div>

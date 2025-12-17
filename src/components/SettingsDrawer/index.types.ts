@@ -1,11 +1,13 @@
 export type ThemeMode = 'light' | 'dark';
-export type LayoutMode = 'side' | 'top' | 'mix';
+export type LayoutMode = 'side' | 'top';
 
 export interface SettingsState {
   themeMode: ThemeMode;
   layoutMode: LayoutMode;
   primaryColor: string;
   fontSize: number;
+  compactMode: boolean;
+  borderRadius: number;
 }
 
 export interface SettingsDrawerProps {
