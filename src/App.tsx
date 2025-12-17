@@ -10,6 +10,7 @@ import CnLogo from "@/assets/svg/cn.svg?react";
 import GbLogo from "@/assets/svg/gb.svg?react";
 import { useKeepAlive } from "./hooks/useKeepAlive";
 import KeepAliveTabs from "@/components/KeepAliveTabs";
+import NotificationDrawer from "@/components/NotificationDrawer";
 import { SentryErrorBoundary } from "@/components/ErrorBoundary";
 import "@/i18n/i18n";
 import { useTranslation } from "react-i18next";
@@ -138,14 +139,15 @@ function App() {
 								}
 							</div>
 						</Dropdown>
-						<div className="group w-[35px] h-[35px] flex items-center justify-center cursor-pointer hover:bg-gray-100 p-1 rounded-full transition-colors">
+						<div
+							className="group w-[35px] h-[35px] flex items-center justify-center cursor-pointer hover:bg-gray-100 p-1 rounded-full transition-colors"
+							onClick={() => {
+								window.open("https://github.com/Emperorywh/apex-admin", "_blank");
+							}}
+						>
 							<GithubFilled className="font-bold text-[20px] group-hover:!text-gray-400 transition-colors" />
 						</div>
-						<Badge count={5} size="small">
-							<div className="cursor-pointer hover:bg-gray-100 p-1 rounded-sm transition-colors">
-								<BellFilled className="font-bold text-[20px]" />
-							</div>
-						</Badge>
+						<NotificationDrawer />
 						<div className="group w-[35px] h-[35px] flex items-center justify-center cursor-pointer hover:bg-gray-100 p-1 rounded-full transition-colors">
 							<SettingFilled className="font-bold text-[20px] animate-spin-slow group-hover:!text-gray-400 transition-colors" />
 						</div>
