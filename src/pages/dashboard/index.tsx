@@ -1,63 +1,30 @@
-﻿import { useAppNavigate } from "@/hooks/useAppNavigate";
-import { Button, Input } from "antd"
-import React from "react";
-import { useTranslation } from "react-i18next";
+﻿import React from "react";
+import { Row, Col } from "antd";
+import AnalysisChart from "./components/AnalysisChart";
+import OverviewCards from "./components/OverviewCards";
+import TopPages from "./components/TopPages";
+import DeviceChart from "./components/DeviceChart";
+import TrafficData from "./components/TrafficData";
 
 const Page: React.FC = () => {
-
-    const { t } = useTranslation();
-
-    const onError = () => {
-        throw new Error("测试错误");
-    }
-
-    // 这是一个会在渲染期间抛出错误的组件
-    const Bomb = () => {
-        throw new Error("渲染期间发生的错误 (React Error Boundary 测试)");
-    }
-
-    const [explode, setExplode] = React.useState(false);
-
-    const { push } = useAppNavigate();
-
     return (
-        <>
-            <Input placeholder="dashboard" />
-            <h1>Dashboard</h1>
-            <Button onClick={() => {
-                push("/user/profile", {
-                    query: {
-                        tab: 1,
-                    },
-                    title: "新个人资料"
-                })
-            }}>
-                个人资料：{t("欢迎", { a: "管理员" })}
-            </Button>
-            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                <Button onClick={onError}>
-                    普通JS报错 (不触发UI降级)
-                </Button>
-                <Button type="primary" danger onClick={() => {
-                    throw new Error("Test Error");
-                }}>
-                    直接抛错 (不触发UI降级)
-                </Button>
-                <Button type="primary" danger onClick={() => setExplode(true)}>
-                    触发渲染错误 (触发UI降级)
-                </Button>
-                <Button danger onClick={() => {
-                    // Sentry 会自动捕获未处理的 Promise Rejection
-                    setTimeout(() => {
-                        Promise.reject(new Error("Promise reject 测试 (异步)"));
-                    }, 1000)
-                }}>
-                    异步 Promise Reject
-                </Button>
+        <div className="p-4">
+            <div className="mb-6">
+                <AnalysisChart />
             </div>
-
-            {explode && <Bomb />}
-        </>
+            <div className="mb-6">
+                <OverviewCards />
+            </div>
+            <Row gutter={[16, 16]}>
+                <Col className="mb-6" xs={24} lg={16}>
+                    <TopPages />
+                </Col>
+                <Col className="mb-6" xs={24} lg={8}>
+                    <DeviceChart />
+                </Col>
+            </Row>
+            <TrafficData />
+        </div>
     )
 }
 
