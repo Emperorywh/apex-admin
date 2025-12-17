@@ -1,4 +1,4 @@
-import { useNavigate, type NavigateOptions, type To } from "react-router";
+import { useNavigate, type NavigateOptions } from "react-router";
 import { useCallback } from "react";
 
 export interface AppNavigateOptions extends NavigateOptions {
