@@ -1,6 +1,10 @@
-import axios, { type AxiosInstance, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
+import axios, {
+	type AxiosInstance,
+	type AxiosResponse,
+	type InternalAxiosRequestConfig,
+} from 'axios';
 import { message, Modal } from 'antd';
-import * as Sentry from "@sentry/react";
+import * as Sentry from '@sentry/react';
 import { AxiosCanceler } from './axiosCancel';
 import type { RequestOptions } from './types';
 import { getToken, setToken, clearAuth } from '../auth';
@@ -50,7 +54,11 @@ service.interceptors.request.use(
 
 		// Handle form-data (simplified)
 		const contentType = config.headers?.['Content-Type'] || config.headers?.['content-type'];
-		if (contentType === 'application/x-www-form-urlencoded;charset=UTF-8' && config.data && typeof config.data === 'object') {
+		if (
+			contentType === 'application/x-www-form-urlencoded;charset=UTF-8' &&
+			config.data &&
+			typeof config.data === 'object'
+		) {
 			config.data = new URLSearchParams(config.data).toString();
 		}
 
@@ -58,7 +66,7 @@ service.interceptors.request.use(
 	},
 	(error) => {
 		return Promise.reject(error);
-	}
+	},
 );
 
 // Response Interceptor
@@ -153,7 +161,7 @@ service.interceptors.response.use(
 							isRefreshing = false;
 
 							// 重发队列中的请求
-							requestQueue.forEach(cb => cb(newToken));
+							requestQueue.forEach((cb) => cb(newToken));
 							requestQueue = [];
 
 							// 重发当前请求
@@ -187,7 +195,7 @@ service.interceptors.response.use(
 		}
 
 		return Promise.reject(error);
-	}
+	},
 );
 
 function handle401() {
@@ -206,22 +214,22 @@ function showError(msg: string, mode: 'none' | 'modal' | 'message' | undefined) 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function reportSentry(data: any, type: string, code?: number, msg?: string) {
 	Sentry.withScope((scope) => {
-		scope.setTag("type", type);
+		scope.setTag('type', type);
 		const config = data.config || data.response?.config;
 		if (config) {
-			scope.setExtra("url", config.url);
-			scope.setExtra("method", config.method);
-			scope.setExtra("params", config.params);
-			scope.setExtra("data", config.data);
+			scope.setExtra('url', config.url);
+			scope.setExtra('method', config.method);
+			scope.setExtra('params', config.params);
+			scope.setExtra('data', config.data);
 		}
 		if (data.status) {
-			scope.setExtra("status", data.status);
+			scope.setExtra('status', data.status);
 		}
-		if (code) scope.setExtra("business_code", code);
-		if (msg) scope.setExtra("business_message", msg);
+		if (code) scope.setExtra('business_code', code);
+		if (msg) scope.setExtra('business_message', msg);
 
 		if (type === 'api_business_error') {
-			Sentry.captureMessage(`API Business Error: ${config?.url} (${code})`, "warning");
+			Sentry.captureMessage(`API Business Error: ${config?.url} (${code})`, 'warning');
 		} else {
 			Sentry.captureException(data);
 		}

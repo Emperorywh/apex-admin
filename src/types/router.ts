@@ -1,4 +1,4 @@
-import type { RouteObject } from "react-router";
+import type { RouteObject } from 'react-router';
 
 export interface AppRouteMeta {
 	title: string;
@@ -7,7 +7,7 @@ export interface AppRouteMeta {
 	type?: 'menu' | 'action';
 }
 
-export type AppRouteObject = Omit<RouteObject, "children" | "handle"> & {
+export type AppRouteObject = Omit<RouteObject, 'children' | 'handle'> & {
 	handle?: AppRouteMeta;
 	children?: AppRouteObject[];
 };

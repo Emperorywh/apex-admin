@@ -79,7 +79,22 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 	}, [themeMode]);
 
 	return (
-		<ThemeContext.Provider value={{ themeMode, layoutMode, primaryColor, fontSize, compactMode, borderRadius, setThemeMode, setLayoutMode, setPrimaryColor, setFontSize, setCompactMode, setBorderRadius }}>
+		<ThemeContext.Provider
+			value={{
+				themeMode,
+				layoutMode,
+				primaryColor,
+				fontSize,
+				compactMode,
+				borderRadius,
+				setThemeMode,
+				setLayoutMode,
+				setPrimaryColor,
+				setFontSize,
+				setCompactMode,
+				setBorderRadius,
+			}}
+		>
 			{children}
 		</ThemeContext.Provider>
 	);

@@ -58,7 +58,7 @@ const mockNotifications: NotificationItem[] = [
 		read: false,
 		type: 'notification',
 		group: 'team',
-	}
+	},
 ];
 
 const NotificationDrawer: React.FC = () => {
@@ -76,19 +76,21 @@ const NotificationDrawer: React.FC = () => {
 
 	const markAsRead = (id: string) => {
 		setNotifications((prev) =>
-			prev.map((item) => (item.id === id ? { ...item, read: true } : item))
+			prev.map((item) => (item.id === id ? { ...item, read: true } : item)),
 		);
 	};
 
 	const markAllAsRead = () => {
 		setNotifications((prev) =>
-			prev.map((item) => (item.group === activeTab || activeTab === 'all' ? { ...item, read: true } : item))
+			prev.map((item) =>
+				item.group === activeTab || activeTab === 'all' ? { ...item, read: true } : item,
+			),
 		);
 	};
 
 	const clearNotifications = () => {
 		setNotifications((prev) =>
-			prev.filter((item) => !(item.group === activeTab || activeTab === 'all'))
+			prev.filter((item) => !(item.group === activeTab || activeTab === 'all')),
 		);
 	};
 
@@ -113,7 +115,7 @@ const NotificationDrawer: React.FC = () => {
 		},
 		{
 			key: 'team',
-			label: `团队 (${notifications.filter(n => n.group === 'team').length})`,
+			label: `团队 (${notifications.filter((n) => n.group === 'team').length})`,
 			children: (
 				<NotificationList
 					data={getFilteredNotifications('team')}

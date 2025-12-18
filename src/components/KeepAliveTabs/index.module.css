@@ -1,7 +1,7 @@
 .tabs :global(.ant-tabs-nav) {
-  margin: 0 !important;
+	margin: 0 !important;
 }
 
 .tabs :global(.ant-tabs-tab) {
-  border-radius: 0 !important;
+	border-radius: 0 !important;
 }

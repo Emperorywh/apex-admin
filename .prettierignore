@@ -1,0 +1,7 @@
+dist
+node_modules
+.husky
+.vscode
+*.md
+*.svg
+package-lock.json

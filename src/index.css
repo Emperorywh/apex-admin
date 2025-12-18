@@ -1,28 +1,31 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @font-face {
-  font-family: 'Open Sans';
-  src: url('./assets/font/open-sans-latin-wght-normal-CYuRH5ug.woff2') format('woff2');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
+	font-family: 'Open Sans';
+	src: url('./assets/font/open-sans-latin-wght-normal-CYuRH5ug.woff2') format('woff2');
+	font-weight: 100 900;
+	font-style: normal;
+	font-display: swap;
 }
 
 @theme {
-  --font-sans: "Open Sans", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --animate-spin-slow: spin 3s linear infinite;
-  --animate-spin-fast: spin 0.5s linear infinite;
+	--font-sans:
+		'Open Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+		'Segoe UI Symbol', 'Noto Color Emoji';
+	--animate-spin-slow: spin 3s linear infinite;
+	--animate-spin-fast: spin 0.5s linear infinite;
 }
 
-html, body, #root {
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
+html,
+body,
+#root {
+	height: 100%;
+	width: 100%;
+	overflow: hidden;
 }
 
 body {
-  font-family: "Open Sans", ui-sans-serif, system-ui, sans-serif;
+	font-family: 'Open Sans', ui-sans-serif, system-ui, sans-serif;
 }
-

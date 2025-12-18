@@ -7,12 +7,12 @@ const { Title } = Typography;
 const DeviceChart: React.FC = () => {
 	const option = {
 		tooltip: {
-			trigger: 'item'
+			trigger: 'item',
 		},
 		legend: {
 			bottom: '0%',
 			left: 'center',
-			icon: 'circle'
+			icon: 'circle',
 		},
 		series: [
 			{
@@ -23,34 +23,36 @@ const DeviceChart: React.FC = () => {
 				itemStyle: {
 					borderRadius: 10,
 					borderColor: '#fff',
-					borderWidth: 2
+					borderWidth: 2,
 				},
 				label: {
 					show: false,
-					position: 'center'
+					position: 'center',
 				},
 				emphasis: {
 					label: {
 						show: true,
 						fontSize: 20,
-						fontWeight: 'bold'
-					}
+						fontWeight: 'bold',
+					},
 				},
 				labelLine: {
-					show: false
+					show: false,
 				},
 				data: [
 					{ value: 1048, name: 'Desktop', itemStyle: { color: '#3b82f6' } },
 					{ value: 735, name: 'Mobile', itemStyle: { color: '#f59e0b' } },
-					{ value: 580, name: 'Tablet', itemStyle: { color: '#8b5cf6' } }
-				]
-			}
-		]
+					{ value: 580, name: 'Tablet', itemStyle: { color: '#8b5cf6' } },
+				],
+			},
+		],
 	};
 
 	return (
 		<Card className="h-full shadow-sm hover:shadow-md transition-shadow">
-			<Title level={5} style={{ marginBottom: 20 }}>Session devices</Title>
+			<Title level={5} style={{ marginBottom: 20 }}>
+				Session devices
+			</Title>
 			<div className="relative">
 				<div className="absolute inset-0 flex items-center justify-center pointer-events-none">
 					<div className="text-center">

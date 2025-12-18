@@ -1,9 +1,15 @@
-import { StrictMode, useEffect } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import { RouterProvider, useLocation, useNavigationType, createRoutesFromChildren, matchRoutes } from 'react-router'
-import { router } from './routes'
-import * as Sentry from "@sentry/react";
+import { StrictMode, useEffect } from 'react';
+import { createRoot } from 'react-dom/client';
+import './index.css';
+import {
+	RouterProvider,
+	useLocation,
+	useNavigationType,
+	createRoutesFromChildren,
+	matchRoutes,
+} from 'react-router';
+import { router } from './routes';
+import * as Sentry from '@sentry/react';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { GlobalConfig } from '@/components/GlobalConfig';
 
@@ -12,7 +18,7 @@ declare const __APP_VERSION__: string;
 declare const __APP_NAME__: string;
 
 Sentry.init({
-	dsn: "https://115312e36450246c6f2cab50c5432314@o4510499341008896.ingest.us.sentry.io/4510499342385152",
+	dsn: 'https://115312e36450246c6f2cab50c5432314@o4510499341008896.ingest.us.sentry.io/4510499342385152',
 	// 仅在生产环境下启用 Sentry
 	enabled: import.meta.env.PROD,
 	sendDefaultPii: true,
@@ -44,5 +50,5 @@ createRoot(container!).render(
 				<RouterProvider router={router} />
 			</GlobalConfig>
 		</ThemeProvider>
-	</StrictMode>
-)
+	</StrictMode>,
+);

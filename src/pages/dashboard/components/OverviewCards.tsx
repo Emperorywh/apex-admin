@@ -37,7 +37,7 @@ const OverviewCards: React.FC = () => {
 			change: '↑ 5.2%',
 			icon: <UserOutlined style={{ fontSize: '20px' }} />,
 			color: '#f97316', // orange
-			bg: 'bg-orange-100'
+			bg: 'bg-orange-100',
 		},
 		{
 			title: 'Conversion rate',
@@ -45,7 +45,7 @@ const OverviewCards: React.FC = () => {
 			change: '↓ 1.8%',
 			icon: <RiseOutlined style={{ fontSize: '20px' }} />,
 			color: '#10b981', // green
-			bg: 'bg-green-100'
+			bg: 'bg-green-100',
 		},
 		{
 			title: 'Ad campaign clicks',
@@ -53,8 +53,8 @@ const OverviewCards: React.FC = () => {
 			change: '↑ 2.3%',
 			icon: <FireOutlined style={{ fontSize: '20px' }} />,
 			color: '#a855f7', // purple
-			bg: 'bg-purple-100'
-		}
+			bg: 'bg-purple-100',
+		},
 	];
 
 	return (

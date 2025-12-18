@@ -1,14 +1,12 @@
-import { Input } from "antd"
-
+import { Input } from 'antd';
 
 const Account: React.FC = () => {
+	return (
+		<>
+			<h1>Account</h1>
+			<Input placeholder="account" />
+		</>
+	);
+};
 
-    return (
-        <>
-            <h1>Account</h1>
-            <Input placeholder="account"/>
-        </>
-    )
-}
-
-export default Account
+export default Account;

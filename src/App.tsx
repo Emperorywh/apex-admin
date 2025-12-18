@@ -1,24 +1,23 @@
-import { GithubFilled, MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
-import { Button, Layout, Menu, theme, Spin } from "antd";
-import { useState, Suspense, useMemo } from "react";
+import { GithubFilled, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
+import { Button, Layout, Menu, theme, Spin } from 'antd';
+import { useState, Suspense, useMemo } from 'react';
 const { Header, Sider, Content } = Layout;
-import { generateMenuItems } from "@/routes/utils";
-import { routeChildren } from "@/routes/config";
-import ReactLogo from "@/assets/react.svg?react";
-import { useKeepAlive } from "./hooks/useKeepAlive";
-import KeepAliveTabs from "@/components/KeepAliveTabs";
-import NotificationDrawer from "@/components/NotificationDrawer";
-import { SentryErrorBoundary } from "@/components/ErrorBoundary";
-import "@/i18n/i18n";
-import { useTranslation } from "react-i18next";
-import SettingsDrawer from "./components/SettingsDrawer";
-import UserAvatar from "./components/UserAvatar";
-import { useTheme } from "@/hooks/useTheme";
-import LanguageSelector from "@/components/LanguageSelector";
-import { useAppNavigate } from "./hooks/useAppNavigate";
+import { generateMenuItems } from '@/routes/utils';
+import { routeChildren } from '@/routes/config';
+import ReactLogo from '@/assets/react.svg?react';
+import { useKeepAlive } from './hooks/useKeepAlive';
+import KeepAliveTabs from '@/components/KeepAliveTabs';
+import NotificationDrawer from '@/components/NotificationDrawer';
+import { SentryErrorBoundary } from '@/components/ErrorBoundary';
+import '@/i18n/i18n';
+import { useTranslation } from 'react-i18next';
+import SettingsDrawer from './components/SettingsDrawer';
+import UserAvatar from './components/UserAvatar';
+import { useTheme } from '@/hooks/useTheme';
+import LanguageSelector from '@/components/LanguageSelector';
+import { useAppNavigate } from './hooks/useAppNavigate';
 
 function App() {
-
 	const { themeMode, layoutMode } = useTheme();
 	const [collapsed, setCollapsed] = useState(false);
 
@@ -26,7 +25,7 @@ function App() {
 
 	const { t } = useTranslation();
 
-	const menuItems = useMemo(() => generateMenuItems(routeChildren, "", t), [t]);
+	const menuItems = useMemo(() => generateMenuItems(routeChildren, '', t), [t]);
 
 	const {
 		token: { colorBgContainer, borderRadiusLG },
@@ -43,7 +42,7 @@ function App() {
 		onCloseAll,
 		onCloseOthers,
 		onRefresh,
-		uniqueId
+		uniqueId,
 	} = useKeepAlive();
 
 	const headerTools = (
@@ -52,7 +51,7 @@ function App() {
 			<div
 				className="group w-[35px] h-[35px] flex items-center justify-center cursor-pointer hover:bg-gray-100 p-1 rounded-full transition-colors"
 				onClick={() => {
-					window.open("https://github.com/Emperorywh/apex-admin", "_blank");
+					window.open('https://github.com/Emperorywh/apex-admin', '_blank');
 				}}
 			>
 				<GithubFilled className="font-bold text-[20px] group-hover:!text-gray-400 transition-colors" />
@@ -66,16 +65,14 @@ function App() {
 	const contentArea = (
 		<SentryErrorBoundary>
 			<Suspense fallback={<Spin />}>
-				{
-					Array.from(cachedNodes.entries()).map(([id, element]) => (
-						<div
-							key={`${id}-${refreshKeys.get(id) || 0}`}
-							style={{ display: id === uniqueId ? 'block' : 'none' }}
-						>
-							{element}
-						</div>
-					))
-				}
+				{Array.from(cachedNodes.entries()).map(([id, element]) => (
+					<div
+						key={`${id}-${refreshKeys.get(id) || 0}`}
+						style={{ display: id === uniqueId ? 'block' : 'none' }}
+					>
+						{element}
+					</div>
+				))}
 			</Suspense>
 		</SentryErrorBoundary>
 	);
@@ -87,9 +84,16 @@ function App() {
 					className="flex items-center justify-between px-4 border-b border-gray-100 dark:border-gray-800"
 					style={{ background: colorBgContainer, paddingInline: 16 }}
 				>
-					<div className="flex items-center cursor-pointer" onClick={() => push('/dashboard')}>
+					<div
+						className="flex items-center cursor-pointer"
+						onClick={() => push('/dashboard')}
+					>
 						<ReactLogo className="w-[32px] h-[32px] animate-spin-slow text-[#00d8ff] mr-2" />
-						<span className={`font-bold text-[18px] ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>Apex Admin</span>
+						<span
+							className={`font-bold text-[18px] ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}
+						>
+							Apex Admin
+						</span>
 					</div>
 					<div className="flex-1 min-w-0 mx-8">
 						<Menu
@@ -98,7 +102,11 @@ function App() {
 							selectedKeys={[activeKey]}
 							onClick={({ key }) => push(key)}
 							items={menuItems}
-							style={{ borderBottom: 'none', lineHeight: '64px', background: 'transparent' }}
+							style={{
+								borderBottom: 'none',
+								lineHeight: '64px',
+								background: 'transparent',
+							}}
 						/>
 					</div>
 					{headerTools}
@@ -122,7 +130,7 @@ function App() {
 						minHeight: 280,
 						background: colorBgContainer,
 						borderRadius: borderRadiusLG,
-						overflow: 'auto'
+						overflow: 'auto',
 					}}
 				>
 					{contentArea}
@@ -142,9 +150,16 @@ function App() {
 				collapsedWidth={80}
 				className="flex-none border-r border-gray-100 dark:border-gray-800"
 			>
-				<div className="flex items-center justify-center h-[64px] cursor-pointer" onClick={() => push('/dashboard')}>
+				<div
+					className="flex items-center justify-center h-[64px] cursor-pointer"
+					onClick={() => push('/dashboard')}
+				>
 					<ReactLogo className="w-[32px] h-[32px] animate-spin-slow text-[#00d8ff]" />
-					<span className={`font-bold text-[18px] whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${collapsed ? 'max-w-0 opacity-0 ml-0' : 'max-w-[200px] opacity-100 ml-[10px]'} ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>Apex Admin</span>
+					<span
+						className={`font-bold text-[18px] whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${collapsed ? 'max-w-0 opacity-0 ml-0' : 'max-w-[200px] opacity-100 ml-[10px]'} ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}
+					>
+						Apex Admin
+					</span>
 				</div>
 				<Menu
 					theme={themeMode}
@@ -157,7 +172,10 @@ function App() {
 				/>
 			</Sider>
 			<Layout>
-				<Header className="flex items-center overflow-hidden" style={{ padding: 0, background: colorBgContainer }}>
+				<Header
+					className="flex items-center overflow-hidden"
+					style={{ padding: 0, background: colorBgContainer }}
+				>
 					<div className="flex-1 flex items-center gap-[5px] min-w-0">
 						<Button
 							type="text"
@@ -192,14 +210,14 @@ function App() {
 						minHeight: 280,
 						background: colorBgContainer,
 						borderRadius: borderRadiusLG,
-						overflow: 'auto'
+						overflow: 'auto',
 					}}
 				>
 					{contentArea}
 				</Content>
 			</Layout>
 		</Layout>
-	)
+	);
 }
 
-export default App
+export default App;

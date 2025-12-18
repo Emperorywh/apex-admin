@@ -11,19 +11,19 @@ const AnalysisChart: React.FC = () => {
 			axisPointer: {
 				type: 'cross',
 				label: {
-					backgroundColor: '#6a7985'
-				}
-			}
+					backgroundColor: '#6a7985',
+				},
+			},
 		},
 		legend: {
 			data: ['Visits', 'Orders', 'Payments'],
-			bottom: 0
+			bottom: 0,
 		},
 		grid: {
 			left: '3%',
 			right: '4%',
 			bottom: '10%',
-			containLabel: true
+			containLabel: true,
 		},
 		xAxis: [
 			{
@@ -31,22 +31,22 @@ const AnalysisChart: React.FC = () => {
 				boundaryGap: false,
 				data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
 				axisLine: {
-					show: false
+					show: false,
 				},
 				axisTick: {
-					show: false
-				}
-			}
+					show: false,
+				},
+			},
 		],
 		yAxis: [
 			{
 				type: 'value',
 				splitLine: {
 					lineStyle: {
-						type: 'dashed'
-					}
-				}
-			}
+						type: 'dashed',
+					},
+				},
+			},
 		],
 		series: [
 			{
@@ -56,17 +56,17 @@ const AnalysisChart: React.FC = () => {
 				smooth: true,
 				lineStyle: {
 					width: 3,
-					color: '#3b82f6'
+					color: '#3b82f6',
 				},
 				showSymbol: false,
 				areaStyle: {
 					opacity: 0.1,
-					color: '#3b82f6'
+					color: '#3b82f6',
 				},
 				emphasis: {
-					focus: 'series'
+					focus: 'series',
 				},
-				data: [120, 132, 101, 134, 90, 230, 210]
+				data: [120, 132, 101, 134, 90, 230, 210],
 			},
 			{
 				name: 'Orders',
@@ -75,17 +75,17 @@ const AnalysisChart: React.FC = () => {
 				smooth: true,
 				lineStyle: {
 					width: 3,
-					color: '#10b981'
+					color: '#10b981',
 				},
 				showSymbol: false,
 				areaStyle: {
 					opacity: 0.1,
-					color: '#10b981'
+					color: '#10b981',
 				},
 				emphasis: {
-					focus: 'series'
+					focus: 'series',
 				},
-				data: [220, 182, 191, 234, 290, 330, 310]
+				data: [220, 182, 191, 234, 290, 330, 310],
 			},
 			{
 				name: 'Payments',
@@ -94,33 +94,41 @@ const AnalysisChart: React.FC = () => {
 				smooth: true,
 				lineStyle: {
 					width: 3,
-					color: '#f59e0b'
+					color: '#f59e0b',
 				},
 				showSymbol: false,
 				areaStyle: {
 					opacity: 0.1,
-					color: '#f59e0b'
+					color: '#f59e0b',
 				},
 				emphasis: {
-					focus: 'series'
+					focus: 'series',
 				},
-				data: [150, 232, 201, 154, 190, 330, 410]
-			}
-		]
+				data: [150, 232, 201, 154, 190, 330, 410],
+			},
+		],
 	};
 
 	return (
 		<Card className="mb-6 shadow-sm hover:shadow-md transition-shadow">
 			<div className="flex justify-between items-center mb-4">
 				<div>
-					<Title level={4} style={{ margin: 0 }}>Web Analytic</Title>
-					<span className="text-gray-500">Explore the metrics to understand trends and drive.</span>
+					<Title level={4} style={{ margin: 0 }}>
+						Web Analytic
+					</Title>
+					<span className="text-gray-500">
+						Explore the metrics to understand trends and drive.
+					</span>
 				</div>
-				<Select defaultValue="day" style={{ width: 120 }} options={[
-					{ value: 'day', label: 'Day' },
-					{ value: 'week', label: 'Week' },
-					{ value: 'month', label: 'Month' },
-				]} />
+				<Select
+					defaultValue="day"
+					style={{ width: 120 }}
+					options={[
+						{ value: 'day', label: 'Day' },
+						{ value: 'week', label: 'Week' },
+						{ value: 'month', label: 'Month' },
+					]}
+				/>
 			</div>
 
 			<div className="flex gap-8 mb-4">

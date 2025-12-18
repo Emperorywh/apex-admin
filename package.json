@@ -1,62 +1,65 @@
 {
-  "name": "apex-admin",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "commit": "git-cz",
-    "preview": "vite preview",
-    "prepare": "husky"
-  },
-  "dependencies": {
-    "@ant-design/icons": "^6.1.0",
-    "@dnd-kit/core": "^6.3.1",
-    "@dnd-kit/modifiers": "^9.0.0",
-    "@dnd-kit/sortable": "^10.0.0",
-    "@dnd-kit/utilities": "^3.2.2",
-    "@sentry/react": "^10.29.0",
-    "@tailwindcss/vite": "^4.1.17",
-    "@types/lodash-es": "^4.17.12",
-    "antd": "^6.0.0",
-    "axios": "^1.13.2",
-    "dayjs": "^1.11.19",
-    "echarts": "^6.0.0",
-    "echarts-for-react": "^3.0.5",
-    "i18next": "^25.7.2",
-    "lodash-es": "^4.17.21",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "react-i18next": "^16.5.0",
-    "react-router": "^7.9.6",
-    "tailwindcss": "^4.1.17"
-  },
-  "devDependencies": {
-    "@commitlint/cli": "^20.2.0",
-    "@commitlint/config-conventional": "^20.2.0",
-    "@eslint/js": "^9.39.1",
-    "@sentry/vite-plugin": "^4.6.1",
-    "@types/node": "^24.10.1",
-    "@types/react": "^19.2.5",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.1",
-    "commitizen": "^4.3.1",
-    "cz-git": "^1.12.0",
-    "eslint": "^9.39.1",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^16.5.0",
-    "husky": "^9.1.7",
-    "typescript": "~5.9.3",
-    "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4",
-    "vite-plugin-svgr": "^4.5.0"
-  },
-  "config": {
-    "commitizen": {
-      "path": "node_modules/cz-git"
-    }
-  }
+	"name": "apex-admin",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "tsc -b && vite build",
+		"lint": "eslint .",
+		"format": "prettier --write .",
+		"commit": "git-cz",
+		"preview": "vite preview",
+		"prepare": "husky"
+	},
+	"dependencies": {
+		"@ant-design/icons": "^6.1.0",
+		"@dnd-kit/core": "^6.3.1",
+		"@dnd-kit/modifiers": "^9.0.0",
+		"@dnd-kit/sortable": "^10.0.0",
+		"@dnd-kit/utilities": "^3.2.2",
+		"@sentry/react": "^10.29.0",
+		"@tailwindcss/vite": "^4.1.17",
+		"@types/lodash-es": "^4.17.12",
+		"antd": "^6.0.0",
+		"axios": "^1.13.2",
+		"dayjs": "^1.11.19",
+		"echarts": "^6.0.0",
+		"echarts-for-react": "^3.0.5",
+		"i18next": "^25.7.2",
+		"lodash-es": "^4.17.21",
+		"react": "^19.2.0",
+		"react-dom": "^19.2.0",
+		"react-i18next": "^16.5.0",
+		"react-router": "^7.9.6",
+		"tailwindcss": "^4.1.17"
+	},
+	"devDependencies": {
+		"@commitlint/cli": "^20.2.0",
+		"@commitlint/config-conventional": "^20.2.0",
+		"@eslint/js": "^9.39.1",
+		"@sentry/vite-plugin": "^4.6.1",
+		"@types/node": "^24.10.1",
+		"@types/react": "^19.2.5",
+		"@types/react-dom": "^19.2.3",
+		"@vitejs/plugin-react": "^5.1.1",
+		"commitizen": "^4.3.1",
+		"cz-git": "^1.12.0",
+		"eslint": "^9.39.1",
+		"eslint-config-prettier": "^10.1.8",
+		"eslint-plugin-react-hooks": "^7.0.1",
+		"eslint-plugin-react-refresh": "^0.4.24",
+		"globals": "^16.5.0",
+		"husky": "^9.1.7",
+		"prettier": "^3.7.4",
+		"typescript": "~5.9.3",
+		"typescript-eslint": "^8.46.4",
+		"vite": "^7.2.4",
+		"vite-plugin-svgr": "^4.5.0"
+	},
+	"config": {
+		"commitizen": {
+			"path": "node_modules/cz-git"
+		}
+	}
 }

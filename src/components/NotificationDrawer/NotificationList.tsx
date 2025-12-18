@@ -20,15 +20,19 @@ const NotificationList: React.FC<NotificationListProps> = ({ data, onMarkAsRead 
 			{data.map((item) => (
 				<div
 					key={item.id}
-					className={`flex gap-4 px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer relative group ${!item.read ? 'bg-blue-50/30' : ''
-						}`}
+					className={`flex gap-4 px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer relative group ${
+						!item.read ? 'bg-blue-50/30' : ''
+					}`}
 				>
 					{/* Avatar Section */}
 					<div className="shrink-0 pt-1">
 						{item.avatar ? (
 							<Avatar src={item.avatar} />
 						) : (
-							<Avatar icon={<MessageOutlined />} className="bg-blue-100 text-blue-600" />
+							<Avatar
+								icon={<MessageOutlined />}
+								className="bg-blue-100 text-blue-600"
+							/>
 						)}
 					</div>
 
@@ -41,7 +45,11 @@ const NotificationList: React.FC<NotificationListProps> = ({ data, onMarkAsRead 
 							>
 								{item.title}
 							</Text>
-							{item.group === 'team' && <Tag color="blue" className="shrink-0 ml-auto mr-0">团队</Tag>}
+							{item.group === 'team' && (
+								<Tag color="blue" className="shrink-0 ml-auto mr-0">
+									团队
+								</Tag>
+							)}
 						</div>
 
 						<Paragraph className="mb-1 text-gray-500 text-xs" ellipsis={{ rows: 2 }}>

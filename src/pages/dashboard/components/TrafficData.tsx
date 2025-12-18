@@ -13,7 +13,7 @@ const TrafficData: React.FC = () => {
 			unique: '1,200',
 			bounce: '↑ 40%',
 			duration: '00:03:45',
-			progress: 60
+			progress: 60,
 		},
 		{
 			key: '2',
@@ -22,7 +22,7 @@ const TrafficData: React.FC = () => {
 			unique: '2,500',
 			bounce: '↑ 35%',
 			duration: '00:04:20',
-			progress: 75
+			progress: 75,
 		},
 		{
 			key: '3',
@@ -31,7 +31,7 @@ const TrafficData: React.FC = () => {
 			unique: '850',
 			bounce: '↑ 45%',
 			duration: '00:03:10',
-			progress: 80
+			progress: 80,
 		},
 		{
 			key: '4',
@@ -40,7 +40,7 @@ const TrafficData: React.FC = () => {
 			unique: '1,800',
 			bounce: '↑ 50%',
 			duration: '00:02:50',
-			progress: 40
+			progress: 40,
 		},
 	];
 
@@ -49,7 +49,7 @@ const TrafficData: React.FC = () => {
 			title: 'SOURCE',
 			dataIndex: 'source',
 			key: 'source',
-			render: (text: string) => <span className="font-medium text-gray-700">{text}</span>
+			render: (text: string) => <span className="font-medium text-gray-700">{text}</span>,
 		},
 		{
 			title: 'VISITS',
@@ -65,9 +65,7 @@ const TrafficData: React.FC = () => {
 			title: 'BOUNCE RATE',
 			dataIndex: 'bounce',
 			key: 'bounce',
-			render: (text: string) => (
-				<span className="text-green-500">{text}</span>
-			)
+			render: (text: string) => <span className="text-green-500">{text}</span>,
 		},
 		{
 			title: 'AVG. SESSION DURATION',
@@ -80,17 +78,26 @@ const TrafficData: React.FC = () => {
 			key: 'progress',
 			render: (percent: number) => (
 				<div className="w-32">
-					<Progress percent={percent} size="small" showInfo={true} strokeColor="#3b82f6" />
+					<Progress
+						percent={percent}
+						size="small"
+						showInfo={true}
+						strokeColor="#3b82f6"
+					/>
 				</div>
-			)
+			),
 		},
 	];
 
 	return (
 		<Card className="mt-6 shadow-sm hover:shadow-md transition-shadow">
 			<div className="flex justify-between items-center mb-4">
-				<Title level={5} style={{ margin: 0 }}>Traffic data</Title>
-				<Button icon={<DownloadOutlined />} size="small">Export data</Button>
+				<Title level={5} style={{ margin: 0 }}>
+					Traffic data
+				</Title>
+				<Button icon={<DownloadOutlined />} size="small">
+					Export data
+				</Button>
 			</div>
 			<Table
 				dataSource={dataSource}
