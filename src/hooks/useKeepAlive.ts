@@ -30,39 +30,20 @@ export const useKeepAlive = () => {
         const menus = generateMenuItems(routeChildren, "", t);
         const flatMenus = generateFlatMenus(menus);
         const map = new Map<string, string>();
-        flatMenus.forEach((item: any) => map.set(item.key, item.label));
+        flatMenus.forEach((item: { key: string, label: string }) => map.set(item.key, item.label));
         return map;
     }, [t]);
 
     /**
-     * 监听语言变化，更新已存在的 Tab 标题
-     */
-    useEffect(() => {
-        setTabItems(prev => prev.map(tab => {
-            const [path] = tab.key.split('?');
-            // 如果 url 中有 title 参数，优先使用 title 参数（不翻译）
-            const searchParams = new URLSearchParams(tab.key.split('?')[1]);
-            const queryTitle = searchParams.get('title');
-            if (queryTitle) {
-                return tab;
-            }
-
-            const newLabel = flatMenusMap.get(path);
-            if (newLabel && newLabel !== tab.label) {
-                return { ...tab, label: newLabel };
-            }
-            return tab;
-        }));
-    }, [flatMenusMap]);
-
-    /**
-     * 监听路由变化，更新缓存
+     * 监听路由变化，更新缓存 和 Tab 列表
+     * 将两个 effect 合并，避免级联更新
      */
     useEffect(() => {
         if (!currentElement) return;
 
+        // 1. 更新缓存
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setCachedNodes((prev) => {
-            // 如果已存在，直接返回 prev，避免不必要的重渲染
             if (prev.has(uniqueId)) {
                 return prev;
             }
@@ -70,54 +51,30 @@ export const useKeepAlive = () => {
             newMap.set(uniqueId, currentElement);
             return newMap;
         });
-    }, [currentElement, uniqueId]);
 
-    /**
-     * 同步 tabItems 和 cachedNodes
-     * 保持 tabItems 的顺序，同时添加新 tab 或移除不存在的 tab
-     */
-    useEffect(() => {
+        // 2. 更新 Tab 列表 (直接基于 uniqueId 判断，而不是等待 cachedNodes 更新)
         setTabItems((prevTabs) => {
-            const newTabs = [...prevTabs];
-            const cachedKeys = new Set(cachedNodes.keys());
-            const currentTabKeys = new Set(prevTabs.map(t => t.key));
-
-            // 1. 移除 cachedNodes 中不存在的 tab
-            // 使用 filterRight 或从后往前遍历删除，或者直接 filter
-            const filteredTabs = newTabs.filter(tab => cachedKeys.has(tab.key));
-
-            // 2. 添加 cachedNodes 中有但 tabs 中没有的 tab
-            let hasNewTab = false;
-            for (const key of cachedNodes.keys()) {
-                if (!currentTabKeys.has(key)) {
-                    // 移除 query 参数来匹配菜单中的 path
-                    const [path] = key.split('?');
-                    let label = flatMenusMap.get(path);
-                    
-                    // 只添加在菜单中定义过的页面
-                    if (label) {
-                        // 如果有 query 参数，可以考虑在 label 后添加标识，这里暂且保持原样或由业务决定
-                        // 简单实现：如果是多开页面，尝试从 query 中获取 title 参数，或者直接显示原标题
-                        const searchParams = new URLSearchParams(key.split('?')[1]);
-                        const queryTitle = searchParams.get('title');
-                        if (queryTitle) {
-                            label = queryTitle;
-                        }
-
-                        filteredTabs.push({ key, label });
-                        hasNewTab = true;
-                    }
-                }
-            }
-
-            // 如果没有变化，返回 prevTabs 保持引用稳定
-            if (!hasNewTab && filteredTabs.length === prevTabs.length) {
+            // 如果 tab 已存在，不处理
+            if (prevTabs.some(tab => tab.key === uniqueId)) {
                 return prevTabs;
             }
 
-            return filteredTabs;
+            const [path] = uniqueId.split('?');
+            let label = flatMenusMap.get(path);
+
+            // 只添加在菜单中定义过的页面
+            if (label) {
+                const searchParams = new URLSearchParams(uniqueId.split('?')[1]);
+                const queryTitle = searchParams.get('title');
+                if (queryTitle) {
+                    label = queryTitle;
+                }
+                return [...prevTabs, { key: uniqueId, label }];
+            }
+            return prevTabs;
         });
-    }, [cachedNodes, flatMenusMap]);
+
+    }, [currentElement, uniqueId, flatMenusMap]);
 
     /**
      * 移除 Tab
@@ -146,6 +103,8 @@ export const useKeepAlive = () => {
             return newMap;
         });
         
+        setTabItems(prev => prev.filter(item => item.key !== key));
+
         // 清理 refreshKey
         setRefreshKeys(prev => {
             if (prev.has(key)) {
@@ -168,11 +127,9 @@ export const useKeepAlive = () => {
      * 关闭所有
      */
     const onCloseAll = useCallback(() => {
-        // 保留当前页或者跳转到首页？
-        // 现有逻辑是跳转到 /dashboard 并清空
-        // 我们可以优化为：如果有 dashboard，保留 dashboard；否则全清空并跳转 dashboard
         setCachedNodes(new Map());
         setRefreshKeys(new Map());
+        setTabItems([]); // 会触发重新生成当前页面的 tab
         push("/dashboard");
     }, [push]);
 
@@ -189,8 +146,7 @@ export const useKeepAlive = () => {
             return newMap;
         });
         
-        // 这里的 setTabItems 其实会被 useEffect 自动处理，但为了即时性也可以手动设置
-        // 不过依靠 useEffect 同步是更单一数据源的做法
+        setTabItems(prev => prev.filter(item => item.key === key));
         
         if (uniqueId !== key) {
             push(key);
@@ -198,30 +154,46 @@ export const useKeepAlive = () => {
     }, [uniqueId, push]);
 
     /**
-     * 刷新 Tab
+     * 刷新当前 Tab
      */
     const onRefresh = useCallback((key: string) => {
-        setRefreshKeys((prev) => {
+        setRefreshKeys(prev => {
             const newMap = new Map(prev);
             newMap.set(key, (newMap.get(key) || 0) + 1);
             return newMap;
         });
-        if (uniqueId !== key) {
-            push(key);
-        }
-    }, [uniqueId, push]);
+    }, []);
+
+    // 动态计算 labels
+    const tabItemsWithLabels = useMemo(() => {
+        return tabItems.map(tab => {
+             const [path] = tab.key.split('?');
+             // 优先使用 query 中的 title
+             const searchParams = new URLSearchParams(tab.key.split('?')[1]);
+             const queryTitle = searchParams.get('title');
+             if (queryTitle) {
+                 return { ...tab, label: queryTitle };
+             }
+
+             const newLabel = flatMenusMap.get(path);
+             if (newLabel) {
+                 return { ...tab, label: newLabel };
+             }
+             return tab;
+        });
+    }, [tabItems, flatMenusMap]);
 
     return {
         activeKey: uniqueId,
-        tabItems,
+        tabItems: tabItemsWithLabels,
         setTabItems,
         cachedNodes,
         refreshKeys,
-        uniqueId,
         onRemove,
         onChange,
         onCloseAll,
         onCloseOthers,
-        onRefresh
+        onRefresh,
+        uniqueId
     };
 };

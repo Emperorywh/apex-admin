@@ -1,24 +1,6 @@
-import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-
-export type ThemeMode = 'light' | 'dark';
-export type LayoutMode = 'side' | 'top';
-
-export interface ThemeContextType {
-	themeMode: ThemeMode;
-	layoutMode: LayoutMode;
-	primaryColor: string;
-	fontSize: number;
-	compactMode: boolean;
-	borderRadius: number;
-	setThemeMode: (mode: ThemeMode) => void;
-	setLayoutMode: (mode: LayoutMode) => void;
-	setPrimaryColor: (color: string) => void;
-	setFontSize: (size: number) => void;
-	setCompactMode: (mode: boolean) => void;
-	setBorderRadius: (radius: number) => void;
-}
-
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+import React, { useEffect, useState, type ReactNode } from 'react';
+import type { ThemeMode, LayoutMode } from './types';
+import { ThemeContext } from './ThemeContextInstance';
 
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 	const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
@@ -101,12 +83,4 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 			{children}
 		</ThemeContext.Provider>
 	);
-};
-
-export const useTheme = () => {
-	const context = useContext(ThemeContext);
-	if (!context) {
-		throw new Error('useTheme must be used within a ThemeProvider');
-	}
-	return context;
 };

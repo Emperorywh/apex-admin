@@ -32,7 +32,9 @@ export class AxiosCanceler {
 		if (pendingMap.has(url)) {
 			// 如果当前请求在等待中，取消它并将其从 pendingMap 中移除
 			const controller = pendingMap.get(url);
-			controller && controller.abort();
+			if (controller) {
+				controller.abort();
+			}
 			pendingMap.delete(url);
 		}
 	}
@@ -42,7 +44,9 @@ export class AxiosCanceler {
 	 */
 	removeAllPending() {
 		pendingMap.forEach((controller) => {
-			controller && controller.abort();
+			if (controller) {
+				controller.abort();
+			}
 		});
 		pendingMap.clear();
 	}

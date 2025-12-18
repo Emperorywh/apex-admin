@@ -21,7 +21,7 @@ const Login: React.FC = () => {
     const { t } = useTranslation();
     const { push } = useAppNavigate();
 
-    const onFinish = (values: any) => {
+    const onFinish = (values: unknown) => {
         console.log('Received values of form: ', values);
         push('/dashboard');
     };

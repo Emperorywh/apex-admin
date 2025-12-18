@@ -63,7 +63,7 @@ service.interceptors.request.use(
 
 // Response Interceptor
 service.interceptors.response.use(
-	(response: AxiosResponse<any>) => {
+	(response: AxiosResponse<unknown>) => {
 		const config = response.config;
 		const options = config.requestOptions || defaultRequestOptions;
 
@@ -203,6 +203,7 @@ function showError(msg: string, mode: 'none' | 'modal' | 'message' | undefined) 
 	}
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function reportSentry(data: any, type: string, code?: number, msg?: string) {
 	Sentry.withScope((scope) => {
 		scope.setTag("type", type);

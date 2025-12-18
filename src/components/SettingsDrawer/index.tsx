@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Drawer, Slider, Row, Col, Typography, Button, Tooltip, ColorPicker, Switch, InputNumber } from 'antd';
 import { SettingFilled, SunOutlined, MoonOutlined, CheckOutlined, FullscreenOutlined, FullscreenExitOutlined, FontSizeOutlined, ExpandOutlined, BorderOuterOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { useTheme } from '@/context/ThemeContext';
-import type { SettingsDrawerProps, SettingsState, ThemeMode, LayoutMode } from './index.types';
+import { useTheme } from '@/hooks/useTheme';
+import type { ThemeMode, LayoutMode } from '@/context/types';
+import type { SettingsDrawerProps, SettingsState } from './index.types';
 
 const { Text } = Typography;
 
@@ -21,12 +22,12 @@ const PRESET_COLORS = [
 const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ children, onSettingChange }) => {
 	const { t } = useTranslation();
 	const { 
-		themeMode: globalThemeMode, 
-		layoutMode: globalLayoutMode, 
-		primaryColor: globalPrimaryColor, 
-		fontSize: globalFontSize,
-		compactMode: globalCompactMode,
-		borderRadius: globalBorderRadius,
+		themeMode, 
+		layoutMode, 
+		primaryColor, 
+		fontSize,
+		compactMode,
+		borderRadius,
 		setThemeMode, 
 		setLayoutMode, 
 		setPrimaryColor,
@@ -38,31 +39,21 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ children, onSettingChan
 	const [open, setOpen] = useState(false);
 	const [isFullscreen, setIsFullscreen] = useState(false);
 
-	const [settings, setSettings] = useState<SettingsState>({
-		themeMode: globalThemeMode,
-		layoutMode: globalLayoutMode,
-		primaryColor: globalPrimaryColor,
-		fontSize: globalFontSize,
-		compactMode: globalCompactMode,
-		borderRadius: globalBorderRadius,
-	});
-
-	useEffect(() => {
-		setSettings((prev) => ({
-			...prev,
-			themeMode: globalThemeMode,
-			layoutMode: globalLayoutMode,
-			primaryColor: globalPrimaryColor,
-			fontSize: globalFontSize,
-			compactMode: globalCompactMode,
-			borderRadius: globalBorderRadius,
-		}));
-	}, [globalThemeMode, globalLayoutMode, globalPrimaryColor, globalFontSize, globalCompactMode, globalBorderRadius]);
+    // Derived state object to match existing code structure if possible, or just use variables directly.
+    // Using an object to minimize code changes in JSX
+    const settings = {
+		themeMode, 
+		layoutMode, 
+		primaryColor, 
+		fontSize,
+		compactMode,
+		borderRadius,
+    };
 
 	const handleUpdateSettings = <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => {
-		const newSettings = { ...settings, [key]: value };
-		setSettings(newSettings);
-		onSettingChange?.(newSettings);
+		// const newSettings = { ...settings, [key]: value };
+		// setSettings(newSettings);
+		// onSettingChange?.(newSettings);
 
 		if (key === 'themeMode') {
 			setThemeMode(value as ThemeMode);
@@ -82,6 +73,8 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ children, onSettingChan
 		if (key === 'borderRadius') {
 			setBorderRadius(value as number);
 		}
+        
+        onSettingChange?.({ ...settings, [key]: value });
 	};
 
 	const toggleFullscreen = () => {

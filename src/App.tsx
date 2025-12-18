@@ -13,7 +13,7 @@ import "@/i18n/i18n";
 import { useTranslation } from "react-i18next";
 import SettingsDrawer from "./components/SettingsDrawer";
 import UserAvatar from "./components/UserAvatar";
-import { useTheme } from "@/context/ThemeContext";
+import { useTheme } from "@/hooks/useTheme";
 import LanguageSelector from "@/components/LanguageSelector";
 import { useAppNavigate } from "./hooks/useAppNavigate";
 
@@ -24,9 +24,9 @@ function App() {
 
 	const { push } = useAppNavigate();
 
-	const { i18n, t } = useTranslation();
+	const { t } = useTranslation();
 
-	const menuItems = useMemo(() => generateMenuItems(routeChildren, "", t), [i18n.language, t]);
+	const menuItems = useMemo(() => generateMenuItems(routeChildren, "", t), [t]);
 
 	const {
 		token: { colorBgContainer, borderRadiusLG },

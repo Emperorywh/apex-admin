@@ -11,7 +11,7 @@ type MenuItem = Required<MenuProps>['items'][number];
  */
 const renderIcon = (icon?: string) => {
     if (!icon) return undefined;
-    const IconComponent = (Icons as any)[icon];
+    const IconComponent = (Icons as Record<string, React.ComponentType>)[icon];
     if (IconComponent) {
         return React.createElement(IconComponent);
     }
@@ -64,12 +64,13 @@ export const generateMenuItems = (routes: AppRouteObject[], parentPath = "", t?:
     return items;
 };
 
-export const generateFlatMenus = (items: any[]) => {
-    const flatItems: any[] = [];
+export const generateFlatMenus = (items: MenuItem[]) => {
+    const flatItems: { key: string, label: React.ReactNode }[] = [];
 
-    items.forEach((item) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    items?.forEach((item: any) => {
         flatItems.push({
-            key: item.key,
+            key: item.key as string,
             label: item.label
         });
         if (item?.children) {

@@ -2,7 +2,16 @@ import React from 'react';
 import { Card, Row, Col } from 'antd';
 import { UserOutlined, RiseOutlined, FireOutlined } from '@ant-design/icons';
 
-const StatsCard = ({ title, value, change, icon, color, bg }: any) => (
+interface StatsCardProps {
+	title: string;
+	value: string;
+	change: string;
+	icon: React.ReactNode;
+	color: string;
+	bg: string;
+}
+
+const StatsCard = ({ title, value, change, icon, color, bg }: StatsCardProps) => (
 	<Card className="h-full shadow-sm hover:shadow-md transition-shadow">
 		<div className="flex justify-between items-start mb-4">
 			<span className="text-gray-500 font-medium">{title}</span>

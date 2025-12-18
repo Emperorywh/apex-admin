@@ -17,7 +17,7 @@ interface DraggableTabPaneProps extends React.HTMLAttributes<HTMLDivElement> {
     onRemove?: (key: string) => void;
 }
 
-const DraggableTabNode: React.FC<Readonly<DraggableTabPaneProps>> = ({ className, ...props }) => {
+const DraggableTabNode: React.FC<Readonly<DraggableTabPaneProps>> = ({ ...props }) => {
     const { token } = theme.useToken();
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: props['data-node-key'],
@@ -98,7 +98,7 @@ const DraggableTabNode: React.FC<Readonly<DraggableTabPaneProps>> = ({ className
             onOpenChange={setOpen}
             overlayInnerStyle={{ padding: 0 }}
         >
-            {React.cloneElement(props.children as React.ReactElement<any>, {
+            {React.cloneElement(props.children as React.ReactElement, {
                 ref: setNodeRef,
                 style,
                 onContextMenu: handleContextMenu,

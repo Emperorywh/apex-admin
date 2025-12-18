@@ -4,8 +4,17 @@ import { DownloadOutlined } from '@ant-design/icons';
 
 const { Title } = Typography;
 
+interface PageData {
+	key: string;
+	url: string;
+	views: string;
+	viewsChange: string;
+	unique: string;
+	uniqueChange: string;
+}
+
 const TopPages: React.FC = () => {
-	const dataSource = [
+	const dataSource: PageData[] = [
 		{
 			key: '1',
 			url: '/dashboard',
@@ -59,7 +68,7 @@ const TopPages: React.FC = () => {
 			title: 'VIEWS',
 			dataIndex: 'views',
 			key: 'views',
-			render: (text: string, record: any) => (
+			render: (text: string, record: PageData) => (
 				<span>
 					{text} <span className={`ml-2 text-xs ${record.viewsChange.includes('↑') ? 'text-green-500' : 'text-red-500'}`}>{record.viewsChange}</span>
 				</span>
@@ -69,7 +78,7 @@ const TopPages: React.FC = () => {
 			title: 'UNIQUE VISITORS',
 			dataIndex: 'unique',
 			key: 'unique',
-			render: (text: string, record: any) => (
+			render: (text: string, record: PageData) => (
 				<span>
 					{text} <span className={`ml-2 text-xs ${record.uniqueChange.includes('↑') ? 'text-green-500' : 'text-red-500'}`}>{record.uniqueChange}</span>
 				</span>
