@@ -531,24 +531,27 @@ Controller 禁止直接注入 Prisma、开启事务、判断核心业务规则�
 
 ### 8.1 Client 生成与 CLI 配置
 
-新项目使用 Prisma 7 的 `prisma-client` 生成器并显式声明输出目录，不再把 `prisma-client-js` 作为新系统基线：
+本项目是 CommonJS 工程（`tsconfig` 为 `module: nodenext` 且 `package.json` 未声明 `"type": "module"`），使用 Prisma 7 的经典 `prisma-client-js` 生成器配合驱动适配器 `@prisma/adapter-pg`：
 
 ```prisma
-/// Prisma Client 生成到应用源码树中的固定基础设施目录。
-/// 构建、测试和部署必须先执行 prisma generate。
+/// 经典生成器输出预编译 CJS 到 node_modules/@prisma/client，
+/// import { PrismaClient } from '@prisma/client' 在本工程可用。
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
-/// 连接地址由 prisma.config.ts 提供。
+/// Prisma 7 已移除 Schema 内的 url 字段，连接地址由 prisma.config.ts 提供。
 /// Schema 中只声明数据库类型，不读取环境变量。
 datasource db {
   provider = "postgresql"
 }
 ```
 
-生成目录属于机器产物，推荐不提交 Git，在本地安装、CI 构建和镜像构建中显式执行 `prisma generate`。所有环境使用 Lockfile 固定的同一 Prisma CLI 和 Client 版本。
+**为什么不使用 Prisma 7 默认的 `prisma-client` 生成器。** 默认 `prisma-client` 生成器输出 ESM TypeScript 源码（含 `import.meta`），在本工程的 CJS 环境下会编译成 CJS/ESM 混合产物，运行时崩溃（`exports is not defined in ES module scope`）。彻底切换到默认生成器的前提是把整个工程改造为 ESM，即给所有相对 import 补 `.js` 后缀并调整构建与测试配置——侵入面过大，当前不承担。`prisma-client-js` 在 Prisma 7.8 仍受支持，输出预编译 CJS，配合驱动适配器运行良好。详见 [ADR-0001](./adr/0001-prisma-generator-choice.md)。
+
+> 迁移条件：只有当工程完成 ESM 改造（或 Prisma 默认生成器恢复输出兼容 CJS 的产物）后，才把生成器收敛到 `prisma-client` 并显式声明输出目录。在此之前不要为了"使用新默认值"而切换生成器。
+
+生成产物位于 `node_modules`，随安装产生，不需要提交 Git。本地安装、CI 构建和镜像构建都执行 `prisma generate`，所有环境使用 Lockfile 固定的同一 Prisma CLI 和 Client 版本。
 
 ```ts
 import 'dotenv/config';
@@ -631,10 +634,7 @@ export class DatabaseClient
 ### 8.3 Repository Adapter 与 Mapper
 
 ```ts
-import {
-  Prisma,
-  type User as PrismaUserRecord,
-} from '../../../../generated/prisma/client';
+import { Prisma, type User as PrismaUserRecord } from '@prisma/client';
 
 /**
  * Prisma 记录到领域实体的转换集中在持久化 Mapper。
@@ -1831,7 +1831,7 @@ PITR 通常先恢复到新隔离实例，不是原库上的快速撤销按钮。
 
 ### P0：先建立正确边界
 
-1. 将 Prisma generator 收敛到 `prisma-client` + 明确输出目录，并把 generate 纳入构建。
+1. 保持 `prisma-client-js` 生成器（理由见 [ADR-0001](./adr/0001-prisma-generator-choice.md)），把 `prisma generate` 纳入本地安装、CI 和镜像构建。
 2. 建立强类型配置层，启动时校验数据库、HTTP、安全和连接池参数。
 3. 将全局 `PrismaModule` 收敛为显式 `DatabaseModule`；只允许 Infrastructure Adapter 注入 Client。
 4. 建立 `bootstrap / platform / modules / shared-kernel` 目录和依赖规则。
