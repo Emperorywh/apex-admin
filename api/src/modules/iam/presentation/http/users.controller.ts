@@ -11,8 +11,15 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Response } from 'express';
+import { ApiProblemResponses } from '../../../../platform/openapi/api-problem-responses.decorator';
 import type { AuthenticatedActor } from '../../application/contracts/authenticated-actor';
 import { ChangeUserRoleUseCase } from '../../application/use-cases/accounts/change-user-role.use-case';
 import { CreateUserUseCase } from '../../application/use-cases/accounts/create-user.use-case';
@@ -28,6 +35,10 @@ import {
   CreateUserRequestDto,
   ListUsersQueryDto,
 } from './dto/user-request.dto';
+import {
+  UserPageResponseDto,
+  UserResponseDto,
+} from './dto/iam-response.dto';
 import { UserIdPipe } from './user-id.pipe';
 import { UserPageCursorCodec } from './user-page-cursor.codec';
 import { presentUser } from './user.presenter';
@@ -53,12 +64,23 @@ export class UsersController {
 
   @Post()
   @RequirePermissions(PermissionCode.USER_CREATE)
+  @ApiCreatedResponse({
+    description: '用户创建成功，并通过 Location 响应头返回资源地址',
+    type: UserResponseDto,
+    headers: {
+      Location: {
+        description: '新用户资源的相对地址',
+        schema: { type: 'string', example: '/v1/users/019f6061-0c80-7c61-b475-d70ac0829dff' },
+      },
+    },
+  })
+  @ApiProblemResponses(400, 401, 403, 409, 422, 429)
   async create(
     @Body() body: CreateUserRequestDto,
     @CurrentActor() actor: AuthenticatedActor,
     @Req() request: IamRequestContext,
     @Res({ passthrough: true }) response: Response,
-  ) {
+  ): Promise<UserResponseDto> {
     const user = await this.createUser.execute({
       actor,
       email: body.email,
@@ -72,7 +94,9 @@ export class UsersController {
 
   @Get()
   @RequirePermissions(PermissionCode.USER_READ)
-  async list(@Query() query: ListUsersQueryDto) {
+  @ApiOkResponse({ description: '返回游标分页的用户列表', type: UserPageResponseDto })
+  @ApiProblemResponses(400, 401, 403)
+  async list(@Query() query: ListUsersQueryDto): Promise<UserPageResponseDto> {
     const page = await this.listUsers.execute({
       pageSize: query.pageSize ?? 20,
       cursor: this.cursorCodec.decode(query.cursor),
@@ -88,18 +112,24 @@ export class UsersController {
 
   @Get(':id')
   @RequirePermissions(PermissionCode.USER_READ)
-  async detail(@Param('id', UserIdPipe) userId: string) {
+  @ApiOkResponse({ description: '返回指定用户详情', type: UserResponseDto })
+  @ApiProblemResponses(400, 401, 403, 404)
+  async detail(
+    @Param('id', UserIdPipe) userId: string,
+  ): Promise<UserResponseDto> {
     return { data: presentUser(await this.getUser.execute(userId)) };
   }
 
   @Patch(':id/role')
   @RequirePermissions(PermissionCode.USER_ROLE_ASSIGN)
+  @ApiOkResponse({ description: '返回角色修改后的用户', type: UserResponseDto })
+  @ApiProblemResponses(400, 401, 403, 404, 409)
   async updateRole(
     @Param('id', UserIdPipe) userId: string,
     @Body() body: ChangeUserRoleRequestDto,
     @CurrentActor() actor: AuthenticatedActor,
     @Req() request: IamRequestContext,
-  ) {
+  ): Promise<UserResponseDto> {
     const user = await this.changeRole.execute({
       actor,
       targetUserId: userId,
@@ -112,6 +142,8 @@ export class UsersController {
   @Post(':id/disable')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions(PermissionCode.USER_STATUS_CHANGE)
+  @ApiNoContentResponse({ description: '用户已禁用，活跃会话已全部撤销' })
+  @ApiProblemResponses(400, 401, 403, 404, 409)
   async disable(
     @Param('id', UserIdPipe) userId: string,
     @CurrentActor() actor: AuthenticatedActor,
@@ -127,6 +159,8 @@ export class UsersController {
   @Post(':id/enable')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions(PermissionCode.USER_STATUS_CHANGE)
+  @ApiNoContentResponse({ description: '用户已启用，不恢复历史会话' })
+  @ApiProblemResponses(400, 401, 403, 404, 409)
   async enable(
     @Param('id', UserIdPipe) userId: string,
     @CurrentActor() actor: AuthenticatedActor,

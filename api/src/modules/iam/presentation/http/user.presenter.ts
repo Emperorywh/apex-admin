@@ -1,10 +1,11 @@
 import { UserReadModel } from '../../application/contracts/read-models';
+import { AuthUserDto, UserDto } from './dto/iam-response.dto';
 
 /*
  * Presenter 显式选择可公开用户字段并统一日期序列化。
  * passwordHash、内部记录形状与 Prisma 字段不会被偶然透传。
  */
-export function presentUser(user: UserReadModel) {
+export function presentUser(user: UserReadModel): UserDto {
   return {
     id: user.id,
     email: user.email,
@@ -15,7 +16,7 @@ export function presentUser(user: UserReadModel) {
   };
 }
 
-export function presentAuthUser(user: UserReadModel) {
+export function presentAuthUser(user: UserReadModel): AuthUserDto {
   return {
     id: user.id,
     email: user.email,

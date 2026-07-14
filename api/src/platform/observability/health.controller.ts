@@ -3,9 +3,11 @@ import {
   Get,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../modules/iam/public-api';
+import { ApiProblemResponses } from '../openapi/api-problem-responses.decorator';
 import { DatabaseHealthIndicator } from './database-health.indicator';
+import { HealthResponseDto } from './health-response.dto';
 
 /*
  * Liveness 只报告进程可响应，Readiness 额外验证数据库依赖。
@@ -18,13 +20,17 @@ export class HealthController {
 
   @Public()
   @Get('live')
-  live() {
+  @ApiOkResponse({ description: '服务进程存活', type: HealthResponseDto })
+  @ApiProblemResponses()
+  live(): HealthResponseDto {
     return { data: { status: 'ok' } };
   }
 
   @Public()
   @Get('ready')
-  async ready() {
+  @ApiOkResponse({ description: '服务及其依赖已经就绪', type: HealthResponseDto })
+  @ApiProblemResponses(503)
+  async ready(): Promise<HealthResponseDto> {
     if (!(await this.databaseHealth.isReady())) {
       throw new ServiceUnavailableException('服务依赖尚未就绪');
     }

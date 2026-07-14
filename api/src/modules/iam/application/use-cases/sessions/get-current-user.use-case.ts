@@ -17,7 +17,7 @@ export class GetCurrentUserUseCase {
     user: UserReadModel;
     authorization: {
       tokenRole: AuthenticatedActor['role'];
-      permissions: readonly string[];
+      permissions: AuthenticatedActor['permissions'];
       expiresAt: Date;
       stale: boolean;
     };
