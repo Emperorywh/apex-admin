@@ -1,5 +1,8 @@
 allowBuilds:
   '@prisma/engines': true
+  # Swagger UI 间接依赖的 Scarf 脚本仅用于安装遥测。
+  # Runtime 不依赖该脚本，显式禁用以保持构建可重现。
+  '@scarf/scarf': false
   # Argon2 是本规格明确使用的本地密码哈希实现，允许其受控构建。
   # Testcontainers 的可选 SSH/Protobuf 加速脚本不属于 Runtime 必需能力。
   argon2: true

@@ -10,7 +10,7 @@ NestJS 11 + Prisma 7.8 + PostgreSQL 的单组织后台 API。当前实现以 [`S
 - `src/modules/iam/infrastructure`：Prisma、Argon2id、JWT、随机 token 和单副本限流 Adapter。
 - `src/modules/iam/presentation`：DTO、Controller、Guard、Cookie 工厂与 Problem Details。
 
-模块数据流和状态归属见 [`src/modules/iam/README.md`](src/modules/iam/README.md)，HTTP 契约见 [`docs/openapi.yaml`](docs/openapi.yaml)。
+模块数据流和状态归属见 [`src/modules/iam/README.md`](src/modules/iam/README.md)，HTTP 契约见 [`docs/openapi.yaml`](docs/openapi.yaml)，运行时 Swagger 由路由与 DTO 元数据生成。
 
 ## 本地配置
 
@@ -32,6 +32,12 @@ pnpm seed:super-admin
 pnpm build
 pnpm start:prod
 ```
+
+应用监听成功后会在控制台输出 Swagger 文档地址。默认端点：
+
+- Swagger UI：`http://localhost:3000/docs`
+- OpenAPI JSON：`http://localhost:3000/docs/openapi.json`
+- OpenAPI YAML：`http://localhost:3000/docs/openapi.yaml`
 
 生产发布必须使用不同的 Migration、Bootstrap、Runtime 数据库角色，并按 [`scripts/database-role-grants.sql`](scripts/database-role-grants.sql) 收敛权限。运行与换钥步骤见 [`docs/runbooks/iam-operations.md`](docs/runbooks/iam-operations.md)。
 

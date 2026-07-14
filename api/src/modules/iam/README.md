@@ -33,4 +33,4 @@ HTTP DTO
 - `RequirePermissions`：声明路由所需的全部权限。
 - `CurrentActor` / `AuthenticatedActor`：只读 access 授权快照。
 
-API 契约见 [`docs/openapi.yaml`](../../../docs/openapi.yaml)，部署与故障处置见 [`docs/runbooks/iam-operations.md`](../../../docs/runbooks/iam-operations.md)。
+API 契约见 [`docs/openapi.yaml`](../../../docs/openapi.yaml)，运行时 Swagger 由 Controller 和 DTO 元数据生成，部署与故障处置见 [`docs/runbooks/iam-operations.md`](../../../docs/runbooks/iam-operations.md)。

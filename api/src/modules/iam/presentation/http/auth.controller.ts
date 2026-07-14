@@ -8,6 +8,7 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import type { AuthenticatedActor } from '../../application/contracts/authenticated-actor';
 import { GetCurrentUserUseCase } from '../../application/use-cases/sessions/get-current-user.use-case';
@@ -27,8 +28,9 @@ import type { IamRequestContext } from './iam-request-context';
 
 /*
  * Auth Controller 只转换 HTTP 请求、调用单一用例并处理 Cookie 协议副作用。
- * Session 状态机、令牌轮换与授权规则全部位于 Application/Domain。
+ * Session 状态机、令牌轮换与授权规则全部位于 Application/Domain；OpenAPI 只声明传输协议。
  */
+@ApiTags('认证')
 @Controller({ path: 'auth', version: '1' })
 export class AuthController {
   constructor(
@@ -67,6 +69,7 @@ export class AuthController {
 
   @Public()
   @RequireTrustedOrigin()
+  @ApiCookieAuth('refresh-token')
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refreshSession(
@@ -90,6 +93,7 @@ export class AuthController {
 
   @Public()
   @RequireTrustedOrigin()
+  @ApiCookieAuth('refresh-token')
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   async logoutSession(
@@ -106,6 +110,7 @@ export class AuthController {
     }
   }
 
+  @ApiBearerAuth('access-token')
   @Get('me')
   async me(@CurrentActor() actor: AuthenticatedActor) {
     const result = await this.currentUser.execute(actor);

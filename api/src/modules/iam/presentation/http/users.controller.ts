@@ -11,6 +11,7 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import type { AuthenticatedActor } from '../../application/contracts/authenticated-actor';
 import { ChangeUserRoleUseCase } from '../../application/use-cases/accounts/change-user-role.use-case';
@@ -34,8 +35,10 @@ import type { IamRequestContext } from './iam-request-context';
 
 /*
  * Users Controller 为每个管理动作调用一个明确用例。
- * 路由权限由 Guard 粗筛，对象级 Policy 始终在用例内再次执行。
+ * 路由权限由 Guard 粗筛，对象级 Policy 始终在用例内再次执行；OpenAPI 统一声明 access token。
  */
+@ApiTags('用户管理')
+@ApiBearerAuth('access-token')
 @Controller({ path: 'users', version: '1' })
 export class UsersController {
   constructor(
