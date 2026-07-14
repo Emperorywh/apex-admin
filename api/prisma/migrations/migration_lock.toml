@@ -1,0 +1,2 @@
+# 迁移提供方固定为 PostgreSQL，不允许测试环境切换到 SQLite。
+provider = "postgresql"

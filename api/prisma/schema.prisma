@@ -1,12 +1,134 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+/// 扁平固定角色；等级与权限映射只由领域代码定义。
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  OPERATOR
+  VIEWER
+
+  @@map("user_role")
+}
+
+/// 用户生命周期状态；禁用不会删除历史账号。
+enum UserStatus {
+  ACTIVE
+  DISABLED
+
+  @@map("user_status")
+}
+
+/// 会话的显式持久状态；过期由 expiresAt 推导。
+enum AuthSessionStatus {
+  ACTIVE
+  REVOKED
+
+  @@map("auth_session_status")
+}
+
+/// Refresh Token 的显式轮换状态机。
+enum RefreshTokenStatus {
+  ACTIVE
+  ROTATED
+  REVOKED
+
+  @@map("refresh_token_status")
+}
+
+/// 会话撤销原因是稳定审计代码，不接受自由文本。
+enum SessionRevocationReason {
+  LOGOUT
+  REFRESH_TOKEN_REPLAY
+  USER_DISABLED
+
+  @@map("session_revocation_reason")
+}
+
+/// MVP 实际产生的最小安全审计动作集合。
+enum SecurityAuditAction {
+  USER_CREATED
+  USER_ROLE_CHANGED
+  USER_STATUS_CHANGED
+  SESSION_CREATED
+  SESSION_REVOKED
+  REFRESH_REPLAY_DETECTED
+
+  @@map("security_audit_action")
+}
+
+/// IAM 用户聚合根，只持久化 canonical email。
+model User {
+  id           String     @id @db.Uuid
+  email        String     @unique(map: "uq_users_email") @db.VarChar(320)
+  passwordHash String     @map("password_hash")
+  role         UserRole
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  sessions AuthSession[]
+
+  @@index([role, status], map: "idx_users_role_status")
+  @@map("users")
+}
+
+/// 一次登录对应一个绝对过期的设备会话。
+model AuthSession {
+  id               String                   @id @db.Uuid
+  userId           String                   @map("user_id") @db.Uuid
+  status           AuthSessionStatus        @default(ACTIVE)
+  expiresAt        DateTime                 @map("expires_at") @db.Timestamptz(3)
+  revokedAt        DateTime?                @map("revoked_at") @db.Timestamptz(3)
+  revocationReason SessionRevocationReason? @map("revocation_reason")
+  createdAt        DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  refreshTokens RefreshToken[]
+
+  @@index([userId, status], map: "idx_auth_sessions_user_status")
+  @@index([expiresAt], map: "idx_auth_sessions_expires")
+  @@map("auth_sessions")
+}
+
+/// 仅保存 opaque refresh token 的 SHA-256 摘要。
+model RefreshToken {
+  id         String             @id @db.Uuid
+  sessionId  String             @map("session_id") @db.Uuid
+  tokenHash  String             @unique(map: "uq_refresh_tokens_hash") @map("token_hash") @db.Char(64)
+  status     RefreshTokenStatus @default(ACTIVE)
+  rotatedAt  DateTime?          @map("rotated_at") @db.Timestamptz(3)
+  revokedAt  DateTime?          @map("revoked_at") @db.Timestamptz(3)
+  createdAt  DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  session AuthSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, status], map: "idx_refresh_tokens_session_status")
+  @@map("refresh_tokens")
+}
+
+/// 追加写的类型化安全状态审计，不与业务记录建立外键。
+model SecurityAuditEvent {
+  id               String                   @id @db.Uuid
+  action           SecurityAuditAction
+  actorUserId      String?                  @map("actor_user_id") @db.Uuid
+  targetUserId     String?                  @map("target_user_id") @db.Uuid
+  sessionId        String?                  @map("session_id") @db.Uuid
+  previousRole     UserRole?                @map("previous_role")
+  nextRole         UserRole?                @map("next_role")
+  previousStatus   UserStatus?              @map("previous_status")
+  nextStatus       UserStatus?              @map("next_status")
+  revocationReason SessionRevocationReason? @map("revocation_reason")
+  correlationId    String                   @map("correlation_id") @db.VarChar(64)
+  createdAt        DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([createdAt], map: "idx_security_audit_events_created")
+  @@index([actorUserId, createdAt], map: "idx_security_audit_events_actor")
+  @@index([targetUserId, createdAt], map: "idx_security_audit_events_target")
+  @@map("security_audit_events")
 }

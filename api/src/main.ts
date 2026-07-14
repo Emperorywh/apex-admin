@@ -1,9 +1,7 @@
-import 'dotenv/config';
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { bootstrap } from './bootstrap/bootstrap';
 
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  await app.listen(process.env.PORT ?? 3000);
-}
-bootstrap();
+/*
+ * main.ts 保持为稳定且无业务逻辑的默认进程入口。
+ * 启动失败由 bootstrap 的统一出口设置非零退出状态。
+ */
+void bootstrap();
