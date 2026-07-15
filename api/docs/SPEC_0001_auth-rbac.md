@@ -20,7 +20,7 @@
 | Session 模型 | **显式 `AuthSession` + RefreshToken 状态机** | 每次登录创建一个设备会话；绝对 7 天过期；轮换、撤销、重放检测 |
 | Refresh 并发 | **5 秒并发宽限 + 超时重放吊销** | 宽限期内旧 token 返回 409 且不吊销；宽限期外重用吊销整个 Session |
 | RBAC 模型 | **扁平固定角色** | `SUPER_ADMIN/ADMIN/OPERATOR/VIEWER`；权限码与角色等级均为代码事实来源 |
-| 权限解析 | **access token 权限快照** | 服务端授权 0 次查库；收权与角色变化最迟在 access TTL（15min）后生效 |
+| 权限解析 | **access token 权限快照** | 服务端授权 0 次查库；收权与角色变化最迟在 access TTL（24h）后生效 |
 | 授权层级 | **认证、路由授权、对象授权分离** | `AccessTokenGuard` + `PermissionsGuard` + `UserPolicy` |
 | 超管保护 | **seed + 领域/应用不变量** | 禁止自改角色/状态；最后一个活跃超管不可移除 |
 | 密码策略 | **Argon2id + 长度 + blocklist** | 单因素密码长度 15–128；不设复杂度规则；支持空格与 Unicode |
@@ -66,7 +66,7 @@
 
 - 登录返回精确错误，存在用户枚举面；系统必须保持内部可控网络暴露并启用限流。
 - 管理员设置初始密码且没有强制首登改密；必须通过安全带外渠道交付。
-- 已签发 access token 在用户禁用、角色降级或权限映射收紧后，最多继续有效 15 分钟。
+- 已签发 access token 在用户禁用、角色降级或权限映射收紧后，最多继续有效 24 小时。
 - access token 不随 logout 立即失效；logout 立即吊销 refresh Session，access 自然过期。
 - 单静态 JWT 密钥轮换会让旧 access 立即失效；部署必须协调重启，不能滚动混用两个无 `kid` 的密钥。
 - MVP 内存限流只允许单应用副本；扩容前必须先完成 Redis 限流规格与实现，不提供静默 fallback。
@@ -512,7 +512,7 @@ DISABLED ──enable──> ACTIVE
 - actor 不能修改自己的角色或状态。
 - 禁用用户与吊销该用户全部活跃 Session 必须在同一 IAM 事务中完成。
 - 重新启用用户不会恢复已撤销 Session，用户必须重新登录。
-- 角色变化不撤销 Session；旧 access 最多保留 15 分钟快照，下一次 refresh 使用数据库当前角色签发。
+- 角色变化不撤销 Session；旧 access 最多保留 24 小时快照，下一次 refresh 使用数据库当前角色签发。
 - 最后一个活跃 `SUPER_ADMIN` 不能被禁用或改为其他角色。
 
 ### 5.3 Session 与 RefreshToken 状态
@@ -641,7 +641,7 @@ ROTATED ──reuse after grace──> Session REVOKED
 
 - 登出幂等，不能通过响应区分 Cookie 是否曾有效。
 - 呈现任一属于该 Session 的已知 token 都可注销该 Session；登出不触发 replay 判定。
-- 现有 access token 不查 Session，最多继续有效 15 分钟，这是 `1.3` 已接受风险。
+- 现有 access token 不查 Session，最多继续有效 24 小时，这是 `1.3` 已接受风险。
 
 ### 6.4 当前用户 `GET /v1/auth/me`
 
@@ -972,7 +972,7 @@ Set-Cookie: refresh_token=<opaque>; HttpOnly; Secure; SameSite=Lax; Path=/v1/aut
   "data": {
     "accessToken": "eyJhbGci...",
     "tokenType": "Bearer",
-    "expiresIn": 900,
+    "expiresIn": 86400,
     "user": {
       "id": "<uuid>",
       "email": "alice@apex.local",
@@ -1044,7 +1044,7 @@ Content-Type: application/json
 | `JWT_ACCESS_SECRET_BASE64` | 严格 base64；解码后随机字节 ≥32 bytes |
 | `JWT_ISSUER` | `apex-admin` |
 | `JWT_ACCESS_AUDIENCE` | `apex-admin-web` |
-| `JWT_ACCESS_TTL_SECONDS` | `900` |
+| `JWT_ACCESS_TTL_SECONDS` | `86400` |
 | `REFRESH_SESSION_TTL_SECONDS` | `604800` |
 | `REFRESH_REUSE_GRACE_SECONDS` | `5`；范围 0–30 |
 | `ARGON2_MEMORY_KIB` | `65536` |
@@ -1062,7 +1062,7 @@ Runtime schema 不包含 `MIGRATION_DATABASE_URL`、`SUPER_ADMIN_EMAIL`、`SUPER
 
 zod 还必须约束：
 
-- access TTL 为 300–900 秒，保证本规格承诺的最长收权窗口。
+- access TTL 为 300–86400 秒，保证本规格承诺的最长收权窗口。
 - Refresh Session TTL 为 86400–604800 秒，不允许轮换无限续期。
 - 并发宽限为 1–30 秒；默认和生产基线为 5 秒。
 - Argon2 参数不得低于当前采用的安全下限；生产参数变更必须重新容量压测。
@@ -1147,7 +1147,7 @@ Seed 不要求 JWT、CORS、HTTP 端口或 Migration Secret。
 ### 11.5 access 失效边界
 
 - Guard 不查数据库，因此 Session 撤销、用户禁用和角色降级不会立即让已签发 access 失效。
-- 安全上限由 `JWT_ACCESS_TTL_SECONDS=900` 保证。
+- 安全上限由 `JWT_ACCESS_TTL_SECONDS=86400` 保证。
 - 需要立即收权的未来场景必须另行设计 token version/denylist 或在线会话校验；本期不加入静默查库 fallback。
 
 ### 11.6 安全审计

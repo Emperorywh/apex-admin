@@ -136,7 +136,7 @@ class FakeOpaqueTokens extends OpaqueTokenService {
 
 class FakeAccessTokens extends AccessTokenService {
   sign(): SignedAccessToken {
-    return { value: 'access', expiresAt: new Date(0), expiresInSeconds: 900 };
+    return { value: 'access', expiresAt: new Date(0), expiresInSeconds: 86400 };
   }
 
   verify(): never {

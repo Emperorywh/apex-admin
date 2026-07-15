@@ -36,7 +36,7 @@ describe('Hs256AccessTokenService', () => {
       role: UserRole.ADMIN,
       permissions: ROLE_PERMISSIONS[UserRole.ADMIN],
     });
-    expect(signed.expiresInSeconds).toBe(900);
+    expect(signed.expiresInSeconds).toBe(86400);
   });
 
   it('拒绝带 kid 的 HS256 token', () => {
@@ -53,7 +53,7 @@ describe('Hs256AccessTokenService', () => {
         algorithm: 'HS256',
         issuer: 'apex-admin',
         audience: 'apex-admin-web',
-        expiresIn: 900,
+        expiresIn: 86400,
         keyid: 'unexpected-key',
       },
     );
@@ -78,7 +78,7 @@ describe('Hs256AccessTokenService', () => {
           algorithm: 'HS256',
           issuer: 'apex-admin',
           audience: 'apex-admin-web',
-          expiresIn: 900,
+          expiresIn: 86400,
         },
       );
       expect(() => service.verify(token)).toThrow('Access Token');

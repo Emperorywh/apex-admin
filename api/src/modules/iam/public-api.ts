@@ -3,6 +3,7 @@
  * 用例、仓储和 Infrastructure Adapter 都保持模块私有。
  */
 export type { AuthenticatedActor } from './application/contracts/authenticated-actor';
+export { ACCESS_TOKEN_TTL_POLICY } from './application/contracts/access-token-lifetime';
 export { PermissionCode } from './domain/authorization/authorization';
 export { CurrentActor } from './presentation/http/decorators/current-actor.decorator';
 export { Public } from './presentation/http/decorators/public.decorator';

@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { ACCESS_TOKEN_TTL_POLICY } from '../../../application/contracts/access-token-lifetime';
 import { UserRole, UserStatus } from '../../../domain/account/user';
 import { PermissionCode } from '../../../domain/authorization/authorization';
 
@@ -35,7 +36,11 @@ export class AuthTokenDto {
   @ApiProperty({ enum: ['Bearer'] })
   readonly tokenType!: 'Bearer';
 
-  @ApiProperty({ minimum: 300, maximum: 900, example: 900 })
+  @ApiProperty({
+    minimum: ACCESS_TOKEN_TTL_POLICY.minimumSeconds,
+    maximum: ACCESS_TOKEN_TTL_POLICY.maximumSeconds,
+    example: ACCESS_TOKEN_TTL_POLICY.defaultSeconds,
+  })
   readonly expiresIn!: number;
 
   @ApiProperty({ type: () => AuthUserDto })

@@ -235,7 +235,7 @@ components:
           properties:
             accessToken: { type: string }
             tokenType: { const: Bearer }
-            expiresIn: { type: integer, minimum: 300, maximum: 900 }
+            expiresIn: { type: integer, minimum: 300, maximum: 86400 }
             user: { $ref: '#/components/schemas/User' }
     MeResponse:
       type: object

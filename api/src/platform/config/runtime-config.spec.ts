@@ -17,9 +17,18 @@ describe('分入口配置', () => {
   it('Runtime 解析强类型默认值且不需要 Migration/Seed Secret', () => {
     expect(loadRuntimeConfig(runtime)).toMatchObject({
       http: { port: 3000 },
-      jwt: { accessTtlSeconds: 900 },
+      jwt: { accessTtlSeconds: 86400 },
       session: { ttlSeconds: 604800 },
     });
+  });
+
+  it('Access Token 默认有效期为 24 小时且拒绝超过策略上限', () => {
+    expect(
+      loadRuntimeConfig({ ...runtime, JWT_ACCESS_TTL_SECONDS: '86400' }).jwt,
+    ).toMatchObject({ accessTtlSeconds: 86400 });
+    expect(() =>
+      loadRuntimeConfig({ ...runtime, JWT_ACCESS_TTL_SECONDS: '86401' }),
+    ).toThrow();
   });
 
   it('生产环境拒绝非 Secure Cookie 和短 JWT 密钥', () => {

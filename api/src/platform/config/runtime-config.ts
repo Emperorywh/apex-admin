@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ACCESS_TOKEN_TTL_POLICY } from '../../modules/iam/public-api';
 
 /*
  * Runtime 配置在进程启动时一次性解析为只读对象。
@@ -66,7 +67,11 @@ const runtimeEnvironmentSchema = z
     JWT_ACCESS_SECRET_BASE64: strictBase64Secret,
     JWT_ISSUER: z.string().min(1).default('apex-admin'),
     JWT_ACCESS_AUDIENCE: z.string().min(1).default('apex-admin-web'),
-    JWT_ACCESS_TTL_SECONDS: boundedInteger(300, 900, 900),
+    JWT_ACCESS_TTL_SECONDS: boundedInteger(
+      ACCESS_TOKEN_TTL_POLICY.minimumSeconds,
+      ACCESS_TOKEN_TTL_POLICY.maximumSeconds,
+      ACCESS_TOKEN_TTL_POLICY.defaultSeconds,
+    ),
     REFRESH_SESSION_TTL_SECONDS: boundedInteger(86400, 604800, 604800),
     REFRESH_REUSE_GRACE_SECONDS: boundedInteger(1, 30, 5),
     ARGON2_MEMORY_KIB: boundedInteger(19456, 1048576, 65536),

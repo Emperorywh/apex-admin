@@ -16,7 +16,7 @@ HTTP DTO
 
 - 密码哈希、随机 token 生成和 JWT 签发在数据库事务外。
 - 写事务统一遵循 `users → auth_sessions → refresh_tokens` 锁顺序。
-- access JWT 是最多 15 分钟的授权快照，Guard 不查数据库。
+- access JWT 是最多 24 小时的授权快照，Guard 不查数据库。
 - refresh replay 使用封闭事务结果，先提交 Session 吊销和审计，再返回业务错误。
 - 禁用用户、吊销其全部活跃 Session 和安全审计在同一 Serializable 事务提交。
 
