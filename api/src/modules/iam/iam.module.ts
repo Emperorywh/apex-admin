@@ -43,7 +43,6 @@ import { RuntimeIamSessionConfig } from './infrastructure/session/runtime-iam-se
 import { AuthController } from './presentation/http/auth.controller';
 import { AccessTokenGuard } from './presentation/http/guards/access-token.guard';
 import { PermissionsGuard } from './presentation/http/guards/permissions.guard';
-import { TrustedOriginGuard } from './presentation/http/guards/trusted-origin.guard';
 import { IamProblemDetailsFilter } from './presentation/http/iam-problem-details.filter';
 import { RefreshCookieFactory } from './presentation/http/refresh-cookie.factory';
 import { UserIdPipe } from './presentation/http/user-id.pipe';
@@ -97,7 +96,6 @@ const SESSION_USE_CASES = [
       inject: [DatabaseClient],
       useFactory: (database: DatabaseClient) => new PrismaUserRepository(database),
     },
-    { provide: APP_GUARD, useClass: TrustedOriginGuard },
     { provide: APP_GUARD, useClass: AccessTokenGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
     { provide: APP_FILTER, useClass: IamProblemDetailsFilter },

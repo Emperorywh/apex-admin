@@ -24,7 +24,6 @@ import { LogoutUseCase } from '../../application/use-cases/sessions/logout.use-c
 import { RefreshSessionUseCase } from '../../application/use-cases/sessions/refresh-session.use-case';
 import { CurrentActor } from './decorators/current-actor.decorator';
 import { Public } from './decorators/public.decorator';
-import { RequireTrustedOrigin } from './decorators/trusted-origin.decorator';
 import { LoginRequestDto } from './dto/auth-request.dto';
 import {
   AuthResponseDto,
@@ -53,14 +52,13 @@ export class AuthController {
   ) {}
 
   @Public()
-  @RequireTrustedOrigin()
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({
     description: '登录成功，并写入 HttpOnly refresh token Cookie',
     type: AuthResponseDto,
   })
-  @ApiProblemResponses(400, 401, 403, 429)
+  @ApiProblemResponses(400, 401, 429)
   async loginUser(
     @Body() body: LoginRequestDto,
     @Req() request: IamRequestContext,
@@ -84,7 +82,6 @@ export class AuthController {
   }
 
   @Public()
-  @RequireTrustedOrigin()
   @ApiCookieAuth('refresh-token')
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
@@ -92,7 +89,7 @@ export class AuthController {
     description: '会话轮换成功，并写入新的 HttpOnly refresh token Cookie',
     type: AuthResponseDto,
   })
-  @ApiProblemResponses(401, 403, 409)
+  @ApiProblemResponses(401, 409)
   async refreshSession(
     @Req() request: IamRequestContext,
     @Res({ passthrough: true }) response: Response,
@@ -113,14 +110,13 @@ export class AuthController {
   }
 
   @Public()
-  @RequireTrustedOrigin()
   @ApiCookieAuth('refresh-token')
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse({
     description: '幂等撤销会话，并清除 refresh token Cookie',
   })
-  @ApiProblemResponses(403)
+  @ApiProblemResponses()
   async logoutSession(
     @Req() request: IamRequestContext,
     @Res({ passthrough: true }) response: Response,

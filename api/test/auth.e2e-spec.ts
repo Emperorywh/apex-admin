@@ -16,7 +16,7 @@ import { startMigratedPostgres } from './support/postgres-test-environment';
  * 测试直接调用 Nest HTTP Server，不启动或控制任何浏览器。
  */
 describe('SPEC-0001 Auth/RBAC HTTP E2E', () => {
-  const origin = 'https://admin.apex.local';
+  const corsOrigin = 'https://admin.apex.local';
   const adminEmail = 'admin@apex.local';
   const adminPassword = 'violet-cabin-echo-planet-4729';
   let container: StartedPostgreSqlContainer;
@@ -26,7 +26,7 @@ describe('SPEC-0001 Auth/RBAC HTTP E2E', () => {
   beforeAll(async () => {
     const environment = await startMigratedPostgres();
     container = environment.container;
-    configureRuntimeEnvironment(environment.databaseUrl, origin);
+    configureRuntimeEnvironment(environment.databaseUrl, corsOrigin);
     database = new PrismaClient({
       adapter: new PrismaPg({ connectionString: environment.databaseUrl, max: 4 }),
     });
@@ -52,18 +52,9 @@ describe('SPEC-0001 Auth/RBAC HTTP E2E', () => {
     expect(response.headers['content-type']).toContain('application/problem+json');
   });
 
-  it('Public 登录仍要求可信 Origin 与严格 DTO', async () => {
+  it('Public 登录不要求 Origin，并继续执行严格 DTO 校验', async () => {
     await request(app.getHttpServer())
       .post('/v1/auth/login')
-      .send({ email: adminEmail, password: adminPassword })
-      .expect(403)
-      .expect(({ body }) => {
-        expect(readBody(body)).toMatchObject({ code: 'UNTRUSTED_ORIGIN' });
-      });
-
-    await request(app.getHttpServer())
-      .post('/v1/auth/login')
-      .set('Origin', origin)
       .send({ email: adminEmail, password: adminPassword, unknown: true })
       .expect(400)
       .expect(({ body }) => {
@@ -95,14 +86,12 @@ describe('SPEC-0001 Auth/RBAC HTTP E2E', () => {
 
     const rotated = await request(app.getHttpServer())
       .post('/v1/auth/refresh')
-      .set('Origin', origin)
       .set('Cookie', login.cookieHeader)
       .expect(200);
     expect(readSetCookie(rotated.headers)).toContain('refresh_token=');
 
     const stale = await request(app.getHttpServer())
       .post('/v1/auth/refresh')
-      .set('Origin', origin)
       .set('Cookie', login.cookieHeader)
       .expect(409);
     expect(readBody(stale.body)).toMatchObject({ code: 'REFRESH_TOKEN_STALE' });
@@ -110,7 +99,6 @@ describe('SPEC-0001 Auth/RBAC HTTP E2E', () => {
 
     const logout = await request(app.getHttpServer())
       .post('/v1/auth/logout')
-      .set('Origin', origin)
       .set('Cookie', login.cookieHeader)
       .expect(204);
     expect(readSetCookie(logout.headers)).toContain('Path=/v1/auth');
@@ -120,7 +108,6 @@ describe('SPEC-0001 Auth/RBAC HTTP E2E', () => {
     const login = await loginAs(adminEmail, adminPassword);
     await request(app.getHttpServer())
       .post('/v1/auth/refresh')
-      .set('Origin', origin)
       .set('Cookie', login.cookieHeader)
       .expect(200);
 
@@ -132,7 +119,6 @@ describe('SPEC-0001 Auth/RBAC HTTP E2E', () => {
     });
     await request(app.getHttpServer())
       .post('/v1/auth/refresh')
-      .set('Origin', origin)
       .set('Cookie', login.cookieHeader)
       .expect(401)
       .expect(({ body }) => {
@@ -198,7 +184,6 @@ describe('SPEC-0001 Auth/RBAC HTTP E2E', () => {
       .expect(204);
     await request(app.getHttpServer())
       .post('/v1/auth/refresh')
-      .set('Origin', origin)
       .set('Cookie', operator.cookieHeader)
       .expect(401)
       .expect(({ body }) => {
@@ -213,7 +198,6 @@ describe('SPEC-0001 Auth/RBAC HTTP E2E', () => {
   }> {
     const response = await request(app.getHttpServer())
       .post('/v1/auth/login')
-      .set('Origin', origin)
       .send({ email, password })
       .expect(200);
     const body = readBody(response.body);

@@ -24,7 +24,6 @@ const IAM_PROBLEMS: Readonly<Record<IamErrorCode, { status: number; title: strin
   REFRESH_TOKEN_INVALID: { status: 401, title: 'Refresh Token 无效' },
   REFRESH_TOKEN_REPLAY: { status: 401, title: '检测到 Refresh Token 重放' },
   REFRESH_TOKEN_STALE: { status: 409, title: 'Refresh Token 已陈旧' },
-  UNTRUSTED_ORIGIN: { status: 403, title: 'Origin 不可信' },
   INSUFFICIENT_PRIVILEGE: { status: 403, title: '权限不足' },
   USER_NOT_FOUND: { status: 404, title: '用户不存在' },
   USER_EMAIL_ALREADY_USED: { status: 409, title: '邮箱已被使用' },

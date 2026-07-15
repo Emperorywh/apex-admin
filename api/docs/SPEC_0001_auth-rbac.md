@@ -113,7 +113,6 @@ src/
 │     │  ├─ guards/
 │     │  │  ├─ access-token.guard.ts
 │     │  │  ├─ permissions.guard.ts
-│     │  │  └─ trusted-origin.guard.ts
 │     │  ├─ decorators/
 │     │  └─ dto/
 │     ├─ application/
@@ -155,7 +154,6 @@ src/
 
 ### 3.3 Guard 与 Policy 职责
 
-- `TrustedOriginGuard`：验证 Cookie 认证相关写请求的 `Origin`。
 - `AccessTokenGuard`：只回答“是谁”，负责 JWT 提取、验证和注入 actor。
 - `PermissionsGuard`：只回答“是否具备路由能力”，验证 `@RequirePermissions`。
 - `UserPolicy`：回答“能否对这个具体用户执行动作”，在 Use Case 内调用。
@@ -550,7 +548,6 @@ ROTATED ──reuse after grace──> Session REVOKED
 
 ```text
 请求 { email, password }
-  → TrustedOriginGuard
   → ValidationPipe → LoginRequestDto
   → Email.create() 得到 canonical email
   → RateLimiter.consume(ip, hash(email))
@@ -583,7 +580,6 @@ ROTATED ──reuse after grace──> Session REVOKED
 
 ```text
 请求 Cookie: refresh_token=<opaque>
-  → TrustedOriginGuard
   → RefreshSessionUseCase
       → tokenHash = sha256(cookie)
       → 事务前生成候选新 opaque token、id 与 hash
@@ -632,8 +628,7 @@ ROTATED ──reuse after grace──> Session REVOKED
 
 ```text
 请求 Cookie: refresh_token=<opaque>
-  → @Public() 仅跳过 AccessTokenGuard
-  → TrustedOriginGuard 仍然执行
+  → @Public() 跳过 AccessTokenGuard 与 PermissionsGuard
   → LogoutUseCase
       → 缺失或未知 token：不报错
       → 已知 token 且 Session 未撤销：
@@ -797,7 +792,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, readonly PermissionCode[]> = {
 ### 7.2 路由授权
 
 - `AccessTokenGuard` 与 `PermissionsGuard` 都全局注册。
-- `@Public()` 只跳过 access 身份认证与权限检查，不跳过 `TrustedOriginGuard`、DTO 校验、限流或日志。
+- `@Public()` 只跳过 access 身份认证与权限检查，不跳过 DTO 校验、限流或日志。
 - `@RequirePermissions(...)` 默认要求全部权限；若未来出现“任一权限”语义，必须使用不同装饰器，禁止布尔参数魔法。
 - 没有 `@RequirePermissions` 的受保护路由只要求认证；对象级授权仍由 Use Case 显式执行。
 
@@ -945,9 +940,9 @@ Refresh 流程使用 Infrastructure 内部的 `lockRefreshContextByTokenHash`：
 
 | 方法 | 路径 | 路由权限 | 对象/状态规则 |
 | --- | --- | --- | --- |
-| POST | `/v1/auth/login` | `@Public()` + Trusted Origin + 限流 | 凭证与 User ACTIVE |
-| POST | `/v1/auth/refresh` | `@Public()` + Trusted Origin | Session/Token 状态机 |
-| POST | `/v1/auth/logout` | `@Public()` + Trusted Origin | refresh Cookie；幂等 |
+| POST | `/v1/auth/login` | `@Public()` + 限流 | 凭证与 User ACTIVE |
+| POST | `/v1/auth/refresh` | `@Public()` | Session/Token 状态机 |
+| POST | `/v1/auth/logout` | `@Public()` | refresh Cookie；幂等 |
 | GET | `/v1/auth/me` | 已认证 | 当前 User 必须 ACTIVE |
 | POST | `/v1/users` | `user:create` | `canCreate(actor, requestedRole)` |
 | GET | `/v1/users` | `user:read` | 全局账号目录 |
@@ -1144,8 +1139,7 @@ Seed 不要求 JWT、CORS、HTTP 端口或 Migration Secret。
 
 - access 只走 Bearer Header，不进入 Cookie。
 - refresh 只走 HttpOnly Host-only Cookie。
-- `SameSite=Lax` 是纵深防御，不是完整 CSRF 方案。
-- `login/refresh/logout` 的生产 POST 必须存在 `Origin`，且与 `CORS_ORIGINS` 精确匹配；缺失或不匹配返回 403 `UNTRUSTED_ORIGIN`。
+- `SameSite=Lax` 限制跨站请求携带 refresh Cookie，认证写端点不执行应用级 Origin 校验。
 - CORS 使用精确白名单与 `credentials:true`，禁止 `*`。
 - Cookie `Path` 只控制发送范围，不能被描述成同源脚本之间的安全隔离边界。
 - 全站 HTTPS、HSTS、helmet。
@@ -1259,7 +1253,6 @@ users → auth_sessions → refresh_tokens
 | refresh 缺失、未知、过期或已撤销 | 401 | `REFRESH_TOKEN_INVALID` |
 | refresh 确认重放且 Session 已吊销 | 401 | `REFRESH_TOKEN_REPLAY` |
 | refresh 并发宽限期内的陈旧请求 | 409 | `REFRESH_TOKEN_STALE` |
-| Origin 缺失或不可信 | 403 | `UNTRUSTED_ORIGIN` |
 | 路由或对象级授权拒绝 | 403 | `INSUFFICIENT_PRIVILEGE` |
 | 管理端查询的用户不存在 | 404 | `USER_NOT_FOUND` |
 | 邮箱已被占用 | 409 | `USER_EMAIL_ALREADY_USED` |
