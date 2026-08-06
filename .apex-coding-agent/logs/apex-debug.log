@@ -1,9 +1,0 @@
-{"ts":"2026-08-06T22:29:54.437+08:00","level":"debug","event":"startup.settings_resolved","settingsFound":false,"executionPermissionMode":"auto","claudeCliPath":null,"gitCliPath":null,"pushRemote":"origin","verbose":false}
-{"ts":"2026-08-06T22:29:54.442+08:00","level":"debug","event":"startup.probe.begin","claudePath":"claude"}
-{"ts":"2026-08-06T22:29:56.488+08:00","level":"debug","event":"startup.probe.end","version":"2.1.223 (Claude Code)","capabilities":"print-mode,stream-json,json-schema,max-turns,session-id,session-resume,fork-session,permission-mode plan,permission-mode auto,permission-mode bypassPermissions"}
-{"ts":"2026-08-06T22:29:56.564+08:00","level":"error","event":"startup.failed","errorCode":"SPEC_NOT_FOUND","stage":"spec-discovery","message":"no SPEC.md found in tracked or untracked files under the invocation directory"}
-{"ts":"2026-08-06T22:30:14.757+08:00","level":"debug","event":"startup.settings_resolved","settingsFound":false,"executionPermissionMode":"auto","claudeCliPath":null,"gitCliPath":null,"pushRemote":"origin","verbose":false}
-{"ts":"2026-08-06T22:30:14.759+08:00","level":"debug","event":"startup.probe.begin","claudePath":"claude"}
-{"ts":"2026-08-06T22:30:15.816+08:00","level":"debug","event":"startup.probe.end","version":"2.1.223 (Claude Code)","capabilities":"print-mode,stream-json,json-schema,max-turns,session-id,session-resume,fork-session,permission-mode plan,permission-mode auto,permission-mode bypassPermissions"}
-{"ts":"2026-08-06T22:30:15.953+08:00","level":"debug","event":"startup.spec_resolved","path":"api/SPEC.md","sha256":"9de44cc2b96c129ee0adeb0be142242a4052a4653a00dc94d44564aa47a58637"}
-{"ts":"2026-08-06T22:30:16.162+08:00","level":"error","event":"startup.failed","errorCode":"WORKING_TREE_DIRTY","stage":"git","message":"working tree has changes outside SPEC (1 entry):  D api/功能清单.md"}
