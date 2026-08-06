@@ -1,0 +1,98 @@
+# ============================================================================
+# Apex Admin — FastAPI 后台管理系统 API 基座
+# 项目元数据、依赖声明、构建系统与工具链配置
+# ============================================================================
+
+[project]
+name = "apex-admin"
+version = "0.1.0"
+description = "FastAPI 后台管理系统 API 基座"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    # Web 框架与 ASGI 服务
+    "fastapi~=0.139.0",
+    "uvicorn",
+    # 数据校验与配置
+    "pydantic~=2.13.0",
+    "pydantic-settings~=2.14.0",
+    # ORM 与数据库驱动
+    "sqlalchemy~=2.0.0",
+    "psycopg[binary]~=3.3.0",
+    "alembic~=1.18.0",
+    # 密码哈希（Argon2id）
+    "argon2-cffi>=25,<26",
+]
+
+[dependency-groups]
+# 开发、测试与静态检查依赖
+dev = [
+    "pytest~=9.0",
+    "pytest-asyncio~=1.4.0",
+    "httpx",
+    "testcontainers[postgres]",
+    # 静态检查
+    "ruff~=0.15.0",
+    "mypy~=2.3.0",
+    # 架构检查
+    "import-linter",
+    # 依赖安全扫描
+    "pip-audit",
+]
+# Copier 模板分发依赖
+template = [
+    "copier~=9.17.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/app"]
+
+# ---------------------------------------------------------------------------
+# Ruff — lint 与格式化
+# ---------------------------------------------------------------------------
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle 错误
+    "W",    # pycodestyle 警告
+    "F",    # Pyflakes
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+]
+
+# ---------------------------------------------------------------------------
+# mypy — 静态类型检查（strict 模式）
+# ---------------------------------------------------------------------------
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+
+# ---------------------------------------------------------------------------
+# pytest — 测试框架
+# ---------------------------------------------------------------------------
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+markers = [
+    # 完成门槛标记（SPEC §28）
+    "g1: G1 Core Ready 测试",
+    "g2: G2 Security Ready 测试",
+    "g3: G3 Admin Ready 测试",
+    "g4: G4 Production Ready 测试",
+    # 测试类型标记（SPEC §28）
+    "unit: 单元测试",
+    "integration: 集成测试",
+    "api: API 契约测试",
+    "security: 安全测试",
+    "deployment: 部署测试",
+]
