@@ -74,6 +74,19 @@ class Settings(BaseSettings):
         ),
     )
 
+    # 数据库连接池参数（SPEC §26.1：默认 pool_size=5、max_overflow=5）
+    # 容量预算：API Worker × (pool_size + max_overflow) + 预留 ≤ PostgreSQL max_connections
+    db_pool_size: int = Field(
+        default=5,
+        ge=1,
+        description="连接池常驻连接数，默认 5（SPEC §26.1）",
+    )
+    db_max_overflow: int = Field(
+        default=5,
+        ge=0,
+        description="连接池溢出连接数，峰值连接数为 pool_size + max_overflow，默认 5（SPEC §26.1）",
+    )
+
     # ---- Token HMAC 密钥（SPEC §12.2）----
     access_token_hmac_key: SecretStr = Field(
         description=(
@@ -176,6 +189,8 @@ class Settings(BaseSettings):
         return {
             "app_env": str(self.app_env.value),
             "database_url": _mask_url_credentials(self.database_url),
+            "db_pool_size": str(self.db_pool_size),
+            "db_max_overflow": str(self.db_max_overflow),
             "access_token_hmac_key": "***",
             "refresh_token_hmac_key": "***",
             "config_encryption_key": "***",
