@@ -13,6 +13,7 @@ Composition Root 是唯一允许同时引用接口与具体实现并执行装配
 
 from __future__ import annotations
 
+from app.modules.auth.definition import MODULE as AUTH_MODULE
 from app.modules.contract import ModuleDefinition
 from app.modules.example.definition import MODULE as EXAMPLE_MODULE
 from app.modules.user.definition import MODULE as USER_MODULE
@@ -30,6 +31,7 @@ from app.modules.user.definition import MODULE as USER_MODULE
 ENABLED_MODULES: list[ModuleDefinition] = [
     EXAMPLE_MODULE,
     USER_MODULE,
+    AUTH_MODULE,
 ]
 
 

@@ -633,6 +633,91 @@
           }
         }
       }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "账号密码登录",
+        "description": "使用用户名和密码登录。验证 Argon2id 密码后创建服务端会话，生成 Access Token（响应体返回一次）和 Refresh Token（HttpOnly Cookie）。用户不存在时执行固定 Argon2id 虚拟哈希校验以降低响应时间差。响应设置 Cache-Control: no-store。",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "退出登录",
+        "description": "从 Cookie 读取 Refresh Token，吊销服务端会话并删除 Cookie。Token 无效或已吊销时幂等成功。",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "parameters": [
+          {
+            "name": "__Host-apex_refresh",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "  Host-Apex Refresh"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -798,6 +883,66 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "LoginRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Username",
+            "description": "用户名"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Password",
+            "description": "密码"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginRequest",
+        "description": "登录请求 Schema（SPEC §12.1、§12.4）。\n\n不强制密码长度约束——任何密码输入都经过 Argon2id 验证，\n防止通过校验差异枚举用户（SPEC §12.4）。\n\nAttributes:\n    username: 用户名\n    password: 明文密码"
+      },
+      "LoginResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token",
+            "description": "Access Token（不透明，仅返回一次）"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "description": "Token 类型",
+            "default": "Bearer"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In",
+            "description": "Access Token 有效期（秒）"
+          },
+          "session_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Session Id",
+            "description": "新创建会话的 UUID"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "access_token",
+          "expires_in",
+          "session_id"
+        ],
+        "title": "LoginResponse",
+        "description": "登录响应 Schema（SPEC §12.1、§12.2）。\n\nAccess Token 在响应体中返回一次（SPEC §12.1：仅在登录或刷新\n响应体中返回一次，前端只允许保存在内存中）。\n\nRefresh Token 不出现在 JSON 响应中——只通过 HttpOnly Cookie 传递\n（SPEC §12.1）。响应必须设置 ``Cache-Control: no-store``\n（SPEC §12.1、§12.2）。\n\nAttributes:\n    access_token: Access Token 明文（不透明，一次性）\n    token_type: Token 类型，固定 ``Bearer``\n    expires_in: Access Token 有效期（秒），默认 900（15 分钟）\n    session_id: 新创建会话的 UUID"
       },
       "Page_ExampleResponse_": {
         "properties": {
