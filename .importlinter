@@ -1,0 +1,48 @@
+[importlinter]
+root_package = app
+
+# ---------------------------------------------------------------------------
+# Layered architecture dependency rules (SPEC 5.2)
+#
+# Compile-time dependency direction:
+#   API  -----------------> Application -----------------> Domain
+#   Infrastructure -------> Application / Domain defined Port
+#   Composition Root -----> API + Application + Infrastructure
+#
+# Layers listed from highest to lowest. Higher layers may depend on lower
+# layers; lower layers must not depend on higher layers.
+# ---------------------------------------------------------------------------
+[importlinter:contract:layered-architecture]
+name = Layered architecture dependency rules (SPEC 5.2)
+type = layers
+layers =
+    app.app
+    app.lifespan
+    app.composition_root
+    app.logging
+    app.middleware
+    app.health.routes
+    app.infrastructure
+    app.context
+    app.errors
+    app.config
+    app.modules
+    app.ports
+    app.health.providers
+
+# ---------------------------------------------------------------------------
+# API layer must not depend on Infrastructure layer (SPEC 5.2, 5.6)
+#
+# Router must only receive Use Case; must not receive AsyncSession,
+# Repository or commit interface. The layers contract allows API (above
+# Infrastructure) to reference Infrastructure; this forbidden contract
+# explicitly blocks that direction.
+# ---------------------------------------------------------------------------
+[importlinter:contract:forbid-api-to-infra]
+name = API layer forbidden from depending on Infrastructure (SPEC 5.2)
+type = forbidden
+source_modules =
+    app.health.routes
+    app.middleware
+forbidden_modules =
+    app.infrastructure
