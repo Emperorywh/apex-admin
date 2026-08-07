@@ -52,6 +52,12 @@ from app.modules.auth.application.port import (
     RefreshResult,
 )
 from app.modules.auth.domain.events import SessionCreated, SessionRevoked
+from app.modules.auth.domain.login_security import (
+    ACCOUNT_LOCK_THRESHOLD,
+    IP_LOCK_THRESHOLD,
+    LoginAttempt,
+    LoginAttemptDimension,
+)
 from app.modules.auth.domain.model import (
     ACCESS_TOKEN_TTL_MINUTES,
     ACTIVITY_UPDATE_INTERVAL_MINUTES,
@@ -118,21 +124,41 @@ class AuthService(AuthApplicationPort):
         """账号密码登录（SPEC §12.1、§12.4）。
 
         安全措施：
+        - 暴力破解防护：账号 / IP 双维度检查（SPEC §12.4）
         - 用户不存在时执行虚拟哈希校验（SPEC §12.4）
         - 登录前检查用户状态（SPEC §12.1）
-        - 登录失败记录安全事件（SPEC §12.1）
+        - 登录失败记录安全事件并递增双维度计数（SPEC §12.1、§12.4）
         - ``check_needs_rehash`` 在同一事务中升级哈希（SPEC §12.1）
         - 明文 Token 绝不入库（SPEC §12.2）
+        - 成功登录清理账号维度失败状态，不清理 IP 维度（SPEC §12.4）
 
         Raises:
-            AuthenticationError: 用户名或密码不正确 / 用户已禁用
+            AuthenticationError: 用户名或密码不正确 / 用户已禁用 / 触发暴力破解限制
         """
+        # 规范化账号标识——小写化以统一统计（SPEC §12.4：规范化账号标识）
+        normalized_username = username.strip().lower()
+
         async with self._uow_factory() as uow:
+            # 暴力破解防护——检查双维度限制（SPEC §12.4）
+            # 限制时的响应与普通登录失败响应一致
+            await self._check_brute_force_lock(
+                uow=uow,
+                normalized_username=normalized_username,
+                ip=ip,
+                current_time=current_time,
+            )
+
             user = await uow.users.get_by_username(username)
 
             # 用户不存在 → 虚拟哈希校验（SPEC §12.4）
             if user is None:
                 self._password_hasher.verify(self._dummy_hash, password)
+                await self._record_brute_force_failure(
+                    uow=uow,
+                    normalized_username=normalized_username,
+                    ip=ip,
+                    current_time=current_time,
+                )
                 self._record_login_failure(
                     username=username,
                     ip=ip,
@@ -148,6 +174,12 @@ class AuthService(AuthApplicationPort):
             if user.status is UserStatus.DISABLED:
                 # 仍然执行哈希校验以均衡时间
                 self._password_hasher.verify(user.password_hash, password)
+                await self._record_brute_force_failure(
+                    uow=uow,
+                    normalized_username=normalized_username,
+                    ip=ip,
+                    current_time=current_time,
+                )
                 self._record_login_failure(
                     username=username,
                     ip=ip,
@@ -161,6 +193,12 @@ class AuthService(AuthApplicationPort):
 
             # Argon2id 验证密码（SPEC §12.1）
             if not self._password_hasher.verify(user.password_hash, password):
+                await self._record_brute_force_failure(
+                    uow=uow,
+                    normalized_username=normalized_username,
+                    ip=ip,
+                    current_time=current_time,
+                )
                 self._record_login_failure(
                     username=username,
                     ip=ip,
@@ -184,6 +222,13 @@ class AuthService(AuthApplicationPort):
             # 更新最近登录时间
             user = user.record_login(login_time=current_time)
             await uow.users.update(user)
+
+            # 成功登录清理账号维度失败状态（SPEC §12.4）
+            # IP 维度不清理（SPEC §12.4：成功登录不清理）
+            await uow.login_attempts.delete(
+                LoginAttemptDimension.ACCOUNT,
+                normalized_username,
+            )
 
             # 创建服务端会话（SPEC §12.3）
             session = Session.new(
@@ -228,6 +273,15 @@ class AuthService(AuthApplicationPort):
                 )
             )
             await self._event_dispatcher.flush(uow)
+
+            # 记录登录成功日志（SPEC §18.1：记录登录成功）
+            self._record_login_success(
+                username=username,
+                user_id=user.id,
+                session_id=session.id,
+                ip=ip,
+                user_agent=user_agent,
+            )
 
             return LoginResult(
                 access_token=access_token_plaintext,
@@ -552,6 +606,101 @@ class AuthService(AuthApplicationPort):
     # 内部辅助方法
     # ------------------------------------------------------------------
 
+    async def _check_brute_force_lock(
+        self,
+        uow: AuthUnitOfWork,
+        normalized_username: str,
+        ip: str,
+        current_time: datetime,
+    ) -> None:
+        """检查暴力破解限制（SPEC §12.4）。
+
+        检查账号和 IP 两个维度是否处于限制状态。任一维度触发限制时
+        抛出与普通登录失败一致的 ``AuthenticationError``（SPEC §12.4：
+        限制时的响应与账号密码错误响应保持一致）。
+
+        Args:
+            uow: 当前事务作用域的工作单元
+            normalized_username: 规范化账号标识
+            ip: 可信客户端 IP
+            current_time: 当前 UTC 时间
+
+        Raises:
+            AuthenticationError: 任一维度处于限制状态
+        """
+        # 检查账号维度（SPEC §12.4：账号连续失败 5 次后限制 15 分钟）
+        account_attempt = await uow.login_attempts.get(
+            LoginAttemptDimension.ACCOUNT,
+            normalized_username,
+        )
+        if account_attempt is not None and account_attempt.is_locked(current_time=current_time):
+            raise AuthenticationError(
+                "用户名或密码不正确",
+                code="AUTH.INVALID_CREDENTIALS",
+            )
+
+        # 检查 IP 维度（SPEC §12.4：IP 连续失败 20 次后限制 15 分钟）
+        ip_attempt = await uow.login_attempts.get(
+            LoginAttemptDimension.IP,
+            ip,
+        )
+        if ip_attempt is not None and ip_attempt.is_locked(current_time=current_time):
+            raise AuthenticationError(
+                "用户名或密码不正确",
+                code="AUTH.INVALID_CREDENTIALS",
+            )
+
+    async def _record_brute_force_failure(
+        self,
+        uow: AuthUnitOfWork,
+        normalized_username: str,
+        ip: str,
+        current_time: datetime,
+    ) -> None:
+        """记录暴力破解失败——递增双维度连续失败计数（SPEC §12.4）。
+
+        在同一事务中递增账号和 IP 两个维度的失败计数。使用
+        ``FOR UPDATE`` 行锁确保并发安全（SPEC §12.4：跨多 Worker 工作）。
+
+        - 账号维度：达到 ACCOUNT_LOCK_THRESHOLD 后限制 15 分钟
+        - IP 维度：达到 IP_LOCK_THRESHOLD 后限制 15 分钟
+        """
+        # 账号维度——递增连续失败计数
+        account_attempt = await uow.login_attempts.get_for_update(
+            LoginAttemptDimension.ACCOUNT,
+            normalized_username,
+        )
+        if account_attempt is None:
+            account_attempt = LoginAttempt.first_failure(
+                dimension=LoginAttemptDimension.ACCOUNT,
+                identifier=normalized_username,
+                current_time=current_time,
+            )
+        else:
+            account_attempt = account_attempt.increment_failure(
+                threshold=ACCOUNT_LOCK_THRESHOLD,
+                current_time=current_time,
+            )
+        await uow.login_attempts.save(account_attempt)
+
+        # IP 维度——递增连续失败计数（成功登录不清理，SPEC §12.4）
+        ip_attempt = await uow.login_attempts.get_for_update(
+            LoginAttemptDimension.IP,
+            ip,
+        )
+        if ip_attempt is None:
+            ip_attempt = LoginAttempt.first_failure(
+                dimension=LoginAttemptDimension.IP,
+                identifier=ip,
+                current_time=current_time,
+            )
+        else:
+            ip_attempt = ip_attempt.increment_failure(
+                threshold=IP_LOCK_THRESHOLD,
+                current_time=current_time,
+            )
+        await uow.login_attempts.save(ip_attempt)
+
     async def _handle_replay(
         self,
         uow: AuthUnitOfWork,
@@ -654,7 +803,8 @@ class AuthService(AuthApplicationPort):
     ) -> None:
         """记录登录失败安全事件（SPEC §12.1、§18.1）。
 
-        使用结构化日志记录安全事件。不记录明文密码（SPEC §12.4）。
+        使用结构化日志记录安全事件，包含失败原因分类（SPEC §18.1：
+        记录失败和失败原因分类）。不记录明文密码或 Token（SPEC §12.4）。
         审计日志持久化（G3）由审计模块独立实现。
         """
         _logger.warning(
@@ -665,5 +815,31 @@ class AuthService(AuthApplicationPort):
                 "ip": ip,
                 "user_agent": user_agent[:200],
                 "reason": reason,
+            },
+        )
+
+    def _record_login_success(
+        self,
+        *,
+        username: str,
+        user_id: UUID,
+        session_id: UUID,
+        ip: str,
+        user_agent: str,
+    ) -> None:
+        """记录登录成功日志（SPEC §18.1：记录登录成功）。
+
+        记录用户、会话、IP、User-Agent 信息。不记录明文密码或
+        Token（SPEC §12.4）。
+        """
+        _logger.info(
+            "登录成功",
+            extra={
+                "event": "login_success",
+                "username": username,
+                "user_id": str(user_id),
+                "session_id": str(session_id),
+                "ip": ip,
+                "user_agent": user_agent[:200],
             },
         )

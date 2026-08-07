@@ -35,10 +35,12 @@ from app.events.registry import EventHandlerRegistry
 from app.modules.auth.application.port import (
     AccessTokenRepository,
     AuthUnitOfWork,
+    LoginAttemptRepository,
     RefreshTokenRepository,
     SessionRepository,
 )
 from app.modules.auth.application.service import AuthService
+from app.modules.auth.domain.login_security import LoginAttempt, LoginAttemptDimension
 from app.modules.auth.domain.model import (
     ABSOLUTE_TIMEOUT_HOURS,
     ACCESS_TOKEN_TTL_MINUTES,
@@ -441,6 +443,37 @@ class _FakeRefreshTokenRepository(RefreshTokenRepository):
         return count
 
 
+class _FakeLoginAttemptRepository(LoginAttemptRepository):
+    """内存登录失败记录 Repository（SPEC §12.4）。"""
+
+    def __init__(self) -> None:
+        self._store: dict[tuple[str, str], LoginAttempt] = {}
+
+    async def get(
+        self,
+        dimension: LoginAttemptDimension,
+        identifier: str,
+    ) -> LoginAttempt | None:
+        return self._store.get((dimension.value, identifier))
+
+    async def get_for_update(
+        self,
+        dimension: LoginAttemptDimension,
+        identifier: str,
+    ) -> LoginAttempt | None:
+        return self._store.get((dimension.value, identifier))
+
+    async def save(self, entity: LoginAttempt) -> None:
+        self._store[(entity.dimension.value, entity.identifier)] = entity
+
+    async def delete(
+        self,
+        dimension: LoginAttemptDimension,
+        identifier: str,
+    ) -> None:
+        self._store.pop((dimension.value, identifier), None)
+
+
 class _FakeAuthUnitOfWork(AuthUnitOfWork):
     """内存认证 UoW，记录提交/回滚状态。"""
 
@@ -449,6 +482,7 @@ class _FakeAuthUnitOfWork(AuthUnitOfWork):
         self._sessions_repo = _FakeSessionRepository()
         self._access_repo = _FakeAccessTokenRepository()
         self._refresh_repo = _FakeRefreshTokenRepository()
+        self._login_attempts_repo = _FakeLoginAttemptRepository()
         self.committed = False
         self.rolled_back = False
 
@@ -487,6 +521,10 @@ class _FakeAuthUnitOfWork(AuthUnitOfWork):
     @property
     def refresh_tokens(self) -> _FakeRefreshTokenRepository:
         return self._refresh_repo
+
+    @property
+    def login_attempts(self) -> _FakeLoginAttemptRepository:
+        return self._login_attempts_repo
 
 
 def _make_dispatcher() -> TransactionalEventDispatcher:

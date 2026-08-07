@@ -57,6 +57,7 @@ from app.modules.auth.application.schemas import (
 from app.modules.auth.application.service import AuthService
 from app.modules.auth.domain.model import ABSOLUTE_TIMEOUT_HOURS
 from app.modules.auth.infrastructure.wiring import create_auth_service
+from app.modules.auth.middleware.origin import validate_origin
 
 # Refresh Token Cookie 名称（SPEC §12.4）
 REFRESH_TOKEN_COOKIE_NAME = "__Host-apex_refresh"
@@ -237,11 +238,14 @@ async def login(
     "/logout",
     summary="退出登录",
     description=(
-        "从 Cookie 读取 Refresh Token，吊销服务端会话并删除 Cookie。Token 无效或已吊销时幂等成功。"
+        "从 Cookie 读取 Refresh Token，吊销服务端会话并删除 Cookie。"
+        "Token 无效或已吊销时幂等成功。"
+        "校验 Origin 是否精确匹配部署配置白名单（SPEC §12.4）。"
     ),
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def logout(
+    request: Request,
     response: Response,
     refresh_token: str | None = Cookie(  # noqa: B008
         default=None,
@@ -249,7 +253,13 @@ async def logout(
     ),
     service: AuthService = Depends(get_auth_service),  # noqa: B008
 ) -> None:
-    """退出登录（SPEC §12.3、§12.4）。"""
+    """退出登录（SPEC §12.3、§12.4）。
+
+    校验 ``Origin`` 头是否精确匹配部署配置白名单（SPEC §12.4）。
+    """
+    # Origin 校验——CSRF 防护（SPEC §12.4）
+    validate_origin(request, _get_settings(request))
+
     # 无 Cookie → 幂等成功，仍删除 Cookie
     if refresh_token is None:
         _delete_refresh_token_cookie(response)
@@ -269,10 +279,12 @@ async def logout(
         "从 Cookie 读取 Refresh Token，轮换 Token：旧 Token 失效，"
         "新 Access Token 在响应体返回，新 Refresh Token 通过 Cookie 设置。"
         "已使用的 Token 再次出现时触发重放检测，吊销整个会话和 Token Family。"
+        "校验 Origin 是否精确匹配部署配置白名单（SPEC §12.4）。"
         "响应设置 Cache-Control: no-store。"
     ),
 )
 async def refresh(
+    request: Request,
     response: Response,
     refresh_token: str | None = Cookie(  # noqa: B008
         default=None,
@@ -280,7 +292,13 @@ async def refresh(
     ),
     service: AuthService = Depends(get_auth_service),  # noqa: B008
 ) -> RefreshResponse:
-    """刷新 Token——轮换与重放检测（SPEC §12.2）。"""
+    """刷新 Token——轮换与重放检测（SPEC §12.2、§12.4）。
+
+    校验 ``Origin`` 头是否精确匹配部署配置白名单（SPEC §12.4）。
+    """
+    # Origin 校验——CSRF 防护（SPEC §12.4）
+    validate_origin(request, _get_settings(request))
+
     if refresh_token is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

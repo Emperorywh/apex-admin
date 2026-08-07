@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
+from app.modules.auth.domain.login_security import LoginAttempt, LoginAttemptDimension
 from app.modules.auth.domain.model import (
     AccessTokenRecord,
     RefreshTokenRecord,
@@ -395,6 +396,48 @@ class RefreshTokenRepository(ABC):
         """
 
 
+class LoginAttemptRepository(ABC):
+    """登录失败记录数据访问端口（SPEC §12.4）。
+
+    提供按维度和标识符查询、加锁查询、保存和删除操作，
+    支持暴力破解防护的账号和 IP 两个独立维度。
+
+    所有操作在传入 UoW 的事务作用域内执行（SPEC §5.6）。
+    """
+
+    @abstractmethod
+    async def get(
+        self,
+        dimension: LoginAttemptDimension,
+        identifier: str,
+    ) -> LoginAttempt | None:
+        """按维度和标识符查询登录失败记录。"""
+
+    @abstractmethod
+    async def get_for_update(
+        self,
+        dimension: LoginAttemptDimension,
+        identifier: str,
+    ) -> LoginAttempt | None:
+        """按维度和标识符查询并加行锁（``SELECT ... FOR UPDATE``）。
+
+        用于记录失败时确保并发安全——同一标识符的并发失败记录
+        串行化，避免计数竞争（SPEC §12.4：跨多 Worker 工作）。
+        """
+
+    @abstractmethod
+    async def save(self, entity: LoginAttempt) -> None:
+        """插入或更新登录失败记录（upsert 语义）。"""
+
+    @abstractmethod
+    async def delete(
+        self,
+        dimension: LoginAttemptDimension,
+        identifier: str,
+    ) -> None:
+        """删除登录失败记录（清理该维度失败状态）。"""
+
+
 class AuthUnitOfWork(UnitOfWork):
     """认证模块工作单元端口（SPEC §5.6）。
 
@@ -428,3 +471,8 @@ class AuthUnitOfWork(UnitOfWork):
     @abstractmethod
     def refresh_tokens(self) -> RefreshTokenRepository:
         """当前事务作用域的 Refresh Token Repository。"""
+
+    @property
+    @abstractmethod
+    def login_attempts(self) -> LoginAttemptRepository:
+        """当前事务作用域的登录失败记录 Repository（SPEC §12.4）。"""

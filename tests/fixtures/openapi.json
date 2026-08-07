@@ -699,7 +699,7 @@
           "auth"
         ],
         "summary": "退出登录",
-        "description": "从 Cookie 读取 Refresh Token，吊销服务端会话并删除 Cookie。Token 无效或已吊销时幂等成功。",
+        "description": "从 Cookie 读取 Refresh Token，吊销服务端会话并删除 Cookie。Token 无效或已吊销时幂等成功。校验 Origin 是否精确匹配部署配置白名单（SPEC §12.4）。",
         "operationId": "logout_api_v1_auth_logout_post",
         "parameters": [
           {
@@ -742,7 +742,7 @@
           "auth"
         ],
         "summary": "刷新 Token",
-        "description": "从 Cookie 读取 Refresh Token，轮换 Token：旧 Token 失效，新 Access Token 在响应体返回，新 Refresh Token 通过 Cookie 设置。已使用的 Token 再次出现时触发重放检测，吊销整个会话和 Token Family。响应设置 Cache-Control: no-store。",
+        "description": "从 Cookie 读取 Refresh Token，轮换 Token：旧 Token 失效，新 Access Token 在响应体返回，新 Refresh Token 通过 Cookie 设置。已使用的 Token 再次出现时触发重放检测，吊销整个会话和 Token Family。校验 Origin 是否精确匹配部署配置白名单（SPEC §12.4）。响应设置 Cache-Control: no-store。",
         "operationId": "refresh_api_v1_auth_refresh_post",
         "parameters": [
           {

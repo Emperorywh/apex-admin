@@ -76,6 +76,7 @@ ignore_imports =
     app.modules.auth.infrastructure.wiring -> app.events.dispatcher
     app.modules.auth.infrastructure.wiring -> app.events.registry
     app.modules.auth.routes -> app.config.settings
+    app.modules.auth.middleware.origin -> app.config.settings
 
 # ---------------------------------------------------------------------------
 # API layer must not depend on Infrastructure layer (SPEC 5.2, 5.6)

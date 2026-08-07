@@ -14,6 +14,9 @@ from __future__ import annotations
 
 from app.infrastructure.database.unit_of_work import SqlAlchemyUnitOfWork
 from app.modules.auth.application.port import AuthUnitOfWork
+from app.modules.auth.infrastructure.login_attempt_repository import (
+    SqlAlchemyLoginAttemptRepository,
+)
 from app.modules.auth.infrastructure.repository import (
     SqlAlchemyAccessTokenRepository,
     SqlAlchemyRefreshTokenRepository,
@@ -52,3 +55,8 @@ class SqlAlchemyAuthUnitOfWork(SqlAlchemyUnitOfWork, AuthUnitOfWork):
     def refresh_tokens(self) -> SqlAlchemyRefreshTokenRepository:
         """当前事务作用域的 Refresh Token Repository。"""
         return SqlAlchemyRefreshTokenRepository(self.session)
+
+    @property
+    def login_attempts(self) -> SqlAlchemyLoginAttemptRepository:
+        """当前事务作用域的登录失败记录 Repository（SPEC §12.4）。"""
+        return SqlAlchemyLoginAttemptRepository(self.session)

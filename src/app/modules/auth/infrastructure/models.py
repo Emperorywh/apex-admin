@@ -21,6 +21,10 @@ from uuid import UUID
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Uuid
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
+from app.modules.auth.domain.login_security import (
+    LoginAttempt,
+    LoginAttemptDimension,
+)
 from app.modules.auth.domain.model import (
     AccessTokenRecord,
     RefreshTokenRecord,
@@ -284,4 +288,63 @@ class RefreshTokenModel(Base):
             used_at=_ensure_tz(self.used_at),
             expires_at=_ensure_tz(self.expires_at),  # type: ignore[arg-type]
             revoked_reason=self.revoked_reason,
+        )
+
+
+class LoginAttemptModel(Base):
+    """登录失败记录 ORM 模型（SPEC §12.4）。
+
+    表名 ``login_attempts``，通过 Alembic 迁移 ``0005_login_security`` 创建。
+
+    以维度（``account`` / ``ip``）和标识符为复合主键，统计连续失败次数
+    和限制状态。暴力破解防护基于 PostgreSQL 持久化以跨多 Worker 工作
+    （SPEC §12.4）。
+
+    Attributes:
+        dimension: 统计维度（``account`` 或 ``ip``）
+        identifier: 标识符（规范化账号名或可信客户端 IP）
+        failure_count: 连续失败次数
+        locked_until: 限制截止时间（None 表示未限制）
+        last_failure_at: 最近失败时间
+    """
+
+    __tablename__ = "login_attempts"
+
+    dimension: Mapped[str] = mapped_column(String(10), primary_key=True)
+    identifier: Mapped[str] = mapped_column(String(255), primary_key=True)
+    failure_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    locked_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    last_failure_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+
+    @staticmethod
+    def from_entity(entity: LoginAttempt) -> LoginAttemptModel:
+        """从领域实体构造 ORM 模型。"""
+        return LoginAttemptModel(
+            dimension=entity.dimension.value,
+            identifier=entity.identifier,
+            failure_count=entity.failure_count,
+            locked_until=entity.locked_until,
+            last_failure_at=entity.last_failure_at,
+        )
+
+    def to_entity(self) -> LoginAttempt:
+        """转换为领域实体。"""
+
+        def _ensure_tz(dt: datetime | None) -> datetime | None:
+            if dt is None:
+                return None
+            return dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
+
+        return LoginAttempt(
+            dimension=LoginAttemptDimension(self.dimension),
+            identifier=self.identifier,
+            failure_count=self.failure_count,
+            locked_until=_ensure_tz(self.locked_until),
+            last_failure_at=_ensure_tz(self.last_failure_at),  # type: ignore[arg-type]
         )
