@@ -21,6 +21,7 @@ layers =
     app.composition_root
     app.api
     app.logging
+    app.tasks
     app.middleware
     app.health.routes
     app.infrastructure
