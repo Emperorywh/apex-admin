@@ -15,6 +15,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.modules.contract import (
+    AuditAction,
     ErrorCode,
     EventDefinition,
     EventHandlerDefinition,
@@ -115,6 +116,17 @@ MODULE: ModuleDefinition = ModuleDefinition(
                 http_status=409,
                 description="不能禁用或删除系统最后一个可用超级管理员",
             ),
+        }
+    ),
+    audit_actions=frozenset(
+        {
+            AuditAction(code="user.create", description="创建用户"),
+            AuditAction(code="user.update", description="更新用户资料"),
+            AuditAction(code="user.enable", description="启用用户"),
+            AuditAction(code="user.disable", description="禁用用户"),
+            AuditAction(code="user.reset_password", description="管理员重置用户密码"),
+            AuditAction(code="user.change_password", description="用户自助修改密码"),
+            AuditAction(code="user.self_update", description="用户自助更新资料"),
         }
     ),
     resource_types=frozenset(

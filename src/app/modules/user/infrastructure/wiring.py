@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from app.events.base import TransactionalEventHandlerFn
 from app.events.dispatcher import TransactionalEventDispatcher
 from app.events.registry import EventHandlerRegistry
+from app.modules.audit.infrastructure.audit_port import SqlAlchemyAuditPort
 from app.modules.registry import ModuleRegistry
 from app.modules.user.application.port import (
     LastSuperAdminCheck,
@@ -28,6 +29,7 @@ from app.modules.user.infrastructure.event_handlers import (
     handle_user_disabled,
 )
 from app.modules.user.infrastructure.unit_of_work import SqlAlchemyUserUnitOfWork
+from app.ports.audit import AuditPort
 from app.ports.session_lifecycle import SessionLifecyclePort
 
 
@@ -52,6 +54,7 @@ def create_user_service(
     password_hasher: PasswordHasher | None = None,
     last_super_admin_check: LastSuperAdminCheck | None = None,
     session_lifecycle: SessionLifecyclePort | None = None,
+    audit_port: AuditPort | None = None,
 ) -> UserService:
     """从异步引擎装配完整的用户服务。
 
@@ -61,13 +64,15 @@ def create_user_service(
     3. 构造超级管理员检查端口（或使用默认 NoOp 实现）
     4. 构造事件处理器注册表（从模块声明和处理器实现映射构建）
     5. 构造事件调度器
-    6. 返回装配好的 :class:`UserService`
+    6. 构造审计端口（或使用默认 SqlAlchemyAuditPort）
+    7. 返回装配好的 :class:`UserService`
 
     Args:
         engine: SQLAlchemy 异步引擎
         password_hasher: 密码哈希服务实例（可选，默认新建）
         last_super_admin_check: 超级管理员检查端口（可选，默认 NoOp）
         session_lifecycle: 会话生命周期端口（可选，认证模块装配后注入）
+        audit_port: 审计端口（可选，默认新建 SqlAlchemyAuditPort）
 
     Returns:
         可用的 :class:`UserService` 实例
@@ -81,6 +86,7 @@ def create_user_service(
 
     hasher = password_hasher or PasswordHasher()
     super_admin_check = last_super_admin_check or NoOpLastSuperAdminCheck()
+    resolved_audit_port = audit_port or SqlAlchemyAuditPort()
 
     module_registry = ModuleRegistry([MODULE])
 
@@ -97,4 +103,5 @@ def create_user_service(
         super_admin_check,
         event_dispatcher,
         session_lifecycle,
+        resolved_audit_port,
     )

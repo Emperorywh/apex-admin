@@ -36,6 +36,9 @@ from app.modules.audit.domain.model import (
     LoginResult,
 )
 from app.modules.audit.infrastructure.security_log import SecurityEventLogger
+from app.modules.rbac.application.service import RbacService
+from app.modules.rbac.domain.model import Role
+from app.modules.user.application.service import UserService
 
 pytestmark = [pytest.mark.unit, pytest.mark.g2]
 
@@ -996,3 +999,563 @@ class TestAuditModuleDefinition:
             / "src/app/infrastructure/database/migrations/versions/0007_audit.py"
         )
         assert migration.exists()
+
+
+# ---------------------------------------------------------------------------
+# Use Case 审计集成测试（SPEC §5.7、§18.2）
+#
+# 验证实际 Use Case（UserService、RbacService）通过 AuditPort 显式调用
+# audit_port.record() 记录操作审计。不使用 FakeAuditPort 模拟模式，
+# 而是通过真实的 Use Case 代码路径验证审计记录产生。
+# ---------------------------------------------------------------------------
+
+
+class RecordingAuditPort:
+    """记录全部 audit_port.record() 调用，用于验证 Use Case 集成。"""
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    async def record(  # noqa: PLR0913
+        self,
+        uow: object,
+        *,
+        actor_id: UUID | None,
+        actor_display_name: str | None,
+        occurred_at: datetime,
+        module: str,
+        action: str,
+        resource_type: str | None = None,
+        resource_id: str | None = None,
+        resource_display_name: str | None = None,
+        result: AuditResult,
+        request_id: str | None = None,
+        diff: AuditDiff | None = None,
+    ) -> None:
+        self.calls.append(
+            {
+                "actor_id": actor_id,
+                "actor_display_name": actor_display_name,
+                "occurred_at": occurred_at,
+                "module": module,
+                "action": action,
+                "resource_type": resource_type,
+                "resource_id": resource_id,
+                "resource_display_name": resource_display_name,
+                "result": result,
+                "request_id": request_id,
+                "diff": diff,
+            }
+        )
+
+
+# --- 用户模块 Use Case 审计集成 ---
+
+
+class _FakeUserRepo:
+    """最小用户 Repository，支持审计集成测试。"""
+
+    def __init__(self) -> None:
+        self._users: dict[UUID, object] = {}
+
+    async def add(self, entity: object) -> None:
+        self._users[entity.id] = entity  # type: ignore[attr-defined]
+
+    async def get_by_id(self, user_id: UUID) -> object | None:
+        return self._users.get(user_id)
+
+    async def get_by_username(self, username: str) -> object | None:  # noqa: ARG002
+        return None
+
+    async def count(self) -> int:
+        return len(self._users)
+
+    async def list_paginated(self, offset: int, limit: int) -> list[object]:  # noqa: ARG002
+        return list(self._users.values())
+
+    async def update(self, entity: object) -> None:
+        self._users[entity.id] = entity  # type: ignore[attr-defined]
+
+
+class _FakeUserUow:
+    """最小用户 UoW，支持审计集成测试。"""
+
+    def __init__(self) -> None:
+        self._repo = _FakeUserRepo()
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        pass
+
+    async def commit(self) -> None:
+        pass
+
+    async def rollback(self) -> None:
+        pass
+
+    @property
+    def users(self) -> _FakeUserRepo:
+        return self._repo
+
+
+class TestUserServiceAuditIntegration:
+    """验证 UserService 写 Use Case 通过 AuditPort 显式调用审计（SPEC §5.7、§18.2）。"""
+
+    @staticmethod
+    def _make_service(audit_port: RecordingAuditPort) -> UserService:
+        from app.events.dispatcher import TransactionalEventDispatcher
+        from app.events.registry import EventHandlerRegistry
+        from app.modules.registry import ModuleRegistry
+        from app.modules.user.application.service import UserService as _Svc
+        from app.modules.user.domain.password import PasswordHasher
+
+        uow = _FakeUserUow()
+        empty_registry = EventHandlerRegistry(ModuleRegistry([]), {})
+        dispatcher = TransactionalEventDispatcher(empty_registry)
+
+        class _NoOpCheck:
+            async def is_last_available_super_admin(self, user_id: object) -> bool:  # noqa: ARG002
+                return False
+
+        return _Svc(
+            uow_factory=lambda: uow,
+            password_hasher=PasswordHasher(),
+            last_super_admin_check=_NoOpCheck(),  # type: ignore[arg-type]
+            event_dispatcher=dispatcher,
+            audit_port=audit_port,  # type: ignore[arg-type]
+        )
+
+    async def test_create_user_audits(self) -> None:
+        """创建用户显式记录操作审计（SPEC §5.7）。"""
+        port = RecordingAuditPort()
+        service = self._make_service(port)
+        now = datetime.now(UTC)
+
+        await service.create_user(
+            username="alice",
+            display_name="Alice",
+            password="SecurePass123!",
+            current_time=now,
+        )
+
+        assert len(port.calls) == 1
+        call = port.calls[0]
+        assert call["module"] == "user"
+        assert call["action"] == "user.create"
+        assert call["resource_type"] == "user:account"
+        assert call["result"] == AuditResult.SUCCESS
+        assert call["resource_display_name"] == "Alice"
+
+    async def test_enable_user_audits_status_change(self) -> None:
+        """启用用户记录状态变更审计（SPEC §18.2：用户状态变更必须审计）。"""
+        from app.modules.user.domain.model import User, UserStatus
+
+        port = RecordingAuditPort()
+        service = self._make_service(port)
+        now = datetime.now(UTC)
+
+        user = User.new(
+            username="bob",
+            display_name="Bob",
+            password_hash="hashed",
+            current_time=now,
+        )
+        # 手动禁用以测试启用
+        disabled_user = User(
+            id=user.id,
+            username=user.username,
+            display_name=user.display_name,
+            password_hash=user.password_hash,
+            status=UserStatus.DISABLED,
+            phone=user.phone,
+            email=user.email,
+            last_login_at=user.last_login_at,
+            password_updated_at=user.password_updated_at,
+            created_at=user.created_at,
+            created_by=user.created_by,
+            updated_at=user.updated_at,
+            updated_by=user.updated_by,
+        )
+        # 注入到 fake repo
+        service._uow_factory().users._users[disabled_user.id] = disabled_user  # type: ignore[attr-defined]
+
+        await service.enable_user(user_id=disabled_user.id, current_time=now)
+
+        assert len(port.calls) == 1
+        call = port.calls[0]
+        assert call["action"] == "user.enable"
+        assert call["diff"] is not None
+        diff = call["diff"]
+        assert diff is not None  # type: ignore[operator]
+        assert len(diff.changes) == 1  # type: ignore[attr-defined]
+        assert diff.changes[0].field == "status"  # type: ignore[attr-defined]
+        assert diff.changes[0].old == "disabled"  # type: ignore[attr-defined]
+        assert diff.changes[0].new == "active"  # type: ignore[attr-defined]
+
+    async def test_disable_user_audits_status_change(self) -> None:
+        """禁用用户记录状态变更审计（SPEC §18.2：用户状态变更必须审计）。"""
+        port = RecordingAuditPort()
+        service = self._make_service(port)
+        now = datetime.now(UTC)
+
+        await service.create_user(
+            username="charlie",
+            display_name="Charlie",
+            password="SecurePass123!",
+            current_time=now,
+        )
+        port.calls.clear()
+
+        user_id = next(iter(service._uow_factory().users._users.keys()))  # type: ignore[attr-defined]
+        await service.disable_user(user_id=user_id, current_time=now)
+
+        assert len(port.calls) == 1
+        call = port.calls[0]
+        assert call["action"] == "user.disable"
+        assert call["diff"] is not None
+        diff = call["diff"]
+        assert diff is not None  # type: ignore[operator]
+        assert len(diff.changes) == 1  # type: ignore[attr-defined]
+        assert diff.changes[0].field == "status"  # type: ignore[attr-defined]
+
+    async def test_reset_password_audits_without_password_in_diff(self) -> None:
+        """重置密码审计——密码不进入差异（SPEC §18.2）。"""
+        port = RecordingAuditPort()
+        service = self._make_service(port)
+        now = datetime.now(UTC)
+
+        await service.create_user(
+            username="dave",
+            display_name="Dave",
+            password="SecurePass123!",
+            current_time=now,
+        )
+        port.calls.clear()
+
+        user_id = next(iter(service._uow_factory().users._users.keys()))  # type: ignore[attr-defined]
+        await service.reset_password(
+            user_id=user_id,
+            new_password="NewSecurePass456!",
+            current_time=now,
+        )
+
+        assert len(port.calls) == 1
+        call = port.calls[0]
+        assert call["action"] == "user.reset_password"
+        # 密码操作不记录差异
+        assert call["diff"] is None
+
+
+# --- RBAC 模块 Use Case 审计集成 ---
+
+
+class _FakeRoleRepo:
+    """最小角色 Repository。"""
+
+    def __init__(self) -> None:
+        self._roles: dict[UUID, Role] = {}
+
+    async def add(self, entity: Role) -> None:
+        self._roles[entity.id] = entity
+
+    async def get_by_id(self, role_id: UUID) -> Role | None:
+        return self._roles.get(role_id)
+
+    async def get_by_code(self, code: str) -> Role | None:
+        return next((r for r in self._roles.values() if r.code == code), None)
+
+    async def count(self) -> int:
+        return len(self._roles)
+
+    async def list_paginated(self, offset: int, limit: int) -> list[Role]:  # noqa: ARG002
+        return list(self._roles.values())
+
+    async def update(self, entity: Role) -> None:
+        self._roles[entity.id] = entity
+
+    async def list_all(self) -> list[Role]:
+        return list(self._roles.values())
+
+
+class _FakeUserRoleRepo:
+    """最小用户-角色 Repository。"""
+
+    def __init__(self) -> None:
+        self._assignments: dict[tuple[UUID, UUID], datetime] = {}
+
+    async def assign(
+        self,
+        *,
+        user_id: UUID,
+        role_id: UUID,
+        assigned_at: datetime,
+        assigned_by: UUID | None = None,
+    ) -> None:
+        self._assignments[(user_id, role_id)] = assigned_at
+
+    async def remove(self, user_id: UUID, role_id: UUID) -> None:
+        self._assignments.pop((user_id, role_id), None)
+
+    async def get_role_ids_for_user(self, user_id: UUID) -> list[UUID]:
+        return [rid for (uid, rid) in self._assignments if uid == user_id]
+
+    async def get_active_role_ids_for_user(self, user_id: UUID) -> list[UUID]:
+        return await self.get_role_ids_for_user(user_id)
+
+    async def get_user_ids_for_role(self, role_id: UUID) -> list[UUID]:  # noqa: ARG002
+        return []
+
+    async def get_super_admin_user_ids(self) -> list[UUID]:
+        return []
+
+
+class _FakeRolePermRepo:
+    """最小角色-权限 Repository。"""
+
+    def __init__(self) -> None:
+        self._perms: dict[UUID, frozenset[str]] = {}
+
+    async def set_for_role(self, role_id: UUID, permission_codes: frozenset[str]) -> None:
+        self._perms[role_id] = permission_codes
+
+    async def get_for_role(self, role_id: UUID) -> frozenset[str]:
+        return self._perms.get(role_id, frozenset())
+
+    async def get_for_user(self, user_id: UUID) -> frozenset[str]:  # noqa: ARG002
+        return frozenset()
+
+
+class _FakeRbacUow:
+    """最小 RBAC UoW。"""
+
+    def __init__(self) -> None:
+        self._roles = _FakeRoleRepo()
+        self._user_roles = _FakeUserRoleRepo()
+        self._role_perms = _FakeRolePermRepo()
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        pass
+
+    async def commit(self) -> None:
+        pass
+
+    async def rollback(self) -> None:
+        pass
+
+    @property
+    def roles(self) -> _FakeRoleRepo:
+        return self._roles
+
+    @property
+    def user_roles(self) -> _FakeUserRoleRepo:
+        return self._user_roles
+
+    @property
+    def role_permissions(self) -> _FakeRolePermRepo:
+        return self._role_perms
+
+
+class TestRbacServiceAuditIntegration:
+    """验证 RbacService 写 Use Case 通过 AuditPort 显式调用审计（SPEC §5.7、§18.2）。"""
+
+    @staticmethod
+    def _make_service(audit_port: RecordingAuditPort) -> tuple[RbacService, _FakeRbacUow]:
+        from app.events.dispatcher import TransactionalEventDispatcher
+        from app.events.registry import EventHandlerRegistry
+        from app.modules.rbac.application.service import RbacService as _Svc
+        from app.modules.registry import ModuleRegistry
+
+        uow = _FakeRbacUow()
+        empty_registry = EventHandlerRegistry(ModuleRegistry([]), {})
+        dispatcher = TransactionalEventDispatcher(empty_registry)
+
+        return (
+            _Svc(
+                uow_factory=lambda: uow,
+                event_dispatcher=dispatcher,
+                audit_port=audit_port,  # type: ignore[arg-type]
+            ),
+            uow,
+        )
+
+    async def test_assign_permissions_audits_permission_change(self) -> None:
+        """权限变更必须审计（SPEC §18.2）。"""
+        from app.modules.rbac.domain.model import Role
+
+        port = RecordingAuditPort()
+        service, uow = self._make_service(port)
+        now = datetime.now(UTC)
+
+        role = Role.new(code="editor", name="编辑", current_time=now)
+        uow.roles._roles[role.id] = role
+
+        await service.assign_permissions_to_role(
+            role_id=role.id,
+            permission_codes=frozenset({"system:user:read"}),
+            current_time=now,
+        )
+
+        assert len(port.calls) == 1
+        call = port.calls[0]
+        assert call["module"] == "rbac"
+        assert call["action"] == "role.assign_permission"
+        assert call["resource_type"] == "rbac:role"
+        assert call["result"] == AuditResult.SUCCESS
+
+    async def test_assign_roles_to_user_audits_role_change(self) -> None:
+        """角色分配变更必须审计（SPEC §18.2）。"""
+        from app.modules.rbac.domain.model import Role
+
+        port = RecordingAuditPort()
+        service, uow = self._make_service(port)
+        now = datetime.now(UTC)
+
+        role = Role.new(code="editor", name="编辑", current_time=now)
+        uow.roles._roles[role.id] = role
+
+        await service.assign_roles_to_user(
+            user_id=uuid4(),
+            role_codes=frozenset({"editor"}),
+            current_time=now,
+        )
+
+        assert len(port.calls) == 1
+        call = port.calls[0]
+        assert call["action"] == "user_role.assign"
+        assert call["module"] == "rbac"
+
+    async def test_remove_roles_from_user_audits_role_change(self) -> None:
+        """角色移除变更必须审计（SPEC §18.2）。"""
+        from app.modules.rbac.domain.model import Role
+
+        port = RecordingAuditPort()
+        service, uow = self._make_service(port)
+        now = datetime.now(UTC)
+        target_user = uuid4()
+
+        role = Role.new(code="editor", name="编辑", current_time=now)
+        uow.roles._roles[role.id] = role
+        uow.user_roles._assignments[(target_user, role.id)] = now
+
+        await service.remove_roles_from_user(
+            user_id=target_user,
+            role_codes=frozenset({"editor"}),
+            current_time=now,
+        )
+
+        assert len(port.calls) == 1
+        call = port.calls[0]
+        assert call["action"] == "user_role.remove"
+        assert call["module"] == "rbac"
+
+    async def test_create_role_audits(self) -> None:
+        """创建角色显式记录操作审计（SPEC §5.7）。"""
+        port = RecordingAuditPort()
+        service, _ = self._make_service(port)
+        now = datetime.now(UTC)
+
+        await service.create_role(
+            code="viewer",
+            name="查看者",
+            description="只读角色",
+            is_super_admin=False,
+            current_time=now,
+        )
+
+        assert len(port.calls) == 1
+        call = port.calls[0]
+        assert call["module"] == "rbac"
+        assert call["action"] == "role.create"
+        assert call["resource_display_name"] == "查看者"
+
+    async def test_disable_role_audits_status_change(self) -> None:
+        """禁用角色记录状态变更审计（SPEC §18.2）。"""
+        from app.modules.rbac.domain.model import Role
+
+        port = RecordingAuditPort()
+        service, uow = self._make_service(port)
+        now = datetime.now(UTC)
+
+        role = Role.new(code="editor", name="编辑", current_time=now)
+        uow.roles._roles[role.id] = role
+
+        await service.disable_role(role_id=role.id, current_time=now)
+
+        assert len(port.calls) == 1
+        call = port.calls[0]
+        assert call["action"] == "role.disable"
+        assert call["diff"] is not None
+        diff = call["diff"]
+        assert diff is not None  # type: ignore[operator]
+        assert any(c.field == "status" for c in diff.changes)  # type: ignore[attr-defined]
+
+
+class TestAuditPortWiring:
+    """验证 SqlAlchemyAuditPort 在 wiring 工厂中装配（SPEC §5.7）。"""
+
+    def test_create_user_service_injects_audit_port(self) -> None:
+        """create_user_service 默认注入 SqlAlchemyAuditPort。"""
+        from unittest.mock import MagicMock
+
+        from app.modules.audit.infrastructure.audit_port import SqlAlchemyAuditPort
+        from app.modules.user.infrastructure.wiring import create_user_service
+
+        engine = MagicMock()
+        service = create_user_service(engine)  # type: ignore[arg-type]
+        assert isinstance(service._audit_port, SqlAlchemyAuditPort)
+
+    def test_create_user_service_accepts_custom_audit_port(self) -> None:
+        """create_user_service 接受自定义 audit_port。"""
+        from unittest.mock import MagicMock
+
+        from app.modules.user.infrastructure.wiring import create_user_service
+
+        engine = MagicMock()
+        custom_port = RecordingAuditPort()
+        service = create_user_service(engine, audit_port=custom_port)  # type: ignore[arg-type]
+        assert service._audit_port is custom_port
+
+    def test_create_rbac_service_accepts_audit_port(self) -> None:
+        """create_rbac_service 接受 audit_port 参数（SPEC §5.7）。
+
+        RBAC 模块依赖 user/auth，完整工厂装配需注册全部模块。
+        此处验证函数签名包含 audit_port 参数，且默认为 SqlAlchemyAuditPort。
+        """
+        import inspect
+
+        from app.modules.rbac.infrastructure.wiring import create_rbac_service
+
+        sig = inspect.signature(create_rbac_service)
+        assert "audit_port" in sig.parameters
+        assert sig.parameters["audit_port"].default is None
+
+        # RbacService 直接构造时存储 audit_port
+        from app.events.dispatcher import TransactionalEventDispatcher
+        from app.events.registry import EventHandlerRegistry
+        from app.modules.rbac.application.service import RbacService
+        from app.modules.registry import ModuleRegistry
+
+        empty_registry = EventHandlerRegistry(ModuleRegistry([]), {})
+        dispatcher = TransactionalEventDispatcher(empty_registry)
+        port = RecordingAuditPort()
+        svc = RbacService(
+            uow_factory=lambda: _FakeRbacUow(),
+            event_dispatcher=dispatcher,
+            audit_port=port,  # type: ignore[arg-type]
+        )
+        assert svc._audit_port is port

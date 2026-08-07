@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from app.events.base import TransactionalEventHandlerFn
 from app.events.dispatcher import TransactionalEventDispatcher
 from app.events.registry import EventHandlerRegistry
+from app.modules.audit.infrastructure.audit_port import SqlAlchemyAuditPort
 from app.modules.rbac.application.port import (
     RbacUnitOfWork,
 )
@@ -30,15 +31,19 @@ from app.modules.rbac.infrastructure.event_handlers import (
 from app.modules.rbac.infrastructure.unit_of_work import SqlAlchemyRbacUnitOfWork
 from app.modules.registry import ModuleRegistry
 from app.modules.user.application.port import LastSuperAdminCheck
+from app.ports.audit import AuditPort
 
 
 def create_rbac_service(
     engine: AsyncEngine,
+    *,
+    audit_port: AuditPort | None = None,
 ) -> RbacService:
     """从异步引擎装配完整的 RBAC 服务。
 
     Args:
         engine: SQLAlchemy 异步引擎
+        audit_port: 审计端口（可选，默认新建 SqlAlchemyAuditPort）
 
     Returns:
         可用的 :class:`RbacService` 实例
@@ -49,6 +54,8 @@ def create_rbac_service(
 
     def uow_factory() -> RbacUnitOfWork:
         return SqlAlchemyRbacUnitOfWork(engine)
+
+    resolved_audit_port = audit_port or SqlAlchemyAuditPort()
 
     module_registry = ModuleRegistry([MODULE])
 
@@ -64,6 +71,7 @@ def create_rbac_service(
     return RbacService(
         uow_factory=uow_factory,
         event_dispatcher=event_dispatcher,
+        audit_port=resolved_audit_port,
     )
 
 

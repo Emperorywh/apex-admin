@@ -15,6 +15,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.modules.contract import (
+    AuditAction,
     ErrorCode,
     EventDefinition,
     EventHandlerDefinition,
@@ -112,6 +113,17 @@ MODULE: ModuleDefinition = ModuleDefinition(
                 http_status=403,
                 description="无权限执行此操作",
             ),
+        }
+    ),
+    audit_actions=frozenset(
+        {
+            AuditAction(code="role.create", description="创建角色"),
+            AuditAction(code="role.update", description="更新角色"),
+            AuditAction(code="role.enable", description="启用角色"),
+            AuditAction(code="role.disable", description="禁用角色"),
+            AuditAction(code="role.assign_permission", description="为角色分配权限"),
+            AuditAction(code="user_role.assign", description="为用户分配角色"),
+            AuditAction(code="user_role.remove", description="移除用户角色"),
         }
     ),
     resource_types=frozenset(

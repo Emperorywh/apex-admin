@@ -1,14 +1,18 @@
 """RBAC 模块应用服务 / Use Case（SPEC §5.2、§5.6、§5.7、§13）。
 
-Use Case 编排角色管理、权限分配、用户-角色关系管理、管理范围强制和
-超级管理员保护：
+Use Case 编排角色管理、权限分配、用户-角色关系管理、管理范围强制、
+超级管理员保护和审计：
 
 1. 在 ``async with`` 上下文中打开 :class:`RbacUnitOfWork`
 2. 执行领域策略校验
 3. 通过 Repository 端口执行数据操作
 4. 关键写 Use Case 在当前 UoW 中重新读取授权关系并二次校验（SPEC §13.3）
 5. 收集领域事件，在提交前通过事件调度器同步执行
-6. 退出 ``async with`` 时由 UoW 统一提交（SPEC §5.6）
+6. 通过 :class:`~app.ports.audit.AuditPort` 显式记录操作审计（SPEC §5.7）
+7. 退出 ``async with`` 时由 UoW 统一提交（SPEC §5.6）
+
+成功操作的审计记录与业务数据在同一事务提交（SPEC §5.7、§18.2）。
+权限和角色变更必须审计（SPEC §18.2）。
 
 管理范围强制（SPEC §13.2）：
 - 用户范围为全部启用角色的权限点并集
@@ -19,13 +23,13 @@ Use Case 编排角色管理、权限分配、用户-角色关系管理、管理�
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Callable
 from datetime import datetime
 from uuid import UUID
 
 from app.errors import AuthorizationError, ConflictError, NotFoundError
 from app.events.dispatcher import TransactionalEventDispatcher
+from app.modules.audit.domain.diff import compute_diff
 from app.modules.rbac.application.port import (
     RbacApplicationPort,
     RbacUnitOfWork,
@@ -37,8 +41,13 @@ from app.modules.rbac.domain.events import (
     UserRoleRemoved,
 )
 from app.modules.rbac.domain.model import Role
+from app.ports.audit import AuditDiff, AuditPort, AuditResult
 
-_logger = logging.getLogger("app.modules.rbac.service")
+#: 角色审计差异字段白名单（SPEC §18.2：字段白名单，禁止反射式全字段序列化）。
+_ROLE_AUDIT_FIELDS: tuple[str, ...] = ("name", "description", "status")
+
+#: 权限审计差异字段白名单（SPEC §18.2）。
+_PERMISSION_AUDIT_FIELDS: tuple[str, ...] = ("permissions",)
 
 
 class RbacService(RbacApplicationPort):
@@ -53,18 +62,24 @@ class RbacService(RbacApplicationPort):
 
     超级管理员通过角色标志检测（SPEC §13.4：禁止魔法用户 ID）。
 
+    写操作通过 :class:`~app.ports.audit.AuditPort` 显式记录操作审计，
+    审计记录与业务数据在同一事务提交（SPEC §5.7、§18.2）。
+
     Args:
         uow_factory: 工作单元工厂
         event_dispatcher: 事务内事件调度器
+        audit_port: 审计端口（可选，审计模块装配后注入）
     """
 
     def __init__(
         self,
         uow_factory: Callable[[], RbacUnitOfWork],
         event_dispatcher: TransactionalEventDispatcher,
+        audit_port: AuditPort | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._event_dispatcher = event_dispatcher
+        self._audit_port = audit_port
 
     # ------------------------------------------------------------------
     # 角色 CRUD（SPEC §13.2）
@@ -108,6 +123,14 @@ class RbacService(RbacApplicationPort):
                 )
             )
             await self._event_dispatcher.flush(uow)
+
+            await self._audit_role(
+                uow=uow,
+                actor_id=actor_id,
+                occurred_at=current_time,
+                action="role.create",
+                role=role,
+            )
 
             return role
 
@@ -158,6 +181,16 @@ class RbacService(RbacApplicationPort):
                 actor_id=actor_id,
             )
             await uow.roles.update(updated_role)
+
+            await self._audit_role_with_diff(
+                uow=uow,
+                actor_id=actor_id,
+                occurred_at=current_time,
+                action="role.update",
+                before_role=role,
+                after_role=updated_role,
+            )
+
             return updated_role
 
     async def enable_role(
@@ -181,6 +214,16 @@ class RbacService(RbacApplicationPort):
                 actor_id=actor_id,
             )
             await uow.roles.update(enabled_role)
+
+            await self._audit_role_with_diff(
+                uow=uow,
+                actor_id=actor_id,
+                occurred_at=current_time,
+                action="role.enable",
+                before_role=role,
+                after_role=enabled_role,
+            )
+
             return enabled_role
 
     async def disable_role(
@@ -223,6 +266,15 @@ class RbacService(RbacApplicationPort):
             )
             await self._event_dispatcher.flush(uow)
 
+            await self._audit_role_with_diff(
+                uow=uow,
+                actor_id=actor_id,
+                occurred_at=current_time,
+                action="role.disable",
+                before_role=role,
+                after_role=disabled_role,
+            )
+
             return disabled_role
 
     # ------------------------------------------------------------------
@@ -260,7 +312,19 @@ class RbacService(RbacApplicationPort):
                     actor_id=actor_id,
                 )
 
+            # 权限变更必须审计（SPEC §18.2）——先读取变更前的权限
+            old_permissions = await uow.role_permissions.get_for_role(role_id)
             await uow.role_permissions.set_for_role(role_id, permission_codes)
+
+            await self._audit_permission_change(
+                uow=uow,
+                actor_id=actor_id,
+                occurred_at=current_time,
+                role=role,
+                old_permissions=old_permissions,
+                new_permissions=permission_codes,
+            )
+
             return permission_codes
 
     async def get_role_permissions(self, role_id: UUID) -> frozenset[str]:
@@ -327,6 +391,16 @@ class RbacService(RbacApplicationPort):
 
             await self._event_dispatcher.flush(uow)
 
+            # 角色变更必须审计（SPEC §18.2）
+            await self._audit_role_assignment(
+                uow=uow,
+                actor_id=actor_id,
+                occurred_at=current_time,
+                action="user_role.assign",
+                target_user_id=user_id,
+                role_codes=",".join(sorted(r.code for r in roles_to_assign)),
+            )
+
     async def remove_roles_from_user(
         self,
         *,
@@ -379,6 +453,16 @@ class RbacService(RbacApplicationPort):
                 )
 
             await self._event_dispatcher.flush(uow)
+
+            # 角色变更必须审计（SPEC §18.2）
+            await self._audit_role_assignment(
+                uow=uow,
+                actor_id=actor_id,
+                occurred_at=current_time,
+                action="user_role.remove",
+                target_user_id=user_id,
+                role_codes=",".join(sorted(r.code for r in roles_to_remove)),
+            )
 
     async def get_role_members(self, role_id: UUID) -> list[UUID]:
         """查询角色成员列表 Use Case（SPEC §13.2）。"""
@@ -579,28 +663,134 @@ class RbacService(RbacApplicationPort):
                 )
 
     # ------------------------------------------------------------------
-    # 超级管理员关键操作审计日志（SPEC §13.4）
+    # 审计辅助方法（SPEC §5.7、§18.2）
     # ------------------------------------------------------------------
 
-    def _audit_super_admin_operation(
+    async def _audit_role(
         self,
         *,
-        operation: str,
+        uow: RbacUnitOfWork,
         actor_id: UUID | None,
-        target_user_id: UUID | None = None,
-        **extra: str,
+        occurred_at: datetime,
+        action: str,
+        role: Role,
     ) -> None:
-        """记录超级管理员关键操作审计日志（SPEC §13.4）。
+        """记录角色操作审计（无差异，SPEC §5.7、§18.2）。"""
+        if self._audit_port is None:
+            return
+        await self._audit_port.record(
+            uow,
+            actor_id=actor_id,
+            actor_display_name=None,
+            occurred_at=occurred_at,
+            module="rbac",
+            action=action,
+            resource_type="rbac:role",
+            resource_id=str(role.id),
+            resource_display_name=role.name,
+            result=AuditResult.SUCCESS,
+        )
 
-        审计日志持久化（G3）由审计模块独立实现。此处记录结构化日志
-        供审计追踪。
+    async def _audit_role_with_diff(
+        self,
+        *,
+        uow: RbacUnitOfWork,
+        actor_id: UUID | None,
+        occurred_at: datetime,
+        action: str,
+        before_role: Role,
+        after_role: Role,
+    ) -> None:
+        """记录带变更差异的角色操作审计（SPEC §5.7、§18.2）。"""
+        if self._audit_port is None:
+            return
+        computed = compute_diff(
+            before=self._role_snapshot(before_role),
+            after=self._role_snapshot(after_role),
+            allowed_fields=_ROLE_AUDIT_FIELDS,
+        )
+        diff: AuditDiff | None = None if computed.is_empty else computed
+        await self._audit_port.record(
+            uow,
+            actor_id=actor_id,
+            actor_display_name=None,
+            occurred_at=occurred_at,
+            module="rbac",
+            action=action,
+            resource_type="rbac:role",
+            resource_id=str(after_role.id),
+            resource_display_name=after_role.name,
+            result=AuditResult.SUCCESS,
+            diff=diff,
+        )
+
+    async def _audit_permission_change(
+        self,
+        *,
+        uow: RbacUnitOfWork,
+        actor_id: UUID | None,
+        occurred_at: datetime,
+        role: Role,
+        old_permissions: frozenset[str],
+        new_permissions: frozenset[str],
+    ) -> None:
+        """记录权限变更审计（SPEC §18.2：权限变更必须审计）。
+
+        差异使用字段白名单生成，仅记录 permissions 字段的变化。
         """
-        log_extra: dict[str, str] = {
-            "event": "super_admin_operation",
-            "operation": operation,
-            "actor_id": str(actor_id) if actor_id else "",
+        if self._audit_port is None:
+            return
+        computed = compute_diff(
+            before={"permissions": sorted(old_permissions)},
+            after={"permissions": sorted(new_permissions)},
+            allowed_fields=_PERMISSION_AUDIT_FIELDS,
+        )
+        diff: AuditDiff | None = None if computed.is_empty else computed
+        await self._audit_port.record(
+            uow,
+            actor_id=actor_id,
+            actor_display_name=None,
+            occurred_at=occurred_at,
+            module="rbac",
+            action="role.assign_permission",
+            resource_type="rbac:role",
+            resource_id=str(role.id),
+            resource_display_name=role.name,
+            result=AuditResult.SUCCESS,
+            diff=diff,
+        )
+
+    async def _audit_role_assignment(
+        self,
+        *,
+        uow: RbacUnitOfWork,
+        actor_id: UUID | None,
+        occurred_at: datetime,
+        action: str,
+        target_user_id: UUID,
+        role_codes: str,
+    ) -> None:
+        """记录用户-角色分配/移除审计（SPEC §18.2：角色变更必须审计）。"""
+        if self._audit_port is None:
+            return
+        await self._audit_port.record(
+            uow,
+            actor_id=actor_id,
+            actor_display_name=None,
+            occurred_at=occurred_at,
+            module="rbac",
+            action=action,
+            resource_type="user:account",
+            resource_id=str(target_user_id),
+            resource_display_name=role_codes,
+            result=AuditResult.SUCCESS,
+        )
+
+    @staticmethod
+    def _role_snapshot(role: Role) -> dict[str, object]:
+        """从角色实体提取审计白名单字段快照（SPEC §18.2）。"""
+        return {
+            "name": role.name,
+            "description": role.description,
+            "status": str(role.status),
         }
-        if target_user_id is not None:
-            log_extra["target_user_id"] = str(target_user_id)
-        log_extra.update(extra)
-        _logger.warning("超级管理员关键操作", extra=log_extra)
