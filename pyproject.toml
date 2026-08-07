@@ -76,6 +76,9 @@ select = [
 [tool.mypy]
 python_version = "3.13"
 strict = true
+# Alembic 迁移文件由 Alembic 管理且使用环境变量动态构造 Settings，
+# 排除在 strict 类型检查之外（SPEC §8.2）
+exclude = ["src/app/infrastructure/database/migrations/"]
 
 # ---------------------------------------------------------------------------
 # pytest — 测试框架

@@ -42,6 +42,16 @@ class SqlAlchemyDbPoolProvider(DbPoolProvider):
         self._settings = settings
         self._engine: AsyncEngine | None = None
 
+    @property
+    def engine(self) -> AsyncEngine | None:
+        """返回当前异步引擎。
+
+        引擎在 :meth:`initialize` 时创建，在 :meth:`dispose` 时置空。
+        未初始化时返回 ``None``。供同层基础设施适配器（如 Alembic revision
+        校验探针）共享同一引擎，避免创建额外连接池。
+        """
+        return self._engine
+
     async def initialize(self) -> None:
         """创建异步引擎和连接池（SPEC §6.1）。
 
