@@ -59,6 +59,10 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         # 从请求头获取或生成 Request ID
         request_id = request.headers.get(REQUEST_ID_HEADER) or str(uuid4())
 
+        # 将 Request ID 存入 ASGI scope state，供在中间件外运行的异常处理器访问
+        # （ServerErrorMiddleware 位于本中间件之外，ContextVar 已被 finally 重置）
+        request.scope.setdefault("state", {})["request_id"] = request_id
+
         # 设置 ContextVar 供日志关联
         token = request_id_var.set(request_id)
         start_time = time.perf_counter()

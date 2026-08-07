@@ -19,6 +19,7 @@ layers =
     app.app
     app.lifespan
     app.composition_root
+    app.api
     app.logging
     app.middleware
     app.health.routes
@@ -44,5 +45,6 @@ type = forbidden
 source_modules =
     app.health.routes
     app.middleware
+    app.api
 forbidden_modules =
     app.infrastructure

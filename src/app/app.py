@@ -19,6 +19,7 @@ import functools
 
 from fastapi import APIRouter, FastAPI
 
+from app.api.handlers import register_exception_handlers
 from app.config.settings import Settings
 from app.health.providers import DbPoolProvider, ReadinessProbe
 from app.health.routes import router as health_router
@@ -72,6 +73,9 @@ def create_app(
     app.state.settings = settings
     app.state.db_pool_provider = db_pool_provider
     app.state.revision_probe = revision_probe
+
+    # 注册 RFC 9457 异常处理器（SPEC §10.1：在 API 边界统一完成异常到 HTTP 响应的转换）
+    register_exception_handlers(app)
 
     # 注册中间件（Request ID 生成、响应头写入、请求日志）
     app.add_middleware(RequestIdMiddleware)
