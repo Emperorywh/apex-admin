@@ -145,3 +145,30 @@ class RolePermissionModel(Base):
         String(100),
         primary_key=True,
     )
+
+
+class PermissionPointModel(Base):
+    """权限点注册表 ORM 模型（SPEC §13.1、§25.2）。
+
+    表名 ``permission_points``，存储所有启用模块声明的权限点。
+    通过 ``sync-permissions`` 命令幂等同步（SPEC §25.2）。
+    ``code`` 为主键，全局唯一且稳定（SPEC §5.5）。
+    """
+
+    __tablename__ = "permission_points"
+
+    code: Mapped[str] = mapped_column(
+        String(100),
+        primary_key=True,
+        nullable=False,
+    )
+    description: Mapped[str] = mapped_column(String(500), nullable=False)
+    module_code: Mapped[str] = mapped_column(String(50), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )

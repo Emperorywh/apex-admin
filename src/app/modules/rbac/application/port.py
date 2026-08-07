@@ -303,6 +303,42 @@ class RolePermissionRepository(ABC):
     async def get_for_user(self, user_id: UUID) -> frozenset[str]:
         """查询用户全部启用角色的权限点编码并集（SPEC §13.2 管理范围）。"""
 
+    @abstractmethod
+    async def get_all_referenced_codes(self) -> frozenset[str]:
+        """查询 role_permissions 中引用的全部权限编码（用于孤立检测）。"""
+
+
+class PermissionPointRecord(ABC):
+    """权限点注册记录端口（SPEC §5.2、§25.2）。
+
+    提供 ``permission_points`` 表的读写能力，供
+    ``sync-permissions`` 命令幂等同步模块声明的权限点。
+    """
+
+    @abstractmethod
+    async def upsert(
+        self,
+        code: str,
+        description: str,
+        module_code: str,
+        current_time: datetime,
+    ) -> bool:
+        """插入或更新权限点记录。
+
+        返回 ``True`` 表示新增或更新了记录，``False`` 表示无变化。
+        """
+
+    @abstractmethod
+    async def list_all(self) -> list[tuple[str, str, str]]:
+        """返回全部权限点记录 (code, description, module_code)。
+
+        返回列表按 code 排序。
+        """
+
+    @abstractmethod
+    async def delete(self, code: str) -> None:
+        """删除权限点记录（仅用于显式清理孤立权限点）。"""
+
 
 # ---------------------------------------------------------------------------
 # Unit of Work Port
@@ -334,3 +370,8 @@ class RbacUnitOfWork(UnitOfWork):
     @abstractmethod
     def role_permissions(self) -> RolePermissionRepository:
         """当前事务作用域的角色-权限 Repository。"""
+
+    @property
+    @abstractmethod
+    def permission_points(self) -> PermissionPointRecord:
+        """当前事务作用域的权限点注册表 Repository（SPEC §25.2）。"""

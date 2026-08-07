@@ -1,11 +1,16 @@
-"""CLI 入口点（SPEC §25.1）。
+"""CLI 入口点（SPEC §25.1、§25.2）。
 
-提供 G1 工程管理命令：
+提供 G1 工程管理命令和 G2 身份与权限命令：
 
+G1（SPEC §25.1）：
 - ``db check``：检查数据库连接
 - ``db upgrade``：执行 ``alembic upgrade head``
 - ``modules validate``：验证模块注册和 Alembic 单头
 - ``config show``：输出脱敏配置摘要
+
+G2（SPEC §25.2）：
+- ``auth create-admin``：安全创建首个管理员
+- ``auth sync-permissions``：幂等同步 G2 模块声明的权限点
 
 退出码（SPEC §25.1）：
 - 成功：0
@@ -22,6 +27,7 @@ import textwrap
 import traceback
 from collections.abc import Callable, Sequence
 
+from app.cli.auth import auth_create_admin, auth_sync_permissions
 from app.cli.config import config_show
 from app.cli.db import db_check, db_upgrade
 from app.cli.modules import modules_validate
@@ -31,20 +37,22 @@ def create_parser() -> argparse.ArgumentParser:
     """构造 CLI 参数解析器。
 
     定义两级子命令结构：
-    - 顶层：db / modules / config
-    - 二级：check / upgrade / validate / show
+    - 顶层：db / modules / config / auth
+    - 二级：check / upgrade / validate / show / create-admin / sync-permissions
 
     每个二级子命令通过 ``set_defaults(func=...)`` 绑定处理函数。
     """
     parser = argparse.ArgumentParser(
         prog="python -m app.cli",
-        description="Apex Admin 管理命令（SPEC §25.1）",
+        description="Apex Admin 管理命令（SPEC §25.1、§25.2）",
         epilog=textwrap.dedent("""\
             可用命令：
-              db check           检查数据库连接
-              db upgrade         执行 alembic upgrade head
-              modules validate   验证模块注册和 Alembic 单头
-              config show        输出脱敏配置摘要
+              db check              检查数据库连接
+              db upgrade            执行 alembic upgrade head
+              modules validate      验证模块注册和 Alembic 单头
+              config show           输出脱敏配置摘要
+              auth create-admin     安全创建首个管理员（SPEC §25.2）
+              auth sync-permissions 幂等同步权限点（SPEC §25.2）
         """),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -69,6 +77,20 @@ def create_parser() -> argparse.ArgumentParser:
     config_subparsers = config_parser.add_subparsers(dest="subcommand", required=True)
     config_show_parser = config_subparsers.add_parser("show", help="显示脱敏配置")
     config_show_parser.set_defaults(func=config_show)
+
+    # auth 子命令（SPEC §25.2）
+    auth_parser = subparsers.add_parser("auth", help="身份与权限命令（SPEC §25.2）")
+    auth_subparsers = auth_parser.add_subparsers(dest="subcommand", required=True)
+    auth_create_parser = auth_subparsers.add_parser(
+        "create-admin",
+        help="安全创建首个管理员",
+    )
+    auth_create_parser.set_defaults(func=auth_create_admin)
+    auth_sync_parser = auth_subparsers.add_parser(
+        "sync-permissions",
+        help="幂等同步权限点",
+    )
+    auth_sync_parser.set_defaults(func=auth_sync_permissions)
 
     return parser
 

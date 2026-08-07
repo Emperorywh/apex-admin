@@ -26,6 +26,7 @@ from app.errors import AuthorizationError, ConflictError, NotFoundError
 from app.events.dispatcher import TransactionalEventDispatcher
 from app.events.registry import EventHandlerRegistry
 from app.modules.rbac.application.port import (
+    PermissionPointRecord,
     RbacUnitOfWork,
     RolePermissionRepository,
     RoleRepository,
@@ -126,6 +127,12 @@ class FakeRolePermissionRepository(RolePermissionRepository):
     async def get_for_user(self, user_id: UUID) -> frozenset[str]:
         raise NotImplementedError("由 FakeRolePermissionRepositoryWithQueries 实现")
 
+    async def get_all_referenced_codes(self) -> frozenset[str]:
+        result: set[str] = set()
+        for codes in self._permissions.values():
+            result |= codes
+        return frozenset(result)
+
 
 class FakeUserRoleRepositoryWithQueries(FakeUserRoleRepository):
     """支持超级管理员查询和启用角色过滤的 Fake UserRoleRepository。"""
@@ -150,6 +157,39 @@ class FakeUserRoleRepositoryWithQueries(FakeUserRoleRepository):
             if role is not None and role.is_super_admin and role.is_active:
                 result.add(uid)
         return list(result)
+
+
+class FakePermissionPointRepo(PermissionPointRecord):
+    """内存权限点注册表 Repository。"""
+
+    def __init__(self) -> None:
+        self._data: dict[str, dict[str, str]] = {}
+
+    async def upsert(
+        self,
+        code: str,
+        description: str,
+        module_code: str,
+        current_time: datetime,  # noqa: ARG002
+    ) -> bool:
+        existing = self._data.get(code)
+        if existing is None:
+            self._data[code] = {"description": description, "module_code": module_code}
+            return True
+        if existing["description"] != description or existing["module_code"] != module_code:
+            existing["description"] = description
+            existing["module_code"] = module_code
+            return True
+        return False
+
+    async def list_all(self) -> list[tuple[str, str, str]]:
+        return [
+            (code, rec["description"], rec["module_code"])
+            for code, rec in sorted(self._data.items())
+        ]
+
+    async def delete(self, code: str) -> None:
+        self._data.pop(code, None)
 
 
 class FakeRolePermissionRepositoryWithQueries(FakeRolePermissionRepository):
@@ -186,6 +226,7 @@ class FakeRbacUnitOfWork(RbacUnitOfWork):
         self._roles_repo = roles
         self._user_roles_repo = user_roles
         self._role_permissions_repo = role_permissions
+        self._permission_points_repo = FakePermissionPointRepo()
 
     @property
     def roles(self) -> FakeRoleRepository:
@@ -198,6 +239,10 @@ class FakeRbacUnitOfWork(RbacUnitOfWork):
     @property
     def role_permissions(self) -> FakeRolePermissionRepositoryWithQueries:
         return self._role_permissions_repo
+
+    @property
+    def permission_points(self) -> FakePermissionPointRepo:
+        return self._permission_points_repo
 
     async def __aenter__(self) -> Self:
         return self

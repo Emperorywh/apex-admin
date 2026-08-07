@@ -1,11 +1,13 @@
-"""CLI 单元测试（SPEC §25.1）。
+"""CLI 单元测试（SPEC §25.1、§25.2）。
 
 验证：
-- CLI 入口点可访问，--help 列出全部四个命令
+- CLI 入口点可访问，--help 列出全部命令（G1 + G2）
 - config show 输出脱敏配置摘要（密钥值为 ``***``）
 - modules validate 验证模块注册和 Alembic 单头
 - db check 检查数据库连接（成功 0，失败 1）
 - db upgrade 只执行 alembic upgrade head，不创建管理员或业务数据
+- auth create-admin 创建首个管理员
+- auth sync-permissions 幂等同步权限点
 - 退出码：成功 0，参数错误 2，运行/配置失败 1
 - 失败时不吞掉异常（traceback 打印到 stderr），不留半完成状态
 """
@@ -32,7 +34,7 @@ class TestHelpAndParser:
     """CLI 入口点可访问性和帮助输出。"""
 
     def test_help_lists_all_commands(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """--help 列出全部四个 G1 命令。"""
+        """--help 列出全部命令（G1 + G2）。"""
         with pytest.raises(SystemExit) as exc_info:
             main(["--help"])
         assert exc_info.value.code == 0
@@ -41,6 +43,8 @@ class TestHelpAndParser:
         assert "db upgrade" in captured.out
         assert "modules validate" in captured.out
         assert "config show" in captured.out
+        assert "auth create-admin" in captured.out
+        assert "auth sync-permissions" in captured.out
 
     def test_no_command_returns_arg_error(self) -> None:
         """无命令时返回参数错误（退出码 2）。"""
@@ -67,13 +71,15 @@ class TestHelpAndParser:
         assert exc_info.value.code == 2
 
     def test_parser_accepts_all_commands(self) -> None:
-        """解析器接受全部四个命令且设置 func 属性。"""
+        """解析器接受全部命令（G1 + G2）且设置 func 属性。"""
         parser = create_parser()
         for argv in (
             ["db", "check"],
             ["db", "upgrade"],
             ["modules", "validate"],
             ["config", "show"],
+            ["auth", "create-admin"],
+            ["auth", "sync-permissions"],
         ):
             args = parser.parse_args(argv)
             assert hasattr(args, "func")

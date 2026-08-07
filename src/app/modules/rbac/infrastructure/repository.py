@@ -14,12 +14,14 @@ from sqlalchemy import delete, func, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.rbac.application.port import (
+    PermissionPointRecord,
     RolePermissionRepository,
     RoleRepository,
     UserRoleRepository,
 )
 from app.modules.rbac.domain.model import Role
 from app.modules.rbac.infrastructure.models import (
+    PermissionPointModel,
     RoleModel,
     RolePermissionModel,
     UserRoleModel,
@@ -210,3 +212,71 @@ class SqlAlchemyRolePermissionRepository(RolePermissionRepository):
         )
         result = await self._session.execute(stmt)
         return frozenset(result.scalars().all())
+
+    async def get_all_referenced_codes(self) -> frozenset[str]:
+        """查询 role_permissions 中引用的全部权限编码（SPEC §25.2 孤立检测）。"""
+        stmt = select(RolePermissionModel.permission_code).distinct()
+        result = await self._session.execute(stmt)
+        return frozenset(result.scalars().all())
+
+
+class SqlAlchemyPermissionPointRepository(PermissionPointRecord):
+    """基于 SQLAlchemy 的权限点注册表 Repository（SPEC §25.2）。
+
+    提供 ``permission_points`` 表的读写能力。
+    """
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def upsert(
+        self,
+        code: str,
+        description: str,
+        module_code: str,
+        current_time: datetime,
+    ) -> bool:
+        """插入或更新权限点记录。
+
+        返回 ``True`` 表示新增或更新了记录，``False`` 表示无变化
+        （编码、描述和模块编码均未变）。
+        """
+        existing = await self._session.execute(
+            select(PermissionPointModel).where(
+                PermissionPointModel.code == code,
+            ),
+        )
+        model = existing.scalar_one_or_none()
+        if model is None:
+            self._session.add(
+                PermissionPointModel(
+                    code=code,
+                    description=description,
+                    module_code=module_code,
+                    created_at=current_time,
+                    updated_at=current_time,
+                ),
+            )
+            return True
+
+        if model.description != description or model.module_code != module_code:
+            model.description = description
+            model.module_code = module_code
+            model.updated_at = current_time
+            return True
+
+        return False
+
+    async def list_all(self) -> list[tuple[str, str, str]]:
+        """返回全部权限点记录 (code, description, module_code)，按 code 排序。"""
+        stmt = select(PermissionPointModel).order_by(PermissionPointModel.code)
+        result = await self._session.execute(stmt)
+        return [(m.code, m.description, m.module_code) for m in result.scalars().all()]
+
+    async def delete(self, code: str) -> None:
+        """删除权限点记录。"""
+        await self._session.execute(
+            delete(PermissionPointModel).where(
+                PermissionPointModel.code == code,
+            ),
+        )

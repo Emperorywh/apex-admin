@@ -11,6 +11,7 @@ from __future__ import annotations
 from app.infrastructure.database.unit_of_work import SqlAlchemyUnitOfWork
 from app.modules.rbac.application.port import RbacUnitOfWork
 from app.modules.rbac.infrastructure.repository import (
+    SqlAlchemyPermissionPointRepository,
     SqlAlchemyRolePermissionRepository,
     SqlAlchemyRoleRepository,
     SqlAlchemyUserRoleRepository,
@@ -20,7 +21,7 @@ from app.modules.rbac.infrastructure.repository import (
 class SqlAlchemyRbacUnitOfWork(SqlAlchemyUnitOfWork, RbacUnitOfWork):
     """RBAC 模块 SQLAlchemy 工作单元。
 
-    在基类事务管理的基础上，通过属性提供 RBAC 模块的三个 Repository。
+    在基类事务管理的基础上，通过属性提供 RBAC 模块的 Repository。
     Repository 每次访问时从当前 Session 构造，不缓存状态。
     """
 
@@ -38,3 +39,8 @@ class SqlAlchemyRbacUnitOfWork(SqlAlchemyUnitOfWork, RbacUnitOfWork):
     def role_permissions(self) -> SqlAlchemyRolePermissionRepository:
         """当前事务作用域的角色-权限 Repository。"""
         return SqlAlchemyRolePermissionRepository(self.session)
+
+    @property
+    def permission_points(self) -> SqlAlchemyPermissionPointRepository:
+        """当前事务作用域的权限点注册表 Repository（SPEC §25.2）。"""
+        return SqlAlchemyPermissionPointRepository(self.session)

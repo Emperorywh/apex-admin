@@ -89,6 +89,7 @@ ignore_imports =
     app.modules.rbac.infrastructure.wiring -> app.modules.user.application.port
     app.modules.rbac.infrastructure.wiring -> app.modules.user.domain.model
     app.modules.rbac.infrastructure.wiring -> app.modules.user.infrastructure.repository
+    app.modules.rbac.application.permission_sync -> app.modules.contract
     app.modules.rbac.routes -> app.api.pagination
     app.modules.rbac.dependencies -> app.modules.auth.application.port
     app.modules.rbac.dependencies -> app.modules.auth.application.service
