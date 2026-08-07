@@ -111,7 +111,7 @@ class TestProbeRevisionMatch:
 
     async def test_probe_returns_true_when_revision_matches(self) -> None:
         """当前 revision 与期望 head 一致时返回 True。"""
-        _, provider = _make_provider_with_mock_engine(revision="0006")
+        _, provider = _make_provider_with_mock_engine(revision="0007")
         probe = AlembicRevisionProbe(provider)
 
         result = await probe.probe()
@@ -211,7 +211,7 @@ class TestGetExpectedHead:
         probe = AlembicRevisionProbe(provider)
 
         head = probe._get_expected_head()
-        assert head == "0006"
+        assert head == "0007"
 
     def test_returns_none_for_multi_head_script_directory(self, tmp_path: Any) -> None:
         """空目录或无 revision 文件时返回 None。"""

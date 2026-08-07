@@ -94,6 +94,18 @@ ignore_imports =
     app.modules.rbac.dependencies -> app.modules.auth.application.service
     app.modules.rbac.dependencies -> app.modules.auth.infrastructure.wiring
     app.modules.rbac.dependencies -> app.config.settings
+    app.modules.audit.domain.model -> app.ports.audit
+    app.modules.audit.domain.diff -> app.ports.audit
+    app.modules.audit.infrastructure.models -> app.ports.audit
+    app.modules.audit.infrastructure.models -> app.modules.audit.domain.model
+    app.modules.audit.infrastructure.repository -> app.modules.audit.domain.model
+    app.modules.audit.infrastructure.repository -> app.modules.audit.infrastructure.models
+    app.modules.audit.infrastructure.unit_of_work -> app.infrastructure.database.unit_of_work
+    app.modules.audit.infrastructure.unit_of_work -> app.modules.audit.infrastructure.repository
+    app.modules.audit.infrastructure.audit_port -> app.infrastructure.database.unit_of_work
+    app.modules.audit.infrastructure.audit_port -> app.modules.audit.domain.model
+    app.modules.audit.infrastructure.audit_port -> app.modules.audit.infrastructure.repository
+    app.modules.audit.infrastructure.audit_port -> app.ports.audit
 
 # ---------------------------------------------------------------------------
 # API layer must not depend on Infrastructure layer (SPEC 5.2, 5.6)
