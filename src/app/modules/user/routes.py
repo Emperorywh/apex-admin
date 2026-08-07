@@ -21,10 +21,15 @@ from datetime import UTC, datetime
 from typing import cast
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.api.pagination import Page, PaginationParams, get_pagination_params, paginate
+from app.modules.rbac.application.port import AuthenticatedUser
+from app.modules.rbac.dependencies import (
+    get_current_user,
+    require_permission,
+)
 from app.modules.user.application.schemas import (
     ChangePasswordRequest,
     CreateUserRequest,
@@ -95,23 +100,6 @@ def get_user_service(request: Request) -> UserService:
     return create_user_service(engine, session_lifecycle=session_lifecycle)
 
 
-def get_current_user_id(
-    x_user_id: UUID = Header(alias="X-User-Id"),  # noqa: B008
-) -> UUID:
-    """从请求头获取当前用户 ID。
-
-    TASK-015 实现认证后，此依赖将被替换为从认证 Token 中提取用户 ID
-    （SPEC §5.8：Router 将认证结果转换为 UseCaseContext，显式传给 Use Case）。
-
-    Args:
-        x_user_id: 请求头 ``X-User-Id`` 中的用户 UUID
-
-    Returns:
-        当前用户 UUID
-    """
-    return x_user_id
-
-
 # ---------------------------------------------------------------------------
 # 管理员端点
 # ---------------------------------------------------------------------------
@@ -129,6 +117,7 @@ def get_current_user_id(
 )
 async def create_user(
     request_body: CreateUserRequest,
+    current_user: AuthenticatedUser = Depends(require_permission("system:user:create")),  # noqa: B008
     service: UserService = Depends(get_user_service),  # noqa: B008
 ) -> UserResponse:
     """创建用户（SPEC §11.1）。"""
@@ -139,6 +128,7 @@ async def create_user(
         phone=request_body.phone,
         email=request_body.email,
         current_time=datetime.now(UTC),
+        actor_id=current_user.user_id,
     )
     return _to_response(user)
 
@@ -153,6 +143,7 @@ async def create_user(
 )
 async def list_users(
     pagination: PaginationParams = Depends(get_pagination_params),  # noqa: B008
+    current_user: AuthenticatedUser = Depends(require_permission("system:user:read")),  # noqa: B008
     service: UserService = Depends(get_user_service),  # noqa: B008
 ) -> Page[UserResponse]:
     """分页查询用户列表（SPEC §11.1）。"""
@@ -171,6 +162,7 @@ async def list_users(
 )
 async def get_user(
     user_id: UUID,
+    current_user: AuthenticatedUser = Depends(require_permission("system:user:read")),  # noqa: B008
     service: UserService = Depends(get_user_service),  # noqa: B008
 ) -> UserResponse:
     """查询用户详情（SPEC §11.1）。"""
@@ -186,6 +178,7 @@ async def get_user(
 async def update_user(
     user_id: UUID,
     request_body: UpdateUserRequest,
+    current_user: AuthenticatedUser = Depends(require_permission("system:user:update")),  # noqa: B008
     service: UserService = Depends(get_user_service),  # noqa: B008
 ) -> UserResponse:
     """更新用户基本资料（SPEC §11.1）。"""
@@ -194,6 +187,7 @@ async def update_user(
         user_id=user_id,
         field_updates=field_updates,
         current_time=datetime.now(UTC),
+        actor_id=current_user.user_id,
     )
     return _to_response(user)
 
@@ -205,12 +199,14 @@ async def update_user(
 )
 async def enable_user(
     user_id: UUID,
+    current_user: AuthenticatedUser = Depends(require_permission("system:user:enable")),  # noqa: B008
     service: UserService = Depends(get_user_service),  # noqa: B008
 ) -> UserResponse:
     """启用用户（SPEC §11.1）。"""
     user = await service.enable_user(
         user_id=user_id,
         current_time=datetime.now(UTC),
+        actor_id=current_user.user_id,
     )
     return _to_response(user)
 
@@ -222,12 +218,14 @@ async def enable_user(
 )
 async def disable_user(
     user_id: UUID,
+    current_user: AuthenticatedUser = Depends(require_permission("system:user:disable")),  # noqa: B008
     service: UserService = Depends(get_user_service),  # noqa: B008
 ) -> UserResponse:
     """禁用用户（SPEC §11.1、§13.4）。"""
     user = await service.disable_user(
         user_id=user_id,
         current_time=datetime.now(UTC),
+        actor_id=current_user.user_id,
     )
     return _to_response(user)
 
@@ -243,6 +241,7 @@ async def disable_user(
 async def reset_password(
     user_id: UUID,
     request_body: ResetPasswordRequest,
+    current_user: AuthenticatedUser = Depends(require_permission("system:user:reset_password")),  # noqa: B008
     service: UserService = Depends(get_user_service),  # noqa: B008
 ) -> None:
     """管理员重置用户密码（SPEC §11.1）。"""
@@ -250,6 +249,7 @@ async def reset_password(
         user_id=user_id,
         new_password=request_body.new_password,
         current_time=datetime.now(UTC),
+        actor_id=current_user.user_id,
     )
 
 
@@ -264,11 +264,11 @@ async def reset_password(
     description="查询当前登录用户的资料。响应不含密码哈希。",
 )
 async def get_self_profile(
-    current_user_id: UUID = Depends(get_current_user_id),  # noqa: B008
+    current_user: AuthenticatedUser = Depends(get_current_user),  # noqa: B008
     service: UserService = Depends(get_user_service),  # noqa: B008
 ) -> UserResponse:
     """用户自助查询资料（SPEC §11.1）。"""
-    user = await service.get_self_profile(current_user_id)
+    user = await service.get_self_profile(current_user.user_id)
     return _to_response(user)
 
 
@@ -281,13 +281,13 @@ async def get_self_profile(
 )
 async def update_self_profile(
     request_body: UpdateSelfProfileRequest,
-    current_user_id: UUID = Depends(get_current_user_id),  # noqa: B008
+    current_user: AuthenticatedUser = Depends(get_current_user),  # noqa: B008
     service: UserService = Depends(get_user_service),  # noqa: B008
 ) -> UserResponse:
     """用户自助更新资料（SPEC §11.1）。"""
     field_updates = request_body.model_dump(exclude_unset=True)
     user = await service.update_self_profile(
-        user_id=current_user_id,
+        user_id=current_user.user_id,
         field_updates=field_updates,
         current_time=datetime.now(UTC),
     )
@@ -302,21 +302,20 @@ async def update_self_profile(
 )
 async def change_password(
     request_body: ChangePasswordRequest,
-    current_user_id: UUID = Depends(get_current_user_id),  # noqa: B008
+    current_user: AuthenticatedUser = Depends(get_current_user),  # noqa: B008
     service: UserService = Depends(get_user_service),  # noqa: B008
-    x_session_id: UUID | None = Header(default=None, alias="X-Session-Id"),  # noqa: B008
 ) -> None:
     """用户自助修改密码（SPEC §11.1）。
 
-    传入 X-Session-Id 时保留当前会话、吊销其他会话（SPEC §12.3）。
-    TASK-017 实现完整认证后，X-Session-Id 将由认证依赖提供。
+    保留当前会话、吊销其他会话（SPEC §12.3）。
+    当前会话 ID 由认证依赖提供。
     """
     await service.change_password(
-        user_id=current_user_id,
+        user_id=current_user.user_id,
         current_password=request_body.current_password,
         new_password=request_body.new_password,
         current_time=datetime.now(UTC),
-        keep_session_id=x_session_id,
+        keep_session_id=current_user.session_id,
     )
 
 

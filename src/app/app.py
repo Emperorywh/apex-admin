@@ -91,6 +91,13 @@ def create_app(
 
     app.state.session_lifecycle = SqlAlchemySessionLifecycle()
 
+    # RBAC 超级管理员检查——无状态，供用户模块在禁用用户前检查
+    # 是否为系统最后一个可用超级管理员（SPEC §13.4）
+    # 在数据库引擎可用前使用占位，引擎可用后由路由层通过 wiring 装配
+    from app.modules.user.infrastructure.wiring import NoOpLastSuperAdminCheck
+
+    app.state.last_super_admin_check = NoOpLastSuperAdminCheck()
+
     # 配置 OpenAPI schema 生成（SPEC §9.6：标签分组、Operation ID 唯一性、
     # Bearer 认证方案集成）
     configure_documentation(app)

@@ -1,1042 +1,238 @@
 {
-  "openapi": "3.1.0",
-  "info": {
-    "title": "Apex Admin",
-    "summary": "FastAPI 后台管理系统 API 基座",
-    "version": "0.1.0"
-  },
-  "paths": {
-    "/health/live": {
-      "get": {
-        "tags": [
-          "health"
-        ],
-        "summary": "存活检查",
-        "description": "存活检查（SPEC §6.2）。\n\n只验证进程事件循环可响应，数据库不可用时仍返回 HTTP 200。",
-        "operationId": "live_health_live_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object",
-                  "title": "Response Live Health Live Get"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/health/ready": {
-      "get": {
-        "tags": [
-          "health"
-        ],
-        "summary": "就绪检查",
-        "description": "就绪检查（SPEC §6.2）。\n\n通过 provider 接口检查 DB 连接和 Alembic revision 一致性。\n任一条件失败时返回 HTTP 503；恢复后无需重启进程即可重新就绪。\n\n返回内容不泄露敏感配置。",
-        "operationId": "ready_health_ready_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object",
-                  "title": "Response Ready Health Ready Get"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/examples": {
-      "post": {
-        "tags": [
-          "examples"
-        ],
-        "summary": "创建示例项目",
-        "description": "创建一个新的示例项目。此端点演示 Router → Use Case → Domain Policy → Repository → Database 的完整调用流，包含领域事件发布和事务提交。成功返回 HTTP 201 和创建的资源。",
-        "operationId": "create_example_api_v1_examples_post",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateExampleRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateExampleResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "examples"
-        ],
-        "summary": "查询示例项目列表",
-        "description": "分页查询全部示例项目。此端点演示分页参数解析、Repository 查询和 Page 响应模式。响应使用标准分页结构 {items, total, page, page_size, pages}。",
-        "operationId": "list_examples_api_v1_examples_get",
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "description": "页码，从 1 开始",
-              "default": 1,
-              "title": "Page"
-            },
-            "description": "页码，从 1 开始"
-          },
-          {
-            "name": "page_size",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 100,
-              "minimum": 1,
-              "description": "每页条数，1 至 100",
-              "default": 20,
-              "title": "Page Size"
-            },
-            "description": "每页条数，1 至 100"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Page_ExampleResponse_"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/users": {
-      "post": {
-        "tags": [
-          "users"
-        ],
-        "summary": "创建用户",
-        "description": "创建新用户。密码使用 Argon2id 哈希存储，密码最小长度 12 个 Unicode 字符，最大 128 个字符。成功返回 HTTP 201 和创建的用户资源（不含密码哈希）。",
-        "operationId": "create_user_api_v1_users_post",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateUserRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "users"
-        ],
-        "summary": "分页查询用户列表",
-        "description": "分页查询全部用户，按创建时间降序排列。响应使用标准分页结构 {items, total, page, page_size, pages}。",
-        "operationId": "list_users_api_v1_users_get",
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "description": "页码，从 1 开始",
-              "default": 1,
-              "title": "Page"
-            },
-            "description": "页码，从 1 开始"
-          },
-          {
-            "name": "page_size",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 100,
-              "minimum": 1,
-              "description": "每页条数，1 至 100",
-              "default": 20,
-              "title": "Page Size"
-            },
-            "description": "每页条数，1 至 100"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Page_UserResponse_"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/users/{user_id}": {
-      "get": {
-        "tags": [
-          "users"
-        ],
-        "summary": "查询用户详情",
-        "description": "按 UUID 查询单个用户详情。响应不含密码哈希。",
-        "operationId": "get_user_api_v1_users__user_id__get",
-        "parameters": [
-          {
-            "name": "user_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "User Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "patch": {
-        "tags": [
-          "users"
-        ],
-        "summary": "更新用户资料",
-        "description": "部分更新用户资料。仅修改请求中包含的字段。不允许修改用户名、状态和密码。",
-        "operationId": "update_user_api_v1_users__user_id__patch",
-        "parameters": [
-          {
-            "name": "user_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "User Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateUserRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/users/{user_id}/enable": {
-      "post": {
-        "tags": [
-          "users"
-        ],
-        "summary": "启用用户",
-        "description": "将用户状态设置为启用。",
-        "operationId": "enable_user_api_v1_users__user_id__enable_post",
-        "parameters": [
-          {
-            "name": "user_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "User Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/users/{user_id}/disable": {
-      "post": {
-        "tags": [
-          "users"
-        ],
-        "summary": "禁用用户",
-        "description": "将用户状态设置为禁用。禁止禁用系统最后一个可用超级管理员。",
-        "operationId": "disable_user_api_v1_users__user_id__disable_post",
-        "parameters": [
-          {
-            "name": "user_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "User Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/users/{user_id}/reset-password": {
-      "post": {
-        "tags": [
-          "users"
-        ],
-        "summary": "管理员重置用户密码",
-        "description": "管理员重置指定用户的密码。重置后认证模块吊销该用户全部会话。成功返回 HTTP 204，无响应体。",
-        "operationId": "reset_password_api_v1_users__user_id__reset_password_post",
-        "parameters": [
-          {
-            "name": "user_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "User Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ResetPasswordRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/me": {
-      "get": {
-        "tags": [
-          "users"
-        ],
-        "summary": "查询当前用户资料",
-        "description": "查询当前登录用户的资料。响应不含密码哈希。",
-        "operationId": "get_self_profile_api_v1_me_get",
-        "parameters": [
-          {
-            "name": "X-User-Id",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "X-User-Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "patch": {
-        "tags": [
-          "users"
-        ],
-        "summary": "更新当前用户资料",
-        "description": "当前用户更新自身资料。仅允许修改显示名称、手机号和邮箱。不允许修改用户名、状态和密码。",
-        "operationId": "update_self_profile_api_v1_me_patch",
-        "parameters": [
-          {
-            "name": "X-User-Id",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "X-User-Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateSelfProfileRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/me/change-password": {
-      "post": {
-        "tags": [
-          "users"
-        ],
-        "summary": "当前用户修改密码",
-        "description": "当前用户修改自己的密码。需提供当前密码和新密码。成功返回 HTTP 204，无响应体。",
-        "operationId": "change_password_api_v1_me_change_password_post",
-        "parameters": [
-          {
-            "name": "X-Session-Id",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "format": "uuid"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Session-Id"
-            }
-          },
-          {
-            "name": "X-User-Id",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "X-User-Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ChangePasswordRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/auth/login": {
-      "post": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "账号密码登录",
-        "description": "使用用户名和密码登录。验证 Argon2id 密码后创建服务端会话，生成 Access Token（响应体返回一次）和 Refresh Token（HttpOnly Cookie）。用户不存在时执行固定 Argon2id 虚拟哈希校验以降低响应时间差。响应设置 Cache-Control: no-store。",
-        "operationId": "login_api_v1_auth_login_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LoginRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LoginResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/auth/logout": {
-      "post": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "退出登录",
-        "description": "从 Cookie 读取 Refresh Token，吊销服务端会话并删除 Cookie。Token 无效或已吊销时幂等成功。校验 Origin 是否精确匹配部署配置白名单（SPEC §12.4）。",
-        "operationId": "logout_api_v1_auth_logout_post",
-        "parameters": [
-          {
-            "name": "__Host-apex_refresh",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "  Host-Apex Refresh"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/auth/refresh": {
-      "post": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "刷新 Token",
-        "description": "从 Cookie 读取 Refresh Token，轮换 Token：旧 Token 失效，新 Access Token 在响应体返回，新 Refresh Token 通过 Cookie 设置。已使用的 Token 再次出现时触发重放检测，吊销整个会话和 Token Family。校验 Origin 是否精确匹配部署配置白名单（SPEC §12.4）。响应设置 Cache-Control: no-store。",
-        "operationId": "refresh_api_v1_auth_refresh_post",
-        "parameters": [
-          {
-            "name": "__Host-apex_refresh",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "  Host-Apex Refresh"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RefreshResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/auth/sessions": {
-      "get": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "查看自己的活动会话",
-        "description": "查询当前认证用户的全部活动会话列表。",
-        "operationId": "list_sessions_api_v1_auth_sessions_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/SessionItem"
-                  },
-                  "type": "array",
-                  "title": "Response List Sessions Api V1 Auth Sessions Get"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/auth/sessions/{session_id}": {
-      "delete": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "退出指定会话",
-        "description": "用户退出自己的指定会话（当前或其他会话）。管理员可退出任意用户的会话（强制下线单条）。",
-        "operationId": "revoke_session_api_v1_auth_sessions__session_id__delete",
-        "parameters": [
-          {
-            "name": "session_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Session Id"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/auth/users/{user_id}/sessions": {
-      "delete": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "管理员强制下线",
-        "description": "管理员强制吊销指定用户的全部活跃会话。",
-        "operationId": "force_logout_api_v1_auth_users__user_id__sessions_delete",
-        "parameters": [
-          {
-            "name": "user_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "User Id"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  },
   "components": {
     "schemas": {
+      "AssignPermissionsRequest": {
+        "additionalProperties": false,
+        "description": "为角色分配权限点请求 Schema（SPEC §9.2、§13.2）。\n\n全量替换语义：传入的权限集合完全替换角色现有权限。\n\nAttributes:\n    permission_codes: 权限点编码集合",
+        "properties": {
+          "permission_codes": {
+            "description": "权限点编码集合（全量替换）",
+            "items": {
+              "type": "string"
+            },
+            "title": "Permission Codes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "permission_codes"
+        ],
+        "title": "AssignPermissionsRequest",
+        "type": "object"
+      },
+      "AssignRolesRequest": {
+        "additionalProperties": false,
+        "description": "为用户分配角色请求 Schema（SPEC §9.2、§13.2）。\n\n增量语义：在用户现有角色基础上追加指定角色。\n\nAttributes:\n    role_codes: 角色编码集合",
+        "properties": {
+          "role_codes": {
+            "description": "角色编码集合（增量分配）",
+            "items": {
+              "type": "string"
+            },
+            "title": "Role Codes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "role_codes"
+        ],
+        "title": "AssignRolesRequest",
+        "type": "object"
+      },
       "ChangePasswordRequest": {
+        "additionalProperties": false,
+        "description": "用户自助修改密码请求 Schema（SPEC §11.1、§23.2）。\n\n需提供当前密码和新密码。新密码长度以 Unicode 字符计数：12–128。\n\nAttributes:\n    current_password: 当前明文密码\n    new_password: 新明文密码，12–128 个 Unicode 字符",
         "properties": {
           "current_password": {
-            "type": "string",
+            "description": "当前密码",
             "minLength": 1,
             "title": "Current Password",
-            "description": "当前密码"
+            "type": "string"
           },
           "new_password": {
-            "type": "string",
+            "description": "新明文密码，12–128 个 Unicode 字符",
             "maxLength": 128,
             "minLength": 12,
             "title": "New Password",
-            "description": "新明文密码，12–128 个 Unicode 字符"
+            "type": "string"
           }
         },
-        "additionalProperties": false,
-        "type": "object",
         "required": [
           "current_password",
           "new_password"
         ],
         "title": "ChangePasswordRequest",
-        "description": "用户自助修改密码请求 Schema（SPEC §11.1、§23.2）。\n\n需提供当前密码和新密码。新密码长度以 Unicode 字符计数：12–128。\n\nAttributes:\n    current_password: 当前明文密码\n    new_password: 新明文密码，12–128 个 Unicode 字符"
+        "type": "object"
       },
       "CreateExampleRequest": {
+        "additionalProperties": false,
+        "description": "创建示例项目请求 Schema（SPEC §9.2）。\n\nAttributes:\n    name: 示例项目名称，非空且不超过 100 字符",
         "properties": {
           "name": {
-            "type": "string",
-            "title": "Name"
+            "title": "Name",
+            "type": "string"
           }
         },
-        "additionalProperties": false,
-        "type": "object",
         "required": [
           "name"
         ],
         "title": "CreateExampleRequest",
-        "description": "创建示例项目请求 Schema（SPEC §9.2）。\n\nAttributes:\n    name: 示例项目名称，非空且不超过 100 字符"
+        "type": "object"
       },
       "CreateExampleResponse": {
+        "additionalProperties": false,
+        "description": "创建示例项目成功响应（SPEC §9.3：201 返回资源 Schema）。",
         "properties": {
           "id": {
-            "type": "string",
             "format": "uuid",
-            "title": "Id"
+            "title": "Id",
+            "type": "string"
           },
           "name": {
-            "type": "string",
-            "title": "Name"
+            "title": "Name",
+            "type": "string"
           }
         },
-        "additionalProperties": false,
-        "type": "object",
         "required": [
           "id",
           "name"
         ],
         "title": "CreateExampleResponse",
-        "description": "创建示例项目成功响应（SPEC §9.3：201 返回资源 Schema）。"
+        "type": "object"
       },
-      "CreateUserRequest": {
+      "CreateRoleRequest": {
+        "additionalProperties": false,
+        "description": "创建角色请求 Schema（SPEC §9.2、§13.2）。\n\nAttributes:\n    code: 角色编码，2–50 个字符，小写字母数字下划线连字符\n    name: 角色名称，1–100 个字符\n    description: 描述（可选），最长 500 个字符\n    is_super_admin: 是否为超级管理员角色",
         "properties": {
-          "username": {
-            "type": "string",
+          "code": {
+            "description": "角色编码，小写字母开头，小写字母数字下划线连字符",
             "maxLength": 50,
-            "minLength": 3,
-            "pattern": "^[a-zA-Z0-9_-]+$",
-            "title": "Username",
-            "description": "用户名，3–50 个字符，字母数字下划线连字符"
+            "minLength": 2,
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "title": "Code",
+            "type": "string"
           },
-          "display_name": {
-            "type": "string",
-            "maxLength": 100,
-            "minLength": 1,
-            "title": "Display Name",
-            "description": "显示名称"
-          },
-          "password": {
-            "type": "string",
-            "maxLength": 128,
-            "minLength": 12,
-            "title": "Password",
-            "description": "明文密码，12–128 个 Unicode 字符"
-          },
-          "phone": {
+          "description": {
             "anyOf": [
               {
-                "type": "string",
-                "maxLength": 20
+                "maxLength": 500,
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Phone",
-            "description": "手机号（可选）"
+            "description": "角色描述（可选）",
+            "title": "Description"
+          },
+          "is_super_admin": {
+            "default": false,
+            "description": "是否为超级管理员角色（SPEC §13.4）",
+            "title": "Is Super Admin",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "角色名称",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "CreateRoleRequest",
+        "type": "object"
+      },
+      "CreateUserRequest": {
+        "additionalProperties": false,
+        "description": "创建用户请求 Schema（SPEC §9.2、§23.2）。\n\n密码长度以 Unicode 字符计数：最小 12，最大 128。\n超长密码直接拒绝（不截断），符合 SPEC §23.2 要求。\n\nAttributes:\n    username: 用户名，3–50 个字符，字母数字下划线连字符\n    display_name: 显示名称，1–100 个字符\n    password: 明文密码，12–128 个 Unicode 字符\n    phone: 手机号（可选），最长 20 个字符\n    email: 邮箱（可选），最长 255 个字符",
+        "properties": {
+          "display_name": {
+            "description": "显示名称",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
           },
           "email": {
             "anyOf": [
               {
-                "type": "string",
-                "maxLength": 255
+                "maxLength": 255,
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Email",
-            "description": "邮箱（可选）"
+            "description": "邮箱（可选）",
+            "title": "Email"
+          },
+          "password": {
+            "description": "明文密码，12–128 个 Unicode 字符",
+            "maxLength": 128,
+            "minLength": 12,
+            "title": "Password",
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "手机号（可选）",
+            "title": "Phone"
+          },
+          "username": {
+            "description": "用户名，3–50 个字符，字母数字下划线连字符",
+            "maxLength": 50,
+            "minLength": 3,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Username",
+            "type": "string"
           }
         },
-        "additionalProperties": false,
-        "type": "object",
         "required": [
           "username",
           "display_name",
           "password"
         ],
         "title": "CreateUserRequest",
-        "description": "创建用户请求 Schema（SPEC §9.2、§23.2）。\n\n密码长度以 Unicode 字符计数：最小 12，最大 128。\n超长密码直接拒绝（不截断），符合 SPEC §23.2 要求。\n\nAttributes:\n    username: 用户名，3–50 个字符，字母数字下划线连字符\n    display_name: 显示名称，1–100 个字符\n    password: 明文密码，12–128 个 Unicode 字符\n    phone: 手机号（可选），最长 20 个字符\n    email: 邮箱（可选），最长 255 个字符"
+        "type": "object"
       },
       "ExampleResponse": {
+        "additionalProperties": false,
+        "description": "示例项目响应 Schema（SPEC §9.3）。\n\n响应直接返回资源 Schema，不使用 ``{code, message, data}`` 信封。\n时间字段使用带时区的 ISO 8601 字符串（SPEC §9.3、§6.3）。\n\n``from_attributes=True`` 允许从领域实体（dataclass）直接构造响应。\n\nAttributes:\n    id: 实体 UUID\n    name: 名称\n    created_at: 创建时间（UTC）",
         "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
           "id": {
-            "type": "string",
             "format": "uuid",
-            "title": "Id"
+            "title": "Id",
+            "type": "string"
           },
           "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
+            "title": "Name",
+            "type": "string"
           }
         },
-        "additionalProperties": false,
-        "type": "object",
         "required": [
           "id",
           "name",
           "created_at"
         ],
         "title": "ExampleResponse",
-        "description": "示例项目响应 Schema（SPEC §9.3）。\n\n响应直接返回资源 Schema，不使用 ``{code, message, data}`` 信封。\n时间字段使用带时区的 ISO 8601 字符串（SPEC §9.3、§6.3）。\n\n``from_attributes=True`` 允许从领域实体（dataclass）直接构造响应。\n\nAttributes:\n    id: 实体 UUID\n    name: 名称\n    created_at: 创建时间（UTC）"
+        "type": "object"
       },
       "HTTPValidationError": {
         "properties": {
@@ -1044,101 +240,100 @@
             "items": {
               "$ref": "#/components/schemas/ValidationError"
             },
-            "type": "array",
-            "title": "Detail"
+            "title": "Detail",
+            "type": "array"
           }
         },
-        "type": "object",
-        "title": "HTTPValidationError"
+        "title": "HTTPValidationError",
+        "type": "object"
       },
       "LoginRequest": {
+        "additionalProperties": false,
+        "description": "登录请求 Schema（SPEC §12.1、§12.4）。\n\n不强制密码长度约束——任何密码输入都经过 Argon2id 验证，\n防止通过校验差异枚举用户（SPEC §12.4）。\n\nAttributes:\n    username: 用户名\n    password: 明文密码",
         "properties": {
+          "password": {
+            "description": "密码",
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          },
           "username": {
-            "type": "string",
+            "description": "用户名",
             "maxLength": 50,
             "minLength": 1,
             "title": "Username",
-            "description": "用户名"
-          },
-          "password": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Password",
-            "description": "密码"
+            "type": "string"
           }
         },
-        "additionalProperties": false,
-        "type": "object",
         "required": [
           "username",
           "password"
         ],
         "title": "LoginRequest",
-        "description": "登录请求 Schema（SPEC §12.1、§12.4）。\n\n不强制密码长度约束——任何密码输入都经过 Argon2id 验证，\n防止通过校验差异枚举用户（SPEC §12.4）。\n\nAttributes:\n    username: 用户名\n    password: 明文密码"
+        "type": "object"
       },
       "LoginResponse": {
+        "additionalProperties": false,
+        "description": "登录响应 Schema（SPEC §12.1、§12.2）。\n\nAccess Token 在响应体中返回一次（SPEC §12.1：仅在登录或刷新\n响应体中返回一次，前端只允许保存在内存中）。\n\nRefresh Token 不出现在 JSON 响应中——只通过 HttpOnly Cookie 传递\n（SPEC §12.1）。响应必须设置 ``Cache-Control: no-store``\n（SPEC §12.1、§12.2）。\n\nAttributes:\n    access_token: Access Token 明文（不透明，一次性）\n    token_type: Token 类型，固定 ``Bearer``\n    expires_in: Access Token 有效期（秒），默认 900（15 分钟）\n    session_id: 新创建会话的 UUID",
         "properties": {
           "access_token": {
-            "type": "string",
+            "description": "Access Token（不透明，仅返回一次）",
             "title": "Access Token",
-            "description": "Access Token（不透明，仅返回一次）"
-          },
-          "token_type": {
-            "type": "string",
-            "title": "Token Type",
-            "description": "Token 类型",
-            "default": "Bearer"
+            "type": "string"
           },
           "expires_in": {
-            "type": "integer",
+            "description": "Access Token 有效期（秒）",
             "title": "Expires In",
-            "description": "Access Token 有效期（秒）"
+            "type": "integer"
           },
           "session_id": {
-            "type": "string",
+            "description": "新创建会话的 UUID",
             "format": "uuid",
             "title": "Session Id",
-            "description": "新创建会话的 UUID"
+            "type": "string"
+          },
+          "token_type": {
+            "default": "Bearer",
+            "description": "Token 类型",
+            "title": "Token Type",
+            "type": "string"
           }
         },
-        "additionalProperties": false,
-        "type": "object",
         "required": [
           "access_token",
           "expires_in",
           "session_id"
         ],
         "title": "LoginResponse",
-        "description": "登录响应 Schema（SPEC §12.1、§12.2）。\n\nAccess Token 在响应体中返回一次（SPEC §12.1：仅在登录或刷新\n响应体中返回一次，前端只允许保存在内存中）。\n\nRefresh Token 不出现在 JSON 响应中——只通过 HttpOnly Cookie 传递\n（SPEC §12.1）。响应必须设置 ``Cache-Control: no-store``\n（SPEC §12.1、§12.2）。\n\nAttributes:\n    access_token: Access Token 明文（不透明，一次性）\n    token_type: Token 类型，固定 ``Bearer``\n    expires_in: Access Token 有效期（秒），默认 900（15 分钟）\n    session_id: 新创建会话的 UUID"
+        "type": "object"
       },
       "Page_ExampleResponse_": {
+        "additionalProperties": false,
         "properties": {
           "items": {
             "items": {
               "$ref": "#/components/schemas/ExampleResponse"
             },
-            "type": "array",
-            "title": "Items"
-          },
-          "total": {
-            "type": "integer",
-            "title": "Total"
+            "title": "Items",
+            "type": "array"
           },
           "page": {
-            "type": "integer",
-            "title": "Page"
+            "title": "Page",
+            "type": "integer"
           },
           "page_size": {
-            "type": "integer",
-            "title": "Page Size"
+            "title": "Page Size",
+            "type": "integer"
           },
           "pages": {
-            "type": "integer",
-            "title": "Pages"
+            "title": "Pages",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
           }
         },
-        "additionalProperties": false,
-        "type": "object",
         "required": [
           "items",
           "total",
@@ -1146,36 +341,73 @@
           "page_size",
           "pages"
         ],
-        "title": "Page[ExampleResponse]"
+        "title": "Page[ExampleResponse]",
+        "type": "object"
+      },
+      "Page_RoleResponse_": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RoleResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "pages": {
+            "title": "Pages",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "pages"
+        ],
+        "title": "Page[RoleResponse]",
+        "type": "object"
       },
       "Page_UserResponse_": {
+        "additionalProperties": false,
         "properties": {
           "items": {
             "items": {
               "$ref": "#/components/schemas/UserResponse"
             },
-            "type": "array",
-            "title": "Items"
-          },
-          "total": {
-            "type": "integer",
-            "title": "Total"
+            "title": "Items",
+            "type": "array"
           },
           "page": {
-            "type": "integer",
-            "title": "Page"
+            "title": "Page",
+            "type": "integer"
           },
           "page_size": {
-            "type": "integer",
-            "title": "Page Size"
+            "title": "Page Size",
+            "type": "integer"
           },
           "pages": {
-            "type": "integer",
-            "title": "Pages"
+            "title": "Pages",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
           }
         },
-        "additionalProperties": false,
-        "type": "object",
         "required": [
           "items",
           "total",
@@ -1183,68 +415,218 @@
           "page_size",
           "pages"
         ],
-        "title": "Page[UserResponse]"
+        "title": "Page[UserResponse]",
+        "type": "object"
       },
-      "RefreshResponse": {
+      "PermissionListResponse": {
+        "additionalProperties": false,
+        "description": "权限点编码列表响应 Schema（SPEC §9.3、§13.2）。\n\nAttributes:\n    permission_codes: 权限点编码集合",
         "properties": {
-          "access_token": {
-            "type": "string",
-            "title": "Access Token",
-            "description": "新 Access Token（不透明，仅返回一次）"
-          },
-          "token_type": {
-            "type": "string",
-            "title": "Token Type",
-            "description": "Token 类型",
-            "default": "Bearer"
-          },
-          "expires_in": {
-            "type": "integer",
-            "title": "Expires In",
-            "description": "Access Token 有效期（秒）"
-          },
-          "session_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Session Id",
-            "description": "所属会话的 UUID"
+          "permission_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Permission Codes",
+            "type": "array"
           }
         },
+        "required": [
+          "permission_codes"
+        ],
+        "title": "PermissionListResponse",
+        "type": "object"
+      },
+      "RefreshResponse": {
         "additionalProperties": false,
-        "type": "object",
+        "description": "刷新响应 Schema（SPEC §12.2）。\n\n与登录响应结构一致：Access Token 在响应体中返回一次，\n新 Refresh Token 通过 HttpOnly Cookie 传递。\n响应必须设置 ``Cache-Control: no-store``。",
+        "properties": {
+          "access_token": {
+            "description": "新 Access Token（不透明，仅返回一次）",
+            "title": "Access Token",
+            "type": "string"
+          },
+          "expires_in": {
+            "description": "Access Token 有效期（秒）",
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "session_id": {
+            "description": "所属会话的 UUID",
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
+          },
+          "token_type": {
+            "default": "Bearer",
+            "description": "Token 类型",
+            "title": "Token Type",
+            "type": "string"
+          }
+        },
         "required": [
           "access_token",
           "expires_in",
           "session_id"
         ],
         "title": "RefreshResponse",
-        "description": "刷新响应 Schema（SPEC §12.2）。\n\n与登录响应结构一致：Access Token 在响应体中返回一次，\n新 Refresh Token 通过 HttpOnly Cookie 传递。\n响应必须设置 ``Cache-Control: no-store``。"
+        "type": "object"
+      },
+      "RemoveRolesRequest": {
+        "additionalProperties": false,
+        "description": "移除用户角色请求 Schema（SPEC §9.2、§13.2）。\n\nAttributes:\n    role_codes: 角色编码集合",
+        "properties": {
+          "role_codes": {
+            "description": "要移除的角色编码集合",
+            "items": {
+              "type": "string"
+            },
+            "title": "Role Codes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "role_codes"
+        ],
+        "title": "RemoveRolesRequest",
+        "type": "object"
       },
       "ResetPasswordRequest": {
+        "additionalProperties": false,
+        "description": "管理员重置密码请求 Schema（SPEC §11.1、§23.2）。\n\n新密码长度以 Unicode 字符计数：12–128。\n\nAttributes:\n    new_password: 新明文密码，12–128 个 Unicode 字符",
         "properties": {
           "new_password": {
-            "type": "string",
+            "description": "新明文密码，12–128 个 Unicode 字符",
             "maxLength": 128,
             "minLength": 12,
             "title": "New Password",
-            "description": "新明文密码，12–128 个 Unicode 字符"
+            "type": "string"
           }
         },
-        "additionalProperties": false,
-        "type": "object",
         "required": [
           "new_password"
         ],
         "title": "ResetPasswordRequest",
-        "description": "管理员重置密码请求 Schema（SPEC §11.1、§23.2）。\n\n新密码长度以 Unicode 字符计数：12–128。\n\nAttributes:\n    new_password: 新明文密码，12–128 个 Unicode 字符"
+        "type": "object"
       },
-      "SessionItem": {
+      "RoleMemberListResponse": {
+        "additionalProperties": false,
+        "description": "角色成员列表响应 Schema（SPEC §9.3、§13.2）。\n\nAttributes:\n    user_ids: 成员用户 UUID 列表",
         "properties": {
+          "user_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "User Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "user_ids"
+        ],
+        "title": "RoleMemberListResponse",
+        "type": "object"
+      },
+      "RoleResponse": {
+        "additionalProperties": false,
+        "description": "角色响应 Schema（SPEC §9.3、§13.2）。\n\nAttributes:\n    id: 角色 UUID\n    code: 角色编码\n    name: 角色名称\n    status: 角色状态（``active`` 或 ``disabled``）\n    description: 描述（可能为 null）\n    is_builtin: 是否为系统内置角色\n    is_super_admin: 是否为超级管理员角色\n    created_at: 创建时间\n    created_by: 创建人 ID（可能为 null）\n    updated_at: 更新时间\n    updated_by: 更新人 ID（可能为 null）",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
           "id": {
-            "type": "string",
             "format": "uuid",
             "title": "Id",
-            "description": "会话 UUID"
+            "type": "string"
+          },
+          "is_builtin": {
+            "title": "Is Builtin",
+            "type": "boolean"
+          },
+          "is_super_admin": {
+            "title": "Is Super Admin",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "status",
+          "description",
+          "is_builtin",
+          "is_super_admin",
+          "created_at",
+          "created_by",
+          "updated_at",
+          "updated_by"
+        ],
+        "title": "RoleResponse",
+        "type": "object"
+      },
+      "SessionItem": {
+        "additionalProperties": false,
+        "description": "会话列表项 Schema（SPEC §12.3）。\n\nAttributes:\n    id: 会话 UUID\n    device: 设备标识\n    ip: 客户端 IP\n    user_agent: 客户端 User-Agent\n    created_at: 创建时间\n    last_activity_at: 最近活动时间\n    status: 会话状态",
+        "properties": {
+          "created_at": {
+            "description": "创建时间",
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
           },
           "device": {
             "anyOf": [
@@ -1255,39 +637,37 @@
                 "type": "null"
               }
             ],
-            "title": "Device",
-            "description": "设备标识"
+            "description": "设备标识",
+            "title": "Device"
+          },
+          "id": {
+            "description": "会话 UUID",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
           },
           "ip": {
-            "type": "string",
+            "description": "客户端 IP",
             "title": "Ip",
-            "description": "客户端 IP"
-          },
-          "user_agent": {
-            "type": "string",
-            "title": "User Agent",
-            "description": "客户端 User-Agent"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At",
-            "description": "创建时间"
+            "type": "string"
           },
           "last_activity_at": {
-            "type": "string",
+            "description": "最近活动时间",
             "format": "date-time",
             "title": "Last Activity At",
-            "description": "最近活动时间"
+            "type": "string"
           },
           "status": {
-            "type": "string",
+            "description": "会话状态",
             "title": "Status",
-            "description": "会话状态"
+            "type": "string"
+          },
+          "user_agent": {
+            "description": "客户端 User-Agent",
+            "title": "User Agent",
+            "type": "string"
           }
         },
-        "additionalProperties": false,
-        "type": "object",
         "required": [
           "id",
           "device",
@@ -1298,133 +678,163 @@
           "status"
         ],
         "title": "SessionItem",
-        "description": "会话列表项 Schema（SPEC §12.3）。\n\nAttributes:\n    id: 会话 UUID\n    device: 设备标识\n    ip: 客户端 IP\n    user_agent: 客户端 User-Agent\n    created_at: 创建时间\n    last_activity_at: 最近活动时间\n    status: 会话状态"
+        "type": "object"
       },
-      "UpdateSelfProfileRequest": {
-        "properties": {
-          "display_name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100,
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Display Name",
-            "description": "显示名称（可选）"
-          },
-          "phone": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 20
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Phone",
-            "description": "手机号（可选，传 null 清空）"
-          },
-          "email": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 255
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Email",
-            "description": "邮箱（可选，传 null 清空）"
-          }
-        },
+      "UpdateRoleRequest": {
         "additionalProperties": false,
-        "type": "object",
-        "title": "UpdateSelfProfileRequest",
-        "description": "用户自助更新资料请求 Schema（部分更新，SPEC §9.2、§11.1）。\n\n与 :class:`UpdateUserRequest` 字段相同，但语义为自助操作。\n仅允许修改显示名称、手机号和邮箱。\n\nAttributes:\n    display_name: 显示名称（可选）\n    phone: 手机号（可选，传 null 清空）\n    email: 邮箱（可选，传 null 清空）"
-      },
-      "UpdateUserRequest": {
+        "description": "更新角色请求 Schema（部分更新，SPEC §9.2、§13.2）。\n\n不允许更新编码、状态和 is_super_admin/is_builtin 标志。\n\nAttributes:\n    name: 角色名称（可选）\n    description: 描述（可选，传 null 清空）",
         "properties": {
-          "display_name": {
+          "description": {
             "anyOf": [
               {
-                "type": "string",
-                "maxLength": 100,
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Display Name",
-            "description": "显示名称（可选）"
-          },
-          "phone": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 20
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Phone",
-            "description": "手机号（可选，传 null 清空）"
-          },
-          "email": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 255
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Email",
-            "description": "邮箱（可选，传 null 清空）"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "UpdateUserRequest",
-        "description": "管理员更新用户资料请求 Schema（部分更新，SPEC §9.2、§11.1）。\n\n所有字段可选。未提供的字段保持不变；显式传 ``null`` 清空字段值。\n不允许修改用户名、状态和密码（密码通过专用端点操作）。\n\nAttributes:\n    display_name: 显示名称（可选）\n    phone: 手机号（可选，传 null 清空）\n    email: 邮箱（可选，传 null 清空）"
-      },
-      "UserResponse": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "username": {
-            "type": "string",
-            "title": "Username"
-          },
-          "display_name": {
-            "type": "string",
-            "title": "Display Name"
-          },
-          "status": {
-            "type": "string",
-            "title": "Status"
-          },
-          "phone": {
-            "anyOf": [
-              {
+                "maxLength": 500,
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
+            "description": "角色描述（可选，传 null 清空）",
+            "title": "Description"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "角色名称（可选）",
+            "title": "Name"
+          }
+        },
+        "title": "UpdateRoleRequest",
+        "type": "object"
+      },
+      "UpdateSelfProfileRequest": {
+        "additionalProperties": false,
+        "description": "用户自助更新资料请求 Schema（部分更新，SPEC §9.2、§11.1）。\n\n与 :class:`UpdateUserRequest` 字段相同，但语义为自助操作。\n仅允许修改显示名称、手机号和邮箱。\n\nAttributes:\n    display_name: 显示名称（可选）\n    phone: 手机号（可选，传 null 清空）\n    email: 邮箱（可选，传 null 清空）",
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "显示名称（可选）",
+            "title": "Display Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "邮箱（可选，传 null 清空）",
+            "title": "Email"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "手机号（可选，传 null 清空）",
             "title": "Phone"
+          }
+        },
+        "title": "UpdateSelfProfileRequest",
+        "type": "object"
+      },
+      "UpdateUserRequest": {
+        "additionalProperties": false,
+        "description": "管理员更新用户资料请求 Schema（部分更新，SPEC §9.2、§11.1）。\n\n所有字段可选。未提供的字段保持不变；显式传 ``null`` 清空字段值。\n不允许修改用户名、状态和密码（密码通过专用端点操作）。\n\nAttributes:\n    display_name: 显示名称（可选）\n    phone: 手机号（可选，传 null 清空）\n    email: 邮箱（可选，传 null 清空）",
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "显示名称（可选）",
+            "title": "Display Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "邮箱（可选，传 null 清空）",
+            "title": "Email"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "手机号（可选，传 null 清空）",
+            "title": "Phone"
+          }
+        },
+        "title": "UpdateUserRequest",
+        "type": "object"
+      },
+      "UserResponse": {
+        "additionalProperties": false,
+        "description": "用户响应 Schema（SPEC §9.3、§11.2）。\n\n响应直接返回资源 Schema，不使用 ``{code, message, data}`` 信封。\n时间字段使用带时区的 ISO 8601 字符串（SPEC §9.3、§6.3）。\n\n**密码哈希等敏感字段绝不出现在此 Schema 中**\n（SPEC §9.3、§23.2：敏感字段不得进入响应模型）。\n``extra=\"forbid\"`` 防止意外泄露未声明的字段。\n\nAttributes:\n    id: 用户 UUID\n    username: 用户名\n    display_name: 显示名称\n    status: 用户状态（``active`` 或 ``disabled``）\n    phone: 手机号（可能为 null）\n    email: 邮箱（可能为 null）\n    last_login_at: 最近登录时间（可能为 null）\n    password_updated_at: 密码更新时间\n    created_at: 创建时间\n    created_by: 创建人 ID（可能为 null）\n    updated_at: 更新时间\n    updated_by: 更新人 ID（可能为 null）",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
           },
           "email": {
             "anyOf": [
@@ -1437,11 +847,16 @@
             ],
             "title": "Email"
           },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
           "last_login_at": {
             "anyOf": [
               {
-                "type": "string",
-                "format": "date-time"
+                "format": "date-time",
+                "type": "string"
               },
               {
                 "type": "null"
@@ -1450,47 +865,47 @@
             "title": "Last Login At"
           },
           "password_updated_at": {
-            "type": "string",
             "format": "date-time",
-            "title": "Password Updated At"
+            "title": "Password Updated At",
+            "type": "string"
           },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "created_by": {
+          "phone": {
             "anyOf": [
               {
-                "type": "string",
-                "format": "uuid"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Created By"
+            "title": "Phone"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
           },
           "updated_at": {
-            "type": "string",
             "format": "date-time",
-            "title": "Updated At"
+            "title": "Updated At",
+            "type": "string"
           },
           "updated_by": {
             "anyOf": [
               {
-                "type": "string",
-                "format": "uuid"
+                "format": "uuid",
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
             "title": "Updated By"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
           }
         },
-        "additionalProperties": false,
-        "type": "object",
         "required": [
           "id",
           "username",
@@ -1506,10 +921,17 @@
           "updated_by"
         ],
         "title": "UserResponse",
-        "description": "用户响应 Schema（SPEC §9.3、§11.2）。\n\n响应直接返回资源 Schema，不使用 ``{code, message, data}`` 信封。\n时间字段使用带时区的 ISO 8601 字符串（SPEC §9.3、§6.3）。\n\n**密码哈希等敏感字段绝不出现在此 Schema 中**\n（SPEC §9.3、§23.2：敏感字段不得进入响应模型）。\n``extra=\"forbid\"`` 防止意外泄露未声明的字段。\n\nAttributes:\n    id: 用户 UUID\n    username: 用户名\n    display_name: 显示名称\n    status: 用户状态（``active`` 或 ``disabled``）\n    phone: 手机号（可能为 null）\n    email: 邮箱（可能为 null）\n    last_login_at: 最近登录时间（可能为 null）\n    password_updated_at: 密码更新时间\n    created_at: 创建时间\n    created_by: 创建人 ID（可能为 null）\n    updated_at: 更新时间\n    updated_by: 更新人 ID（可能为 null）"
+        "type": "object"
       },
       "ValidationError": {
         "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
           "loc": {
             "items": {
               "anyOf": [
@@ -1521,40 +943,1421 @@
                 }
               ]
             },
-            "type": "array",
-            "title": "Location"
+            "title": "Location",
+            "type": "array"
           },
           "msg": {
-            "type": "string",
-            "title": "Message"
+            "title": "Message",
+            "type": "string"
           },
           "type": {
-            "type": "string",
-            "title": "Error Type"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "ctx": {
-            "type": "object",
-            "title": "Context"
+            "title": "Error Type",
+            "type": "string"
           }
         },
-        "type": "object",
         "required": [
           "loc",
           "msg",
           "type"
         ],
-        "title": "ValidationError"
+        "title": "ValidationError",
+        "type": "object"
       }
     },
     "securitySchemes": {
       "BearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
         "bearerFormat": "Bearer Token",
-        "description": "使用 Bearer Access Token 进行认证（SPEC §12.1）"
+        "description": "使用 Bearer Access Token 进行认证（SPEC §12.1）",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "summary": "FastAPI 后台管理系统 API 基座",
+    "title": "Apex Admin",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/auth/login": {
+      "post": {
+        "description": "使用用户名和密码登录。验证 Argon2id 密码后创建服务端会话，生成 Access Token（响应体返回一次）和 Refresh Token（HttpOnly Cookie）。用户不存在时执行固定 Argon2id 虚拟哈希校验以降低响应时间差。响应设置 Cache-Control: no-store。",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "账号密码登录",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "description": "从 Cookie 读取 Refresh Token，吊销服务端会话并删除 Cookie。Token 无效或已吊销时幂等成功。校验 Origin 是否精确匹配部署配置白名单（SPEC §12.4）。",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "__Host-apex_refresh",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "  Host-Apex Refresh"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "退出登录",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "description": "从 Cookie 读取 Refresh Token，轮换 Token：旧 Token 失效，新 Access Token 在响应体返回，新 Refresh Token 通过 Cookie 设置。已使用的 Token 再次出现时触发重放检测，吊销整个会话和 Token Family。校验 Origin 是否精确匹配部署配置白名单（SPEC §12.4）。响应设置 Cache-Control: no-store。",
+        "operationId": "refresh_api_v1_auth_refresh_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "__Host-apex_refresh",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "  Host-Apex Refresh"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "刷新 Token",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/sessions": {
+      "get": {
+        "description": "查询当前认证用户的全部活动会话列表。",
+        "operationId": "list_sessions_api_v1_auth_sessions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SessionItem"
+                  },
+                  "title": "Response List Sessions Api V1 Auth Sessions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "查看自己的活动会话",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/sessions/{session_id}": {
+      "delete": {
+        "description": "用户退出自己的指定会话（当前或其他会话）。管理员可退出任意用户的会话（强制下线单条）。",
+        "operationId": "revoke_session_api_v1_auth_sessions__session_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "退出指定会话",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/users/{user_id}/sessions": {
+      "delete": {
+        "description": "管理员强制吊销指定用户的全部活跃会话。",
+        "operationId": "force_logout_api_v1_auth_users__user_id__sessions_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "管理员强制下线",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/examples": {
+      "get": {
+        "description": "分页查询全部示例项目。此端点演示分页参数解析、Repository 查询和 Page 响应模式。响应使用标准分页结构 {items, total, page, page_size, pages}。",
+        "operationId": "list_examples_api_v1_examples_get",
+        "parameters": [
+          {
+            "description": "页码，从 1 开始",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "页码，从 1 开始",
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "每页条数，1 至 100",
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "每页条数，1 至 100",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ExampleResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "查询示例项目列表",
+        "tags": [
+          "examples"
+        ]
+      },
+      "post": {
+        "description": "创建一个新的示例项目。此端点演示 Router → Use Case → Domain Policy → Repository → Database 的完整调用流，包含领域事件发布和事务提交。成功返回 HTTP 201 和创建的资源。",
+        "operationId": "create_example_api_v1_examples_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateExampleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateExampleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "创建示例项目",
+        "tags": [
+          "examples"
+        ]
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "description": "查询当前登录用户的资料。响应不含密码哈希。",
+        "operationId": "get_self_profile_api_v1_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "查询当前用户资料",
+        "tags": [
+          "users"
+        ]
+      },
+      "patch": {
+        "description": "当前用户更新自身资料。仅允许修改显示名称、手机号和邮箱。不允许修改用户名、状态和密码。",
+        "operationId": "update_self_profile_api_v1_me_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSelfProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "更新当前用户资料",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/me/change-password": {
+      "post": {
+        "description": "当前用户修改自己的密码。需提供当前密码和新密码。成功返回 HTTP 204，无响应体。",
+        "operationId": "change_password_api_v1_me_change_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "当前用户修改密码",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/roles": {
+      "get": {
+        "description": "分页查询全部角色，按创建时间降序排列。",
+        "operationId": "list_roles_api_v1_roles_get",
+        "parameters": [
+          {
+            "description": "页码，从 1 开始",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "页码，从 1 开始",
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "每页条数，1 至 100",
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "每页条数，1 至 100",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_RoleResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "分页查询角色列表",
+        "tags": [
+          "rbac"
+        ]
+      },
+      "post": {
+        "description": "创建新角色。编码全局唯一。成功返回 HTTP 201。",
+        "operationId": "create_role_api_v1_roles_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "创建角色",
+        "tags": [
+          "rbac"
+        ]
+      }
+    },
+    "/api/v1/roles/{role_id}": {
+      "get": {
+        "description": "查询角色详情（SPEC §13.2）。",
+        "operationId": "get_role_api_v1_roles__role_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "role_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Role Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "查询角色详情",
+        "tags": [
+          "rbac"
+        ]
+      },
+      "patch": {
+        "description": "部分更新角色名称和描述。不允许修改编码、状态和标志。",
+        "operationId": "update_role_api_v1_roles__role_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "role_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Role Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "更新角色",
+        "tags": [
+          "rbac"
+        ]
+      }
+    },
+    "/api/v1/roles/{role_id}/disable": {
+      "post": {
+        "description": "禁用角色。内置超级管理员角色不可禁用。",
+        "operationId": "disable_role_api_v1_roles__role_id__disable_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "role_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Role Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "禁用角色",
+        "tags": [
+          "rbac"
+        ]
+      }
+    },
+    "/api/v1/roles/{role_id}/enable": {
+      "post": {
+        "description": "启用角色（SPEC §13.2）。",
+        "operationId": "enable_role_api_v1_roles__role_id__enable_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "role_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Role Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "启用角色",
+        "tags": [
+          "rbac"
+        ]
+      }
+    },
+    "/api/v1/roles/{role_id}/members": {
+      "get": {
+        "description": "查询指定角色的全部成员用户 ID。",
+        "operationId": "get_role_members_api_v1_roles__role_id__members_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "role_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Role Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleMemberListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "查询角色成员",
+        "tags": [
+          "rbac"
+        ]
+      }
+    },
+    "/api/v1/roles/{role_id}/permissions": {
+      "get": {
+        "description": "查询角色的权限点编码集合（SPEC §13.2）。",
+        "operationId": "get_role_permissions_api_v1_roles__role_id__permissions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "role_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Role Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "查询角色权限",
+        "tags": [
+          "rbac"
+        ]
+      },
+      "put": {
+        "description": "全量替换角色的权限点集合。普通管理员只能授予自身范围内的权限。超级管理员不受限。",
+        "operationId": "assign_permissions_api_v1_roles__role_id__permissions_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "role_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Role Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignPermissionsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "为角色分配权限",
+        "tags": [
+          "rbac"
+        ]
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "description": "分页查询全部用户，按创建时间降序排列。响应使用标准分页结构 {items, total, page, page_size, pages}。",
+        "operationId": "list_users_api_v1_users_get",
+        "parameters": [
+          {
+            "description": "页码，从 1 开始",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "页码，从 1 开始",
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "每页条数，1 至 100",
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "每页条数，1 至 100",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_UserResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "分页查询用户列表",
+        "tags": [
+          "users"
+        ]
+      },
+      "post": {
+        "description": "创建新用户。密码使用 Argon2id 哈希存储，密码最小长度 12 个 Unicode 字符，最大 128 个字符。成功返回 HTTP 201 和创建的用户资源（不含密码哈希）。",
+        "operationId": "create_user_api_v1_users_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "创建用户",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{user_id}": {
+      "get": {
+        "description": "按 UUID 查询单个用户详情。响应不含密码哈希。",
+        "operationId": "get_user_api_v1_users__user_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "查询用户详情",
+        "tags": [
+          "users"
+        ]
+      },
+      "patch": {
+        "description": "部分更新用户资料。仅修改请求中包含的字段。不允许修改用户名、状态和密码。",
+        "operationId": "update_user_api_v1_users__user_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "更新用户资料",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{user_id}/disable": {
+      "post": {
+        "description": "将用户状态设置为禁用。禁止禁用系统最后一个可用超级管理员。",
+        "operationId": "disable_user_api_v1_users__user_id__disable_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "禁用用户",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{user_id}/enable": {
+      "post": {
+        "description": "将用户状态设置为启用。",
+        "operationId": "enable_user_api_v1_users__user_id__enable_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "启用用户",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{user_id}/reset-password": {
+      "post": {
+        "description": "管理员重置指定用户的密码。重置后认证模块吊销该用户全部会话。成功返回 HTTP 204，无响应体。",
+        "operationId": "reset_password_api_v1_users__user_id__reset_password_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "管理员重置用户密码",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{user_id}/roles": {
+      "delete": {
+        "description": "移除用户的指定角色。禁止移除导致系统失去最后一个可用超级管理员的操作。普通管理员只能管理范围是自身子集的用户。",
+        "operationId": "remove_roles_from_user_api_v1_users__user_id__roles_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemoveRolesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "移除用户角色",
+        "tags": [
+          "rbac"
+        ]
+      },
+      "get": {
+        "description": "查询用户的角色列表（SPEC §13.2）。",
+        "operationId": "get_user_roles_api_v1_users__user_id__roles_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RoleResponse"
+                  },
+                  "title": "Response Get User Roles Api V1 Users  User Id  Roles Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "查询用户角色",
+        "tags": [
+          "rbac"
+        ]
+      },
+      "put": {
+        "description": "增量分配：在用户现有角色基础上追加指定角色。普通管理员只能授予自身范围内的角色，只能管理范围是自身子集的用户。超级管理员不受限。",
+        "operationId": "assign_roles_to_user_api_v1_users__user_id__roles_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignRolesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "为用户分配角色",
+        "tags": [
+          "rbac"
+        ]
+      }
+    },
+    "/health/live": {
+      "get": {
+        "description": "存活检查（SPEC §6.2）。\n\n只验证进程事件循环可响应，数据库不可用时仍返回 HTTP 200。",
+        "operationId": "live_health_live_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Live Health Live Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "存活检查",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "description": "就绪检查（SPEC §6.2）。\n\n通过 provider 接口检查 DB 连接和 Alembic revision 一致性。\n任一条件失败时返回 HTTP 503；恢复后无需重启进程即可重新就绪。\n\n返回内容不泄露敏感配置。",
+        "operationId": "ready_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Ready Health Ready Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "就绪检查",
+        "tags": [
+          "health"
+        ]
       }
     }
   }

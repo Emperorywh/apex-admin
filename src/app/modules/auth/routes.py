@@ -47,7 +47,6 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.config.settings import Settings
-from app.modules.auth.application.port import AuthContext
 from app.modules.auth.application.schemas import (
     LoginRequest,
     LoginResponse,
@@ -58,6 +57,8 @@ from app.modules.auth.application.service import AuthService
 from app.modules.auth.domain.model import ABSOLUTE_TIMEOUT_HOURS
 from app.modules.auth.infrastructure.wiring import create_auth_service
 from app.modules.auth.middleware.origin import validate_origin
+from app.modules.rbac.application.port import AuthenticatedUser
+from app.modules.rbac.dependencies import require_permission
 
 # Refresh Token Cookie 名称（SPEC §12.4）
 REFRESH_TOKEN_COOKIE_NAME = "__Host-apex_refresh"
@@ -147,43 +148,6 @@ def _delete_refresh_token_cookie(response: Response) -> None:
         httponly=True,
         samesite="strict",
     )
-
-
-# ---------------------------------------------------------------------------
-# 认证依赖——每请求在线校验（SPEC §12.3）
-# ---------------------------------------------------------------------------
-
-
-async def get_auth_context(
-    request: Request,
-    service: AuthService = Depends(get_auth_service),  # noqa: B008
-) -> AuthContext:
-    """FastAPI 依赖：从 Authorization 头校验 Access Token（SPEC §12.3）。
-
-    每请求验证：Access Token 摘要查 DB；检查用户启用、会话有效、
-    Token 有效、空闲/绝对过期（SPEC §12.3）。
-
-    Raises:
-        HTTPException 401: Token 无效、用户禁用、会话无效或已过期
-    """
-    auth_header = request.headers.get("authorization", "")
-    if not auth_header.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="缺少有效的认证凭证",
-        )
-    access_token = auth_header[7:]  # len("Bearer ") == 7
-
-    try:
-        return await service.validate_access_token(
-            access_token=access_token,
-            current_time=datetime.now(UTC),
-        )
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="认证凭证无效或已过期",
-        ) from exc
 
 
 # ---------------------------------------------------------------------------
@@ -335,11 +299,11 @@ async def refresh(
     description="查询当前认证用户的全部活动会话列表。",
 )
 async def list_sessions(
-    auth_ctx: AuthContext = Depends(get_auth_context),  # noqa: B008
+    current_user: AuthenticatedUser = Depends(require_permission("system:auth:session_read")),  # noqa: B008
     service: AuthService = Depends(get_auth_service),  # noqa: B008
 ) -> list[SessionItem]:
     """查看自己的活动会话（SPEC §12.3）。"""
-    sessions = await service.list_user_sessions(user_id=auth_ctx.user_id)
+    sessions = await service.list_user_sessions(user_id=current_user.user_id)
     return [
         SessionItem(
             id=s.id,
@@ -364,13 +328,13 @@ async def list_sessions(
 )
 async def revoke_session(
     session_id: UUID,
-    auth_ctx: AuthContext = Depends(get_auth_context),  # noqa: B008
+    current_user: AuthenticatedUser = Depends(require_permission("system:auth:session_revoke")),  # noqa: B008
     service: AuthService = Depends(get_auth_service),  # noqa: B008
 ) -> None:
     """退出指定会话（SPEC §12.3）。"""
     await service.revoke_session(
         session_id=session_id,
-        actor_id=auth_ctx.user_id,
+        actor_id=current_user.user_id,
         current_time=datetime.now(UTC),
     )
 
@@ -383,17 +347,15 @@ async def revoke_session(
 )
 async def force_logout(
     user_id: UUID,
-    auth_ctx: AuthContext = Depends(get_auth_context),  # noqa: B008
+    current_user: AuthenticatedUser = Depends(require_permission("system:auth:force_logout")),  # noqa: B008
     service: AuthService = Depends(get_auth_service),  # noqa: B008
 ) -> None:
     """管理员强制下线（SPEC §12.3）。
 
-    管理员权限校验将在 RBAC 模块（TASK-018）完成后通过权限点
-    ``system:auth:force_logout`` 强制执行。
+    权限通过权限点 ``system:auth:force_logout`` 强制执行。
     """
     # 防止用户对自己使用强制下线（应使用普通退出）
-    # 管理员权限校验由 RBAC 模块在 TASK-018 完成
-    if user_id == auth_ctx.user_id:
+    if user_id == current_user.user_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="请使用退出会话端点退出自己的会话",

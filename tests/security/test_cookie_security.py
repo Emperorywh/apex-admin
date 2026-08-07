@@ -281,15 +281,15 @@ class TestBusinessRoutesUseBearerAuth:
     """
 
     def test_auth_context_uses_bearer_header(self) -> None:
-        """``get_auth_context`` 从 ``Authorization: Bearer`` 头读取 Token（SPEC §12.4）。
+        """统一认证依赖从 ``Authorization: Bearer`` 头读取 Token（SPEC §12.4、§13.3）。
 
         静态验证：认证依赖不使用 Cookie 参数获取 Access Token。
         """
         import inspect
 
-        from app.modules.auth.routes import get_auth_context
+        from app.modules.rbac.dependencies import _validate_access_token
 
-        source = inspect.getsource(get_auth_context)
+        source = inspect.getsource(_validate_access_token)
         # 确认使用 Authorization 头
         assert "authorization" in source.lower()
         assert "Bearer" in source
@@ -297,11 +297,11 @@ class TestBusinessRoutesUseBearerAuth:
         assert "Cookie" not in source or "cookie" not in source.lower()
 
     def test_session_endpoints_require_bearer_auth(self) -> None:
-        """会话管理端点使用 Bearer 认证依赖而非 Cookie（SPEC §12.4）。"""
+        """会话管理端点使用 require_permission 认证依赖而非 Cookie（SPEC §12.4、§13.3）。"""
         import inspect
 
         from app.modules.auth.routes import list_sessions
 
         source = inspect.getsource(list_sessions)
-        # 确认使用 get_auth_context 依赖
-        assert "get_auth_context" in source
+        # 确认使用 require_permission 依赖
+        assert "require_permission" in source

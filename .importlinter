@@ -77,6 +77,23 @@ ignore_imports =
     app.modules.auth.infrastructure.wiring -> app.events.registry
     app.modules.auth.routes -> app.config.settings
     app.modules.auth.middleware.origin -> app.config.settings
+    app.modules.rbac.domain.events -> app.events.base
+    app.modules.rbac.application.service -> app.events.dispatcher
+    app.modules.rbac.application.service -> app.errors
+    app.modules.rbac.application.schemas -> app.api.schemas
+    app.modules.rbac.infrastructure.event_handlers -> app.events.base
+    app.modules.rbac.infrastructure.unit_of_work -> app.infrastructure.database.unit_of_work
+    app.modules.rbac.infrastructure.wiring -> app.events.base
+    app.modules.rbac.infrastructure.wiring -> app.events.dispatcher
+    app.modules.rbac.infrastructure.wiring -> app.events.registry
+    app.modules.rbac.infrastructure.wiring -> app.modules.user.application.port
+    app.modules.rbac.infrastructure.wiring -> app.modules.user.domain.model
+    app.modules.rbac.infrastructure.wiring -> app.modules.user.infrastructure.repository
+    app.modules.rbac.routes -> app.api.pagination
+    app.modules.rbac.dependencies -> app.modules.auth.application.port
+    app.modules.rbac.dependencies -> app.modules.auth.application.service
+    app.modules.rbac.dependencies -> app.modules.auth.infrastructure.wiring
+    app.modules.rbac.dependencies -> app.config.settings
 
 # ---------------------------------------------------------------------------
 # API layer must not depend on Infrastructure layer (SPEC 5.2, 5.6)
