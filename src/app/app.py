@@ -20,6 +20,7 @@ import functools
 from fastapi import APIRouter, FastAPI
 
 from app.api.handlers import register_exception_handlers
+from app.api.openapi import configure_documentation, get_documentation_urls
 from app.config.settings import Settings
 from app.health.providers import DbPoolProvider, ReadinessProbe
 from app.health.routes import router as health_router
@@ -62,17 +63,28 @@ def create_app(
         lifespan, settings=settings, db_pool_provider=db_pool_provider
     )
 
+    # 文档端点 URL 配置（SPEC §9.6：生产环境禁用文档端点）
+    # 必须在构造阶段传入，确保 None 配置从路由注册开始生效
+    docs_url, redoc_url, openapi_url = get_documentation_urls(settings)
+
     app = FastAPI(
         title=APP_NAME,
         version=APP_VERSION,
         summary="FastAPI 后台管理系统 API 基座",
         lifespan=lifespan_factory,
+        docs_url=docs_url,
+        redoc_url=redoc_url,
+        openapi_url=openapi_url,
     )
 
     # 存储配置和 provider 到 app.state，供健康检查和后续模块使用
     app.state.settings = settings
     app.state.db_pool_provider = db_pool_provider
     app.state.revision_probe = revision_probe
+
+    # 配置 OpenAPI schema 生成（SPEC §9.6：标签分组、Operation ID 唯一性、
+    # Bearer 认证方案集成）
+    configure_documentation(app)
 
     # 注册 RFC 9457 异常处理器（SPEC §10.1：在 API 边界统一完成异常到 HTTP 响应的转换）
     register_exception_handlers(app)

@@ -1,0 +1,72 @@
+{
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "bearerFormat": "Bearer Token",
+        "description": "使用 Bearer Access Token 进行认证（SPEC §12.1）",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "summary": "FastAPI 后台管理系统 API 基座",
+    "title": "Apex Admin",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health/live": {
+      "get": {
+        "description": "存活检查（SPEC §6.2）。\n\n只验证进程事件循环可响应，数据库不可用时仍返回 HTTP 200。",
+        "operationId": "live_health_live_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Live Health Live Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "存活检查",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "description": "就绪检查（SPEC §6.2）。\n\n通过 provider 接口检查 DB 连接和 Alembic revision 一致性。\n任一条件失败时返回 HTTP 503；恢复后无需重启进程即可重新就绪。\n\n返回内容不泄露敏感配置。",
+        "operationId": "ready_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Ready Health Ready Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "就绪检查",
+        "tags": [
+          "health"
+        ]
+      }
+    }
+  }
+}
