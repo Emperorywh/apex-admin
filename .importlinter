@@ -16,6 +16,7 @@ root_package = app
 name = Layered architecture dependency rules (SPEC 5.2)
 type = layers
 layers =
+    app.cli
     app.app
     app.lifespan
     app.composition_root
