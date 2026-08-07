@@ -21,6 +21,7 @@ from fastapi import APIRouter, FastAPI
 
 from app.api.handlers import register_exception_handlers
 from app.api.openapi import configure_documentation, get_documentation_urls
+from app.composition_root import get_enabled_modules
 from app.config.settings import Settings
 from app.health.providers import DbPoolProvider, ReadinessProbe
 from app.health.routes import router as health_router
@@ -95,8 +96,11 @@ def create_app(
     # 注册健康检查路由（不在 /api/v1 前缀下，允许反向代理和进程管理器直接访问）
     app.include_router(health_router)
 
-    # 注册 API 路由（统一 /api/v1 前缀，后续业务模块挂载于此）
+    # 注册 API 路由（统一 /api/v1 前缀，业务模块挂载于此，SPEC §9.1、§5.5）
     api_router = APIRouter(prefix=API_PREFIX)
+    for module in get_enabled_modules():
+        for module_router in module.routers:
+            api_router.include_router(module_router)
     app.include_router(api_router)
 
     return app

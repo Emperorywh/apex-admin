@@ -11,6 +11,14 @@ root_package = app
 #
 # Layers listed from highest to lowest. Higher layers may depend on lower
 # layers; lower layers must not depend on higher layers.
+#
+# Business modules (app.modules.<name>) implement the full layered
+# architecture within themselves (Router -> Application -> Domain -> Port ->
+# Infrastructure Adapter). Their internal subpackages span multiple
+# architectural layers. The ignore_imports entries below allow example
+# module subpackages to reference the core framework layers they need
+# (api schemas, errors, events, infrastructure adapters). The developer
+# guide documents the expected internal layering for each module.
 # ---------------------------------------------------------------------------
 [importlinter:contract:layered-architecture]
 name = Layered architecture dependency rules (SPEC 5.2)
@@ -33,6 +41,19 @@ layers =
     app.modules
     app.ports
     app.health.providers
+ignore_imports =
+    app.modules.example.domain.events -> app.events.base
+    app.modules.example.application.service -> app.events.dispatcher
+    app.modules.example.application.service -> app.errors
+    app.modules.example.application.schemas -> app.api.schemas
+    app.modules.example.infrastructure.event_handlers -> app.events.base
+    app.modules.example.infrastructure.unit_of_work -> app.infrastructure.database.unit_of_work
+    app.modules.example.infrastructure.wiring -> app.events.base
+    app.modules.example.infrastructure.wiring -> app.events.dispatcher
+    app.modules.example.infrastructure.wiring -> app.events.registry
+    app.modules.example.routes -> app.api.pagination
+    app.modules.example.routes -> app.api.schemas
+    app.modules.example.routes -> app.infrastructure.database.db_pool_provider
 
 # ---------------------------------------------------------------------------
 # API layer must not depend on Infrastructure layer (SPEC 5.2, 5.6)

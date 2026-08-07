@@ -34,14 +34,14 @@ class TestSingleHead:
 
         assert len(heads) == 1, f"期望恰好一个 head，实际有 {len(heads)} 个：{heads}"
 
-    def test_head_is_initial_revision(self) -> None:
-        """当前 head 为初始基线 revision。"""
+    def test_head_matches_latest_revision(self) -> None:
+        """当前 head 为最新 revision（示例模块迁移加入后为 0002）。"""
         config = AlembicConfig()
         config.set_main_option("script_location", SCRIPT_LOCATION)
         script_dir = ScriptDirectory.from_config(config)
         heads = script_dir.get_heads()
 
-        assert heads == ["0001"]
+        assert heads == ["0002"]
 
     def test_no_branch_labels(self) -> None:
         """G1 基线不使用分支标签，确保全局 revision 图线性。"""

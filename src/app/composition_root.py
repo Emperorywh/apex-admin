@@ -14,6 +14,7 @@ Composition Root 是唯一允许同时引用接口与具体实现并执行装配
 from __future__ import annotations
 
 from app.modules.contract import ModuleDefinition
+from app.modules.example.definition import MODULE as EXAMPLE_MODULE
 
 # ---------------------------------------------------------------------------
 # 显式模块清单（SPEC §5.5：无扫描、无导入副作用）
@@ -21,11 +22,13 @@ from app.modules.contract import ModuleDefinition
 # 新增模块在此列表中增加一项 ModuleDefinition。
 # 列表顺序决定初始化器执行顺序。
 #
-# G1 阶段：无业务模块——基座核心能力由框架层直接提供。
+# G1 阶段：最小示例模块验证完整接入模式（SPEC §30.2）。
 # G2 阶段：新增身份、认证、RBAC、审计等模块。
 # G3 阶段：新增组织、菜单、配置、字典、文件等模块。
 # ---------------------------------------------------------------------------
-ENABLED_MODULES: list[ModuleDefinition] = []
+ENABLED_MODULES: list[ModuleDefinition] = [
+    EXAMPLE_MODULE,
+]
 
 
 def get_enabled_modules() -> list[ModuleDefinition]:

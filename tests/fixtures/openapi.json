@@ -1,71 +1,327 @@
 {
-  "components": {
-    "securitySchemes": {
-      "BearerAuth": {
-        "bearerFormat": "Bearer Token",
-        "description": "使用 Bearer Access Token 进行认证（SPEC §12.1）",
-        "scheme": "bearer",
-        "type": "http"
-      }
-    }
-  },
+  "openapi": "3.1.0",
   "info": {
-    "summary": "FastAPI 后台管理系统 API 基座",
     "title": "Apex Admin",
+    "summary": "FastAPI 后台管理系统 API 基座",
     "version": "0.1.0"
   },
-  "openapi": "3.1.0",
   "paths": {
     "/health/live": {
       "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "存活检查",
         "description": "存活检查（SPEC §6.2）。\n\n只验证进程事件循环可响应，数据库不可用时仍返回 HTTP 200。",
         "operationId": "live_health_live_get",
         "responses": {
           "200": {
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
                   "additionalProperties": {
                     "type": "string"
                   },
-                  "title": "Response Live Health Live Get",
-                  "type": "object"
+                  "type": "object",
+                  "title": "Response Live Health Live Get"
                 }
               }
-            },
-            "description": "Successful Response"
+            }
           }
-        },
-        "summary": "存活检查",
-        "tags": [
-          "health"
-        ]
+        }
       }
     },
     "/health/ready": {
       "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "就绪检查",
         "description": "就绪检查（SPEC §6.2）。\n\n通过 provider 接口检查 DB 连接和 Alembic revision 一致性。\n任一条件失败时返回 HTTP 503；恢复后无需重启进程即可重新就绪。\n\n返回内容不泄露敏感配置。",
         "operationId": "ready_health_ready_get",
         "responses": {
           "200": {
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
                   "additionalProperties": {
                     "type": "string"
                   },
-                  "title": "Response Ready Health Ready Get",
-                  "type": "object"
+                  "type": "object",
+                  "title": "Response Ready Health Ready Get"
                 }
               }
-            },
-            "description": "Successful Response"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/examples": {
+      "post": {
+        "tags": [
+          "examples"
+        ],
+        "summary": "创建示例项目",
+        "description": "创建一个新的示例项目。此端点演示 Router → Use Case → Domain Policy → Repository → Database 的完整调用流，包含领域事件发布和事务提交。成功返回 HTTP 201 和创建的资源。",
+        "operationId": "create_example_api_v1_examples_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateExampleRequest"
+              }
+            }
           }
         },
-        "summary": "就绪检查",
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateExampleResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
         "tags": [
-          "health"
-        ]
+          "examples"
+        ],
+        "summary": "查询示例项目列表",
+        "description": "分页查询全部示例项目。此端点演示分页参数解析、Repository 查询和 Page 响应模式。响应使用标准分页结构 {items, total, page, page_size, pages}。",
+        "operationId": "list_examples_api_v1_examples_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "页码，从 1 开始",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "页码，从 1 开始"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "每页条数，1 至 100",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "每页条数，1 至 100"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ExampleResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateExampleRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "CreateExampleRequest",
+        "description": "创建示例项目请求 Schema（SPEC §9.2）。\n\nAttributes:\n    name: 示例项目名称，非空且不超过 100 字符"
+      },
+      "CreateExampleResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "CreateExampleResponse",
+        "description": "创建示例项目成功响应（SPEC §9.3：201 返回资源 Schema）。"
+      },
+      "ExampleResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "created_at"
+        ],
+        "title": "ExampleResponse",
+        "description": "示例项目响应 Schema（SPEC §9.3）。\n\n响应直接返回资源 Schema，不使用 ``{code, message, data}`` 信封。\n时间字段使用带时区的 ISO 8601 字符串（SPEC §9.3、§6.3）。\n\n``from_attributes=True`` 允许从领域实体（dataclass）直接构造响应。\n\nAttributes:\n    id: 实体 UUID\n    name: 名称\n    created_at: 创建时间（UTC）"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Page_ExampleResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ExampleResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "pages"
+        ],
+        "title": "Page[ExampleResponse]"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Bearer Token",
+        "description": "使用 Bearer Access Token 进行认证（SPEC §12.1）"
       }
     }
   }
