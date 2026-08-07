@@ -28,6 +28,7 @@ layers =
     app.context
     app.errors
     app.config
+    app.events
     app.modules
     app.ports
     app.health.providers
