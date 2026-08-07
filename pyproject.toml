@@ -28,6 +28,7 @@ dependencies = [
 dev = [
     "pytest~=9.0",
     "pytest-asyncio~=1.4.0",
+    "pytest-cov~=7.0",
     "httpx",
     "testcontainers[postgres]",
     # 静态检查
@@ -86,6 +87,8 @@ exclude = ["src/app/infrastructure/database/migrations/"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# 严格标记模式：使用未注册的 marker 时 pytest 报错（SPEC §28）
+addopts = "--strict-markers"
 markers = [
     # 完成门槛标记（SPEC §28）
     "g1: G1 Core Ready 测试",
@@ -99,3 +102,19 @@ markers = [
     "security: 安全测试",
     "deployment: 部署测试",
 ]
+
+# ---------------------------------------------------------------------------
+# coverage — 覆盖率配置（SPEC §28.1）
+# ---------------------------------------------------------------------------
+
+[tool.coverage.run]
+# 覆盖率目标范围：src/app 包下全部代码
+source = ["src/app"]
+# 启用分支覆盖率（SPEC §28.1：分支覆盖率不低于 80%）
+branch = true
+
+[tool.coverage.report]
+# G1 门槛覆盖率不低于 80%（SPEC §28.1）
+fail_under = 80
+# 按文件展示缺失行，便于定位未覆盖代码
+show_missing = true

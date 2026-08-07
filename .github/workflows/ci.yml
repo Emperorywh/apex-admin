@@ -1,0 +1,96 @@
+# CI 流水线（SPEC §28、§29.1、§29.3）
+#
+# 在每次 push 和 pull request 时执行完整的 G1 门槛验证：
+# - 依赖锁定与冻结安装（§29.3）
+# - 静态质量检查：Ruff lint、Ruff format、mypy strict、import-linter（§29.1）
+# - 测试与覆盖率：pytest -m g1，分支覆盖率不低于 80%（§28.1、§28.2）
+# - 依赖安全扫描：pip-audit（§29.3）
+#
+# 集成测试使用 Testcontainers PostgreSQL 18，需要 Docker 环境（§28.2）。
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# 同一分支的并发运行自动取消旧的，节省 CI 资源
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Python 版本固定（SPEC §5.4：CPython 3.13.x）
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  ci:
+    name: G1 CI
+    runs-on: ubuntu-latest
+
+    steps:
+      # ----------------------------------------------------------------------
+      # 代码检出
+      # ----------------------------------------------------------------------
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ----------------------------------------------------------------------
+      # 安装 uv（SPEC §5.4：固定使用 uv 0.11.x）
+      # ----------------------------------------------------------------------
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11"
+          enable-cache: true
+
+      # ----------------------------------------------------------------------
+      # 安装 Python（SPEC §5.4：CPython 3.13.x）
+      # ----------------------------------------------------------------------
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      # ----------------------------------------------------------------------
+      # 依赖管理（SPEC §29.3）
+      # ----------------------------------------------------------------------
+
+      - name: Verify lock file is up to date
+        run: uv lock --check
+
+      - name: Install dependencies (frozen)
+        run: uv sync --frozen
+
+      # ----------------------------------------------------------------------
+      # 静态质量（SPEC §29.1）
+      # ----------------------------------------------------------------------
+
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+      - name: mypy strict
+        run: uv run mypy --strict src
+
+      - name: Architecture check (import-linter)
+        run: uv run lint-imports
+
+      # ----------------------------------------------------------------------
+      # 测试与覆盖率（SPEC §28.1、§28.2）
+      # pytest -m g1 运行 G1 门槛全部测试（含 unit、integration、api 标记）
+      # 覆盖率：--cov=src/app，分支覆盖率不低于 80%
+      # Testcontainers 需要 Docker，GitHub Actions runner 原生支持
+      # ----------------------------------------------------------------------
+
+      - name: Test with coverage
+        run: uv run pytest -m g1 --cov=src/app --cov-branch --cov-fail-under=80 --cov-report=term-missing
+
+      # ----------------------------------------------------------------------
+      # 依赖安全扫描（SPEC §29.3）
+      # pip-audit 扫描 uv.lock 锁定的完整依赖图
+      # ----------------------------------------------------------------------
+
+      - name: Dependency security scan
+        run: uv run pip-audit
