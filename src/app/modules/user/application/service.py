@@ -30,6 +30,7 @@ from app.modules.user.domain.events import UserCreated, UserDisabled
 from app.modules.user.domain.model import User
 from app.modules.user.domain.password import PasswordHasher
 from app.modules.user.domain.policy import PasswordPolicy, UsernamePolicy
+from app.ports.session_lifecycle import SessionLifecyclePort
 
 
 class UserService(UserApplicationPort):
@@ -38,11 +39,16 @@ class UserService(UserApplicationPort):
     实现用户管理的全部 Use Case。每个写 Use Case 在独立的 Unit of Work
     中执行，退出时统一提交或回滚。
 
+    用户禁用、管理员重置密码和用户自助修改密码时，通过
+    :class:`~app.ports.session_lifecycle.SessionLifecyclePort` 在同一事务内
+    吊销相关会话（SPEC §12.3）。
+
     Args:
         uow_factory: 工作单元工厂，每次调用返回新的 :class:`UserUnitOfWork`
         password_hasher: Argon2id 密码哈希服务
         last_super_admin_check: 最后一个超级管理员检查端口
         event_dispatcher: 事务内事件调度器
+        session_lifecycle: 会话生命周期管理端口（可选，认证模块装配后注入）
     """
 
     def __init__(
@@ -51,11 +57,13 @@ class UserService(UserApplicationPort):
         password_hasher: PasswordHasher,
         last_super_admin_check: LastSuperAdminCheck,
         event_dispatcher: TransactionalEventDispatcher,
+        session_lifecycle: SessionLifecyclePort | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._password_hasher = password_hasher
         self._super_admin_check = last_super_admin_check
         self._event_dispatcher = event_dispatcher
+        self._session_lifecycle = session_lifecycle
 
     # ------------------------------------------------------------------
     # 管理 Use Case
@@ -223,6 +231,15 @@ class UserService(UserApplicationPort):
             )
             await uow.users.update(disabled_user)
 
+            # 用户禁用 → 全部会话失效（SPEC §12.3）
+            if self._session_lifecycle is not None:
+                await self._session_lifecycle.revoke_all_user_sessions(
+                    uow,
+                    user_id,
+                    "user_disabled",
+                    current_time,
+                )
+
             self._event_dispatcher.collect(
                 UserDisabled(
                     occurred_at=current_time,
@@ -268,6 +285,16 @@ class UserService(UserApplicationPort):
                 actor_id=actor_id,
             )
             await uow.users.update(updated_user)
+
+            # 管理员重置密码 → 吊销全部会话（SPEC §12.3）
+            if self._session_lifecycle is not None:
+                await self._session_lifecycle.revoke_all_user_sessions(
+                    uow,
+                    user_id,
+                    "password_reset",
+                    current_time,
+                )
+
             return updated_user
 
     # ------------------------------------------------------------------
@@ -281,6 +308,7 @@ class UserService(UserApplicationPort):
         current_password: str,
         new_password: str,
         current_time: datetime,
+        keep_session_id: UUID | None = None,
     ) -> User:
         """用户自助修改密码 Use Case（SPEC §11.1）。
 
@@ -317,6 +345,25 @@ class UserService(UserApplicationPort):
                 actor_id=user_id,
             )
             await uow.users.update(updated_user)
+
+            # 用户自助改密 → 保留当前会话、吊销其他（SPEC §12.3）
+            if self._session_lifecycle is not None:
+                if keep_session_id is not None:
+                    await self._session_lifecycle.revoke_user_sessions_except(
+                        uow,
+                        user_id,
+                        keep_session_id,
+                        "password_changed",
+                        current_time,
+                    )
+                else:
+                    await self._session_lifecycle.revoke_all_user_sessions(
+                        uow,
+                        user_id,
+                        "password_changed",
+                        current_time,
+                    )
+
             return updated_user
 
     async def get_self_profile(self, user_id: UUID) -> User:

@@ -190,6 +190,7 @@ class UserApplicationPort(ABC):
         current_password: str,
         new_password: str,
         current_time: datetime,
+        keep_session_id: UUID | None = None,
     ) -> User:
         """用户自助修改密码（SPEC §11.1）。
 
@@ -201,6 +202,8 @@ class UserApplicationPort(ABC):
             current_password: 当前明文密码
             new_password: 新明文密码（须通过密码策略校验）
             current_time: 当前 UTC 时间
+            keep_session_id: 要保留的当前会话 UUID（传入时保留该会话、
+                吊销其他会话；为 None 时吊销全部会话）
 
         Returns:
             更新后的 :class:`User` 实体

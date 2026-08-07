@@ -70,6 +70,7 @@ ignore_imports =
     app.modules.auth.application.schemas -> app.api.schemas
     app.modules.auth.infrastructure.event_handlers -> app.events.base
     app.modules.auth.infrastructure.unit_of_work -> app.infrastructure.database.unit_of_work
+    app.modules.auth.infrastructure.session_lifecycle -> app.infrastructure.database.unit_of_work
     app.modules.auth.infrastructure.wiring -> app.config.settings
     app.modules.auth.infrastructure.wiring -> app.events.base
     app.modules.auth.infrastructure.wiring -> app.events.dispatcher

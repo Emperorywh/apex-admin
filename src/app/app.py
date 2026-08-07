@@ -83,6 +83,14 @@ def create_app(
     app.state.db_pool_provider = db_pool_provider
     app.state.revision_probe = revision_probe
 
+    # 会话生命周期端口——无状态，供用户模块在密码变更/禁用时
+    # 在同一事务内吊销会话（SPEC §12.3）
+    from app.modules.auth.infrastructure.session_lifecycle import (
+        SqlAlchemySessionLifecycle,
+    )
+
+    app.state.session_lifecycle = SqlAlchemySessionLifecycle()
+
     # 配置 OpenAPI schema 生成（SPEC §9.6：标签分组、Operation ID 唯一性、
     # Bearer 认证方案集成）
     configure_documentation(app)

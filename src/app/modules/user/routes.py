@@ -86,9 +86,13 @@ def get_user_service(request: Request) -> UserService:
 
     Router 端点通过 ``Depends(get_user_service)`` 获取服务。
     服务实例轻量（仅持有工厂引用），每次请求构造。
+
+    会话生命周期端口从 ``app.state.session_lifecycle`` 获取，
+    由 Composition Root 在应用启动时装配（SPEC §12.3）。
     """
     engine = _get_engine(request)
-    return create_user_service(engine)
+    session_lifecycle = getattr(request.app.state, "session_lifecycle", None)
+    return create_user_service(engine, session_lifecycle=session_lifecycle)
 
 
 def get_current_user_id(
@@ -300,13 +304,19 @@ async def change_password(
     request_body: ChangePasswordRequest,
     current_user_id: UUID = Depends(get_current_user_id),  # noqa: B008
     service: UserService = Depends(get_user_service),  # noqa: B008
+    x_session_id: UUID | None = Header(default=None, alias="X-Session-Id"),  # noqa: B008
 ) -> None:
-    """用户自助修改密码（SPEC §11.1）。"""
+    """用户自助修改密码（SPEC §11.1）。
+
+    传入 X-Session-Id 时保留当前会话、吊销其他会话（SPEC §12.3）。
+    TASK-017 实现完整认证后，X-Session-Id 将由认证依赖提供。
+    """
     await service.change_password(
         user_id=current_user_id,
         current_password=request_body.current_password,
         new_password=request_body.new_password,
         current_time=datetime.now(UTC),
+        keep_session_id=x_session_id,
     )
 
 

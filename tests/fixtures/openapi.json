@@ -597,6 +597,23 @@
         "operationId": "change_password_api_v1_me_change_password_post",
         "parameters": [
           {
+            "name": "X-Session-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Id"
+            }
+          },
+          {
             "name": "X-User-Id",
             "in": "header",
             "required": true,
@@ -699,6 +716,156 @@
                 }
               ],
               "title": "  Host-Apex Refresh"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "刷新 Token",
+        "description": "从 Cookie 读取 Refresh Token，轮换 Token：旧 Token 失效，新 Access Token 在响应体返回，新 Refresh Token 通过 Cookie 设置。已使用的 Token 再次出现时触发重放检测，吊销整个会话和 Token Family。响应设置 Cache-Control: no-store。",
+        "operationId": "refresh_api_v1_auth_refresh_post",
+        "parameters": [
+          {
+            "name": "__Host-apex_refresh",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "  Host-Apex Refresh"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/sessions": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "查看自己的活动会话",
+        "description": "查询当前认证用户的全部活动会话列表。",
+        "operationId": "list_sessions_api_v1_auth_sessions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SessionItem"
+                  },
+                  "type": "array",
+                  "title": "Response List Sessions Api V1 Auth Sessions Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/sessions/{session_id}": {
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "退出指定会话",
+        "description": "用户退出自己的指定会话（当前或其他会话）。管理员可退出任意用户的会话（强制下线单条）。",
+        "operationId": "revoke_session_api_v1_auth_sessions__session_id__delete",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/users/{user_id}/sessions": {
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "管理员强制下线",
+        "description": "管理员强制吊销指定用户的全部活跃会话。",
+        "operationId": "force_logout_api_v1_auth_users__user_id__sessions_delete",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
             }
           }
         ],
@@ -1018,6 +1185,41 @@
         ],
         "title": "Page[UserResponse]"
       },
+      "RefreshResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token",
+            "description": "新 Access Token（不透明，仅返回一次）"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "description": "Token 类型",
+            "default": "Bearer"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In",
+            "description": "Access Token 有效期（秒）"
+          },
+          "session_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Session Id",
+            "description": "所属会话的 UUID"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "access_token",
+          "expires_in",
+          "session_id"
+        ],
+        "title": "RefreshResponse",
+        "description": "刷新响应 Schema（SPEC §12.2）。\n\n与登录响应结构一致：Access Token 在响应体中返回一次，\n新 Refresh Token 通过 HttpOnly Cookie 传递。\n响应必须设置 ``Cache-Control: no-store``。"
+      },
       "ResetPasswordRequest": {
         "properties": {
           "new_password": {
@@ -1035,6 +1237,68 @@
         ],
         "title": "ResetPasswordRequest",
         "description": "管理员重置密码请求 Schema（SPEC §11.1、§23.2）。\n\n新密码长度以 Unicode 字符计数：12–128。\n\nAttributes:\n    new_password: 新明文密码，12–128 个 Unicode 字符"
+      },
+      "SessionItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id",
+            "description": "会话 UUID"
+          },
+          "device": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device",
+            "description": "设备标识"
+          },
+          "ip": {
+            "type": "string",
+            "title": "Ip",
+            "description": "客户端 IP"
+          },
+          "user_agent": {
+            "type": "string",
+            "title": "User Agent",
+            "description": "客户端 User-Agent"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "创建时间"
+          },
+          "last_activity_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Activity At",
+            "description": "最近活动时间"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "会话状态"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "device",
+          "ip",
+          "user_agent",
+          "created_at",
+          "last_activity_at",
+          "status"
+        ],
+        "title": "SessionItem",
+        "description": "会话列表项 Schema（SPEC §12.3）。\n\nAttributes:\n    id: 会话 UUID\n    device: 设备标识\n    ip: 客户端 IP\n    user_agent: 客户端 User-Agent\n    created_at: 创建时间\n    last_activity_at: 最近活动时间\n    status: 会话状态"
       },
       "UpdateSelfProfileRequest": {
         "properties": {

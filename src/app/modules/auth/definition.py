@@ -52,6 +52,22 @@ MODULE: ModuleDefinition = ModuleDefinition(
                 code="system:auth:logout",
                 description="登出",
             ),
+            PermissionPoint(
+                code="system:auth:refresh",
+                description="刷新 Token",
+            ),
+            PermissionPoint(
+                code="system:auth:session_read",
+                description="查看会话",
+            ),
+            PermissionPoint(
+                code="system:auth:session_revoke",
+                description="吊销会话",
+            ),
+            PermissionPoint(
+                code="system:auth:force_logout",
+                description="管理员强制下线",
+            ),
         }
     ),
     error_codes=frozenset(
@@ -60,6 +76,26 @@ MODULE: ModuleDefinition = ModuleDefinition(
                 code="AUTH.INVALID_CREDENTIALS",
                 http_status=401,
                 description="用户名或密码不正确",
+            ),
+            ErrorCode(
+                code="AUTH.TOKEN_REPLAY",
+                http_status=401,
+                description="Refresh Token 重放检测",
+            ),
+            ErrorCode(
+                code="AUTH.SESSION_REVOKED",
+                http_status=401,
+                description="会话已吊销",
+            ),
+            ErrorCode(
+                code="AUTH.SESSION_EXPIRED",
+                http_status=401,
+                description="会话已过期",
+            ),
+            ErrorCode(
+                code="AUTH.SESSION_NOT_FOUND",
+                http_status=404,
+                description="会话不存在",
             ),
         }
     ),

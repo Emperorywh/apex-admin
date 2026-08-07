@@ -28,6 +28,7 @@ from app.modules.user.infrastructure.event_handlers import (
     handle_user_disabled,
 )
 from app.modules.user.infrastructure.unit_of_work import SqlAlchemyUserUnitOfWork
+from app.ports.session_lifecycle import SessionLifecyclePort
 
 
 class NoOpLastSuperAdminCheck(LastSuperAdminCheck):
@@ -50,6 +51,7 @@ def create_user_service(
     *,
     password_hasher: PasswordHasher | None = None,
     last_super_admin_check: LastSuperAdminCheck | None = None,
+    session_lifecycle: SessionLifecyclePort | None = None,
 ) -> UserService:
     """从异步引擎装配完整的用户服务。
 
@@ -65,6 +67,7 @@ def create_user_service(
         engine: SQLAlchemy 异步引擎
         password_hasher: 密码哈希服务实例（可选，默认新建）
         last_super_admin_check: 超级管理员检查端口（可选，默认 NoOp）
+        session_lifecycle: 会话生命周期端口（可选，认证模块装配后注入）
 
     Returns:
         可用的 :class:`UserService` 实例
@@ -88,4 +91,10 @@ def create_user_service(
     event_registry = EventHandlerRegistry(module_registry, handler_implementations)
     event_dispatcher = TransactionalEventDispatcher(event_registry)
 
-    return UserService(uow_factory, hasher, super_admin_check, event_dispatcher)
+    return UserService(
+        uow_factory,
+        hasher,
+        super_admin_check,
+        event_dispatcher,
+        session_lifecycle,
+    )

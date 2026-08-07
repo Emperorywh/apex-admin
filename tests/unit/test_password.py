@@ -348,6 +348,9 @@ class _FakeSessionRepository(SessionRepository):
     async def get_by_id(self, session_id: UUID) -> Session | None:
         return self._sessions.get(session_id)
 
+    async def get_by_id_for_update(self, session_id: UUID) -> Session | None:
+        return self._sessions.get(session_id)
+
     async def list_by_user(self, user_id: UUID) -> list[Session]:
         return [s for s in self._sessions.values() if s.user_id == user_id]
 
@@ -367,6 +370,11 @@ class _FakeAccessTokenRepository(AccessTokenRepository):
     async def get_by_digest(self, digest: str) -> AccessTokenRecord | None:
         return self._records.get(digest)
 
+    async def delete_by_user(self, user_id: UUID) -> None:
+        digests_to_delete = [r.digest for r in self._records.values() if r.user_id == user_id]
+        for d in digests_to_delete:
+            self._records.pop(d, None)
+
     async def delete_by_session(self, session_id: UUID) -> None:
         digests_to_delete = [r.digest for r in self._records.values() if r.session_id == session_id]
         for d in digests_to_delete:
@@ -384,6 +392,53 @@ class _FakeRefreshTokenRepository(RefreshTokenRepository):
 
     async def get_by_digest(self, digest: str) -> RefreshTokenRecord | None:
         return self._records.get(digest)
+
+    async def get_by_digest_for_update(self, digest: str) -> RefreshTokenRecord | None:
+        return self._records.get(digest)
+
+    async def update(self, entity: RefreshTokenRecord) -> None:
+        self._records[entity.digest] = entity
+
+    async def revoke_by_family(self, token_family_id: UUID, reason: str) -> int:
+        count = 0
+        for record in self._records.values():
+            if record.token_family_id == token_family_id and not record.is_revoked:
+                self._records[record.digest] = record.revoke(reason=reason)
+                count += 1
+        return count
+
+    async def revoke_by_session(self, session_id: UUID, reason: str) -> int:
+        count = 0
+        for record in self._records.values():
+            if record.session_id == session_id and not record.is_revoked:
+                self._records[record.digest] = record.revoke(reason=reason)
+                count += 1
+        return count
+
+    async def revoke_by_user(self, user_id: UUID, reason: str) -> int:
+        count = 0
+        for record in self._records.values():
+            if record.user_id == user_id and not record.is_revoked:
+                self._records[record.digest] = record.revoke(reason=reason)
+                count += 1
+        return count
+
+    async def revoke_by_user_except(
+        self,
+        user_id: UUID,
+        keep_session_id: UUID,
+        reason: str,
+    ) -> int:
+        count = 0
+        for record in self._records.values():
+            if (
+                record.user_id == user_id
+                and record.session_id != keep_session_id
+                and not record.is_revoked
+            ):
+                self._records[record.digest] = record.revoke(reason=reason)
+                count += 1
+        return count
 
 
 class _FakeAuthUnitOfWork(AuthUnitOfWork):

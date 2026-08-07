@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import ConfigDict, Field
@@ -77,3 +78,48 @@ class LoginResponse(BaseResponseModel):
         description="Access Token 有效期（秒）",
     )
     session_id: UUID = Field(description="新创建会话的 UUID")
+
+
+class RefreshResponse(BaseResponseModel):
+    """刷新响应 Schema（SPEC §12.2）。
+
+    与登录响应结构一致：Access Token 在响应体中返回一次，
+    新 Refresh Token 通过 HttpOnly Cookie 传递。
+    响应必须设置 ``Cache-Control: no-store``。
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    access_token: str = Field(description="新 Access Token（不透明，仅返回一次）")
+    token_type: str = Field(
+        default="Bearer",
+        description="Token 类型",
+    )
+    expires_in: int = Field(
+        description="Access Token 有效期（秒）",
+    )
+    session_id: UUID = Field(description="所属会话的 UUID")
+
+
+class SessionItem(BaseResponseModel):
+    """会话列表项 Schema（SPEC §12.3）。
+
+    Attributes:
+        id: 会话 UUID
+        device: 设备标识
+        ip: 客户端 IP
+        user_agent: 客户端 User-Agent
+        created_at: 创建时间
+        last_activity_at: 最近活动时间
+        status: 会话状态
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID = Field(description="会话 UUID")
+    device: str | None = Field(description="设备标识")
+    ip: str = Field(description="客户端 IP")
+    user_agent: str = Field(description="客户端 User-Agent")
+    created_at: datetime = Field(description="创建时间")
+    last_activity_at: datetime = Field(description="最近活动时间")
+    status: str = Field(description="会话状态")

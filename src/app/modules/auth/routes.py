@@ -1,6 +1,6 @@
-"""认证模块路由（SPEC §5.2、§9.1、§12.1、§12.3、§12.4）。
+"""认证模块路由（SPEC §5.2、§9.1、§12.1、§12.2、§12.3、§12.4）。
 
-Router 挂载在 ``/api/v1/auth`` 前缀下，提供登录和登出端点。
+Router 挂载在 ``/api/v1/auth`` 前缀下，提供登录、登出、刷新和会话管理端点。
 
 登录端点（``POST /api/v1/auth/login``）：
 - 接受用户名/密码请求体
@@ -13,6 +13,16 @@ Router 挂载在 ``/api/v1/auth`` 前缀下，提供登录和登出端点。
 - 从 Cookie 读取 Refresh Token
 - 吊销会话并删除 Cookie（SPEC §12.4）
 
+刷新端点（``POST /api/v1/auth/refresh``）：
+- 从 Cookie 读取 Refresh Token
+- 轮换 Token，返回新 Access Token，新 Refresh Token 通过 Cookie 设置
+- 响应设置 ``Cache-Control: no-store``（SPEC §12.2）
+
+会话管理端点：
+- ``GET /api/v1/auth/sessions`` — 查看自己的活动会话
+- ``DELETE /api/v1/auth/sessions/{session_id}`` — 退出指定会话
+- ``DELETE /api/v1/auth/users/{user_id}/sessions`` — 管理员强制下线
+
 Cookie 属性（SPEC §12.4）：
 - 名称 ``__Host-apex_refresh``
 - ``Secure``、``HttpOnly``、``SameSite=Strict``、``Path=/``
@@ -23,6 +33,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import cast
+from uuid import UUID
 
 from fastapi import (
     APIRouter,
@@ -36,7 +47,13 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.config.settings import Settings
-from app.modules.auth.application.schemas import LoginRequest, LoginResponse
+from app.modules.auth.application.port import AuthContext
+from app.modules.auth.application.schemas import (
+    LoginRequest,
+    LoginResponse,
+    RefreshResponse,
+    SessionItem,
+)
 from app.modules.auth.application.service import AuthService
 from app.modules.auth.domain.model import ABSOLUTE_TIMEOUT_HOURS
 from app.modules.auth.infrastructure.wiring import create_auth_service
@@ -132,6 +149,43 @@ def _delete_refresh_token_cookie(response: Response) -> None:
 
 
 # ---------------------------------------------------------------------------
+# 认证依赖——每请求在线校验（SPEC §12.3）
+# ---------------------------------------------------------------------------
+
+
+async def get_auth_context(
+    request: Request,
+    service: AuthService = Depends(get_auth_service),  # noqa: B008
+) -> AuthContext:
+    """FastAPI 依赖：从 Authorization 头校验 Access Token（SPEC §12.3）。
+
+    每请求验证：Access Token 摘要查 DB；检查用户启用、会话有效、
+    Token 有效、空闲/绝对过期（SPEC §12.3）。
+
+    Raises:
+        HTTPException 401: Token 无效、用户禁用、会话无效或已过期
+    """
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="缺少有效的认证凭证",
+        )
+    access_token = auth_header[7:]  # len("Bearer ") == 7
+
+    try:
+        return await service.validate_access_token(
+            access_token=access_token,
+            current_time=datetime.now(UTC),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="认证凭证无效或已过期",
+        ) from exc
+
+
+# ---------------------------------------------------------------------------
 # 端点
 # ---------------------------------------------------------------------------
 
@@ -206,3 +260,129 @@ async def logout(
         current_time=datetime.now(UTC),
     )
     _delete_refresh_token_cookie(response)
+
+
+@auth_router.post(
+    "/refresh",
+    summary="刷新 Token",
+    description=(
+        "从 Cookie 读取 Refresh Token，轮换 Token：旧 Token 失效，"
+        "新 Access Token 在响应体返回，新 Refresh Token 通过 Cookie 设置。"
+        "已使用的 Token 再次出现时触发重放检测，吊销整个会话和 Token Family。"
+        "响应设置 Cache-Control: no-store。"
+    ),
+)
+async def refresh(
+    response: Response,
+    refresh_token: str | None = Cookie(  # noqa: B008
+        default=None,
+        alias=REFRESH_TOKEN_COOKIE_NAME,
+    ),
+    service: AuthService = Depends(get_auth_service),  # noqa: B008
+) -> RefreshResponse:
+    """刷新 Token——轮换与重放检测（SPEC §12.2）。"""
+    if refresh_token is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="缺少 Refresh Token",
+        )
+
+    result = await service.refresh(
+        refresh_token=refresh_token,
+        current_time=datetime.now(UTC),
+    )
+
+    # 设置新 Refresh Token Cookie
+    _set_refresh_token_cookie(response, result.refresh_token)
+
+    # Cache-Control: no-store（SPEC §12.2）
+    response.headers["Cache-Control"] = "no-store"
+
+    return RefreshResponse(
+        access_token=result.access_token,
+        token_type="Bearer",
+        expires_in=result.access_token_expires_in,
+        session_id=result.session_id,
+    )
+
+
+# ---------------------------------------------------------------------------
+# 会话管理端点（SPEC §12.3）
+# ---------------------------------------------------------------------------
+
+
+@auth_router.get(
+    "/sessions",
+    summary="查看自己的活动会话",
+    description="查询当前认证用户的全部活动会话列表。",
+)
+async def list_sessions(
+    auth_ctx: AuthContext = Depends(get_auth_context),  # noqa: B008
+    service: AuthService = Depends(get_auth_service),  # noqa: B008
+) -> list[SessionItem]:
+    """查看自己的活动会话（SPEC §12.3）。"""
+    sessions = await service.list_user_sessions(user_id=auth_ctx.user_id)
+    return [
+        SessionItem(
+            id=s.id,
+            device=s.device,
+            ip=s.ip,
+            user_agent=s.user_agent,
+            created_at=s.created_at,
+            last_activity_at=s.last_activity_at,
+            status=str(s.status),
+        )
+        for s in sessions
+    ]
+
+
+@auth_router.delete(
+    "/sessions/{session_id}",
+    summary="退出指定会话",
+    description=(
+        "用户退出自己的指定会话（当前或其他会话）。管理员可退出任意用户的会话（强制下线单条）。"
+    ),
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def revoke_session(
+    session_id: UUID,
+    auth_ctx: AuthContext = Depends(get_auth_context),  # noqa: B008
+    service: AuthService = Depends(get_auth_service),  # noqa: B008
+) -> None:
+    """退出指定会话（SPEC §12.3）。"""
+    await service.revoke_session(
+        session_id=session_id,
+        actor_id=auth_ctx.user_id,
+        current_time=datetime.now(UTC),
+    )
+
+
+@auth_router.delete(
+    "/users/{user_id}/sessions",
+    summary="管理员强制下线",
+    description="管理员强制吊销指定用户的全部活跃会话。",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def force_logout(
+    user_id: UUID,
+    auth_ctx: AuthContext = Depends(get_auth_context),  # noqa: B008
+    service: AuthService = Depends(get_auth_service),  # noqa: B008
+) -> None:
+    """管理员强制下线（SPEC §12.3）。
+
+    管理员权限校验将在 RBAC 模块（TASK-018）完成后通过权限点
+    ``system:auth:force_logout`` 强制执行。
+    """
+    # 防止用户对自己使用强制下线（应使用普通退出）
+    # 管理员权限校验由 RBAC 模块在 TASK-018 完成
+    if user_id == auth_ctx.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="请使用退出会话端点退出自己的会话",
+        )
+
+    await service.revoke_all_user_sessions(
+        user_id=user_id,
+        reason="admin_force_logout",
+        current_time=datetime.now(UTC),
+    )

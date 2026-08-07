@@ -30,6 +30,18 @@ ABSOLUTE_TIMEOUT_HOURS: int = 12
 #: Access Token 有效期——默认 15 分钟（SPEC §12.1）
 ACCESS_TOKEN_TTL_MINUTES: int = 15
 
+#: 最近活动时间条件更新间隔——最多每 5 分钟更新一次（SPEC §12.3）
+ACTIVITY_UPDATE_INTERVAL_MINUTES: int = 5
+
+#: 吊销原因常量（SPEC §12.2、§12.3）
+REASON_LOGOUT: str = "logout"
+REASON_ADMIN_FORCE_LOGOUT: str = "admin_force_logout"
+REASON_USER_DISABLED: str = "user_disabled"
+REASON_PASSWORD_RESET: str = "password_reset"
+REASON_PASSWORD_CHANGED: str = "password_changed"
+REASON_REPLAY_DETECTED: str = "replay_detected"
+REASON_SESSION_EXPIRED: str = "session_expired"
+
 
 class SessionStatus(enum.StrEnum):
     """会话状态枚举（SPEC §12.3、§8.3）。
@@ -327,3 +339,44 @@ class RefreshTokenRecord:
     def is_revoked(self) -> bool:
         """Token 是否已吊销。"""
         return self.revoked_reason is not None
+
+    @property
+    def is_used(self) -> bool:
+        """Token 是否已被使用（轮换后）。"""
+        return self.used_at is not None
+
+    @property
+    def is_usable(self) -> bool:
+        """Token 是否可用于刷新——未使用、未吊销。"""
+        return not self.is_used and not self.is_revoked
+
+    def mark_used(self, *, current_time: datetime) -> RefreshTokenRecord:
+        """返回标记为已使用的新实例（轮换时调用，SPEC §12.2）。"""
+        return replace(self, used_at=current_time)
+
+    def revoke(self, *, reason: str) -> RefreshTokenRecord:
+        """返回标记为已吊销的新实例（SPEC §12.2）。"""
+        return replace(self, revoked_reason=reason)
+
+    def rotated(
+        self,
+        *,
+        new_digest: str,
+        current_time: datetime,
+        expires_at: datetime,
+    ) -> RefreshTokenRecord:
+        """创建轮换后的新 Refresh Token 记录（SPEC §12.2）。
+
+        新 Token 属于同一 Token Family，前驱为当前 Token 的摘要。
+        """
+        return RefreshTokenRecord(
+            digest=new_digest,
+            session_id=self.session_id,
+            user_id=self.user_id,
+            token_family_id=self.token_family_id,
+            predecessor_digest=self.digest,
+            created_at=current_time,
+            used_at=None,
+            expires_at=min(expires_at, self.expires_at),
+            revoked_reason=None,
+        )
