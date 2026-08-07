@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from app.modules.contract import ModuleDefinition
 from app.modules.example.definition import MODULE as EXAMPLE_MODULE
+from app.modules.user.definition import MODULE as USER_MODULE
 
 # ---------------------------------------------------------------------------
 # 显式模块清单（SPEC §5.5：无扫描、无导入副作用）
@@ -28,6 +29,7 @@ from app.modules.example.definition import MODULE as EXAMPLE_MODULE
 # ---------------------------------------------------------------------------
 ENABLED_MODULES: list[ModuleDefinition] = [
     EXAMPLE_MODULE,
+    USER_MODULE,
 ]
 
 

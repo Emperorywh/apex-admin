@@ -37,9 +37,11 @@ _SNAPSHOT_PATH = Path(__file__).resolve().parent.parent / "fixtures" / "openapi.
 _HTTP_METHODS = frozenset({"get", "post", "put", "delete", "patch", "head", "options"})
 
 # 文档中不得出现的敏感关键词（SPEC §9.6：不暴露内部密钥、数据库信息和堆栈）
+# 注意：``password`` 作为 API 输入字段名是合法的（如创建用户时的密码字段），
+# 真正敏感的是 ``password_hash``（密码哈希值）——绝不应出现在 OpenAPI 文档中。
 _SENSITIVE_PATTERNS = frozenset(
     {
-        "password",
+        "password_hash",
         "secret",
         "token_hmac",
         "encryption_key",

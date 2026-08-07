@@ -54,6 +54,16 @@ ignore_imports =
     app.modules.example.routes -> app.api.pagination
     app.modules.example.routes -> app.api.schemas
     app.modules.example.routes -> app.infrastructure.database.db_pool_provider
+    app.modules.user.domain.events -> app.events.base
+    app.modules.user.application.service -> app.events.dispatcher
+    app.modules.user.application.service -> app.errors
+    app.modules.user.application.schemas -> app.api.schemas
+    app.modules.user.infrastructure.event_handlers -> app.events.base
+    app.modules.user.infrastructure.unit_of_work -> app.infrastructure.database.unit_of_work
+    app.modules.user.infrastructure.wiring -> app.events.base
+    app.modules.user.infrastructure.wiring -> app.events.dispatcher
+    app.modules.user.infrastructure.wiring -> app.events.registry
+    app.modules.user.routes -> app.api.pagination
 
 # ---------------------------------------------------------------------------
 # API layer must not depend on Infrastructure layer (SPEC 5.2, 5.6)
