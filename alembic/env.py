@@ -43,13 +43,19 @@ if config.config_file_name is not None:
 #
 # SPEC 6.1: 部署配置通过环境变量加载。
 # env.py 在 Alembic 运行时执行，此时 ``Settings()`` 从环境变量读取配置。
+#
+# 当调用方（如 get_alembic_config 或 CLI）已显式设置数据库 URL 时，
+# 尊重该 URL，不从 Settings 覆盖。此机制通过自定义配置选项
+# ``apex.url_explicitly_set`` 控制，避免测试等场景的 URL 被开发默认值覆盖。
 
 from app.composition.modules import MODULE_VERSION_LOCATIONS  # noqa: E402
-from app.core.config import Settings  # noqa: E402
 from app.infrastructure.db.base import Base  # noqa: E402
 
-_settings = Settings()
-config.set_main_option("sqlalchemy.url", _settings.DATABASE_URL)
+if not config.get_main_option("apex.url_explicitly_set"):
+    from app.core.config import Settings  # noqa: E402
+
+    _settings = Settings()
+    config.set_main_option("sqlalchemy.url", _settings.DATABASE_URL)
 
 # ── 从模块注册表收集 version_locations（SPEC 8.2）─────────────────────────
 #

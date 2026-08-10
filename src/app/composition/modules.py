@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from app.modules.audit.definition import MODULE_DEFINITION as AUDIT_MODULE
 from app.modules.example.definition import MODULE_DEFINITION as EXAMPLE_MODULE
 
 if TYPE_CHECKING:
@@ -31,9 +32,12 @@ if TYPE_CHECKING:
 #: 禁止通过扫描包、导入副作用或命名约定自动发现模块"。
 #:
 #: 新增模块时在此列表追加一项，同时新增模块自身代码。
-#: 当前已注册: example（最小示例模块，SPEC 30.2 / 34.1）。
+#: 当前已注册:
+#:   - example（最小示例模块，SPEC 30.2 / 34.1）
+#:   - audit（审计与登录日志模块，SPEC 18.1 / 18.2）
 MODULE_MANIFEST: list[ModuleDefinition] = [
     EXAMPLE_MODULE,
+    AUDIT_MODULE,
 ]
 
 #: 已启用模块的 Alembic 迁移版本目录列表.

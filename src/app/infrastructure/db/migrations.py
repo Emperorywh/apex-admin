@@ -47,6 +47,8 @@ def get_alembic_config(
     config = Config(str(ALEMBIC_INI_PATH))
     if database_url is not None:
         config.set_main_option("sqlalchemy.url", database_url)
+        # 标记 URL 已被显式设置，env.py 据此跳过 Settings 默认值覆盖。
+        config.set_main_option("apex.url_explicitly_set", "true")
     if version_locations:
         _apply_version_locations(config, version_locations)
     return config
