@@ -56,6 +56,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.lifecycle_events.append("startup")
 
     # 初始化数据库引擎与连接池（SPEC 6.1 / 8.1）
+    from app.composition.modules import MODULE_VERSION_LOCATIONS
     from app.infrastructure.db.engine import create_db_engine
     from app.infrastructure.db.health import DbHealthChecker
     from app.infrastructure.db.migrations import get_head_revision
@@ -69,7 +70,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     # 创建健康检查器 — 比较数据库 revision 与应用 head（SPEC 6.2）
     try:
-        head_revision = get_head_revision()
+        head_revision = get_head_revision(MODULE_VERSION_LOCATIONS)
     except Exception:
         # Alembic 配置不可用时 head 为空，健康检查将报告 revision 不一致
         head_revision = ""

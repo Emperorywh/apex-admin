@@ -73,6 +73,20 @@ def _create_parser() -> argparse.ArgumentParser:
         help="执行 alembic upgrade head（不创建业务数据）",
     )
 
+    # modules 子命令 — SPEC 25.1
+    modules_parser = subparsers.add_parser(
+        "modules",
+        help="模块管理",
+    )
+    modules_sub = modules_parser.add_subparsers(
+        dest="modules_command",
+        required=True,
+    )
+    modules_sub.add_parser(
+        "validate",
+        help="验证模块编码、路由、权限点、错误码、事件和 Alembic 单 head",
+    )
+
     return parser
 
 
@@ -189,6 +203,59 @@ def _cmd_db_check() -> int:
     return 1
 
 
+def _cmd_modules_validate() -> int:
+    """执行 modules validate 命令 — SPEC 25.1.
+
+    SPEC 25.1: ``uv run python -m app.cli modules validate`` 验证模块编码、
+    路由、权限点、错误码、事件和 Alembic 单 head。
+
+    SPEC 34.1: 返回 0 并报告零重复模块、路由、权限点、错误码、事件和命令。
+
+    校验内容:
+      1. 模块声明无重复（编码、Tag、权限点、错误码等）。
+      2. 依赖关系正确（必需依赖存在、无循环依赖）。
+      3. Alembic 只有一个 head revision。
+
+    退出码:
+      0: 校验通过，零重复。
+      非 0: 校验失败或运行错误。
+    """
+
+    from app.composition.modules import get_module_manifest
+    from app.core.modules.exceptions import ModuleValidationError
+    from app.core.modules.registry import ModuleRegistry
+
+    manifest = get_module_manifest()
+    registry = ModuleRegistry.from_modules(manifest)
+
+    # ── 模块声明与依赖校验 ──
+    try:
+        registry.validate_or_raise()
+    except ModuleValidationError as exc:
+        print(f"模块校验失败: {exc}", file=sys.stderr)
+        return 1
+
+    # ── 报告零重复 ──
+    module_count = len(manifest)
+    print(f"模块校验通过: {module_count} 个模块已注册，零重复声明")
+
+    # ── Alembic 单 head 校验 ──
+    try:
+        from app.composition.modules import MODULE_VERSION_LOCATIONS
+        from app.infrastructure.db.migrations import get_head_revision
+
+        get_head_revision(MODULE_VERSION_LOCATIONS)
+        print("Alembic 单 head 校验通过")
+    except RuntimeError as exc:
+        print(f"Alembic 校验失败: {exc}", file=sys.stderr)
+        return 1
+    except Exception as exc:
+        print(f"Alembic 校验出错: {exc}", file=sys.stderr)
+        return 1
+
+    return 0
+
+
 def _cmd_db_upgrade() -> int:
     """执行 db upgrade 命令 — 仅执行 alembic upgrade head.
 
@@ -207,9 +274,13 @@ def _cmd_db_upgrade() -> int:
         from alembic import command
         from alembic.util.exc import CommandError
 
+        from app.composition.modules import MODULE_VERSION_LOCATIONS
         from app.infrastructure.db.migrations import get_alembic_config
 
-        config = get_alembic_config(settings.DATABASE_URL)
+        config = get_alembic_config(
+            settings.DATABASE_URL,
+            version_locations=MODULE_VERSION_LOCATIONS,
+        )
         command.upgrade(config, "head")
     except CommandError as exc:
         print(f"数据库迁移失败: {exc}", file=sys.stderr)
@@ -237,6 +308,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "config" and args.config_command == "show":
         return _cmd_config_show()
+
+    if args.command == "modules" and args.modules_command == "validate":
+        return _cmd_modules_validate()
 
     if args.command == "db":
         if args.db_command == "check":

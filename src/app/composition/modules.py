@@ -1,22 +1,59 @@
-"""模块版本目录注册表 — SPEC 5.5 / 8.2.
+"""Composition Root 模块清单 — SPEC 5.5.
 
-各业务模块通过 ``ModuleDefinition`` 声明其 Alembic 迁移版本目录，
-Composition Root 收集所有已启用模块的 version_locations，
-Alembic env.py 从此注册表构建全局单头 revision 图。
+Composition Root 是唯一同时引用接口与实现的装配位置
+（SPEC 5.2）。模块清单显式列出所有已启用模块的 ``ModuleDefinition``，
+应用启动时由此清单进行全量校验
+（SPEC 5.5: "由 Composition Root 中的显式模块清单装配"）。
 
-当前 G1 阶段无业务模块，注册表为空。初始迁移存放在默认
-``alembic/versions/`` 目录。后续 TASK 添加业务模块时，
-在此列表中追加模块的版本目录路径。
+SPEC 5.5:
+  - 禁止通过扫描包、导入副作用或命名约定自动发现模块。
+  - 新增模块只允许新增模块自身代码，并在 Composition Root 的模块
+    清单中增加一项；不得修改核心模块内部实现。
+  - Alembic 可以按模块存放版本文件，但所有启用模块必须组成一个
+    全局单头 revision 图。
 
-SPEC 8.2:
-  - "所有启用模块必须组成一个全局单头 revision 图"
-  - "每个新 revision 的 down_revision 必须指向生成时的全局 head"
+当前 G1 阶段无业务模块，模块清单为空。``MODULE_VERSION_LOCATIONS``
+从清单中派生，供 ``alembic/env.py`` 和 ``migrations.py`` 使用。
+后续 TASK 添加业务模块时，在 ``MODULE_MANIFEST`` 中追加对应条目。
 """
 
 from __future__ import annotations
 
-#: 已启用模块的 Alembic 迁移版本目录列表。
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.core.modules.definition import ModuleDefinition
+
+#: 显式模块清单 — 所有已启用模块的 ModuleDefinition 列表.
 #:
-#: 每个条目为相对于项目根的路径字符串（如 ``"src/app/modules/user/migrations"``）。
-#: env.py 和 migrations.py 从此列表收集 version_locations。
-MODULE_VERSION_LOCATIONS: list[str] = []
+#: SPEC 5.5: "由 Composition Root 中的显式模块清单装配。
+#: 禁止通过扫描包、导入副作用或命名约定自动发现模块"。
+#:
+#: 新增模块时在此列表追加一项，同时新增模块自身代码。
+#: G1 阶段无业务模块，清单为空。
+MODULE_MANIFEST: list[ModuleDefinition] = []
+
+#: 已启用模块的 Alembic 迁移版本目录列表.
+#:
+#: 从 ``MODULE_MANIFEST`` 派生。env.py 和 migrations.py 从此列表
+#: 收集 version_locations（SPEC 5.5 / 8.2）。
+#:
+#: 每个条目为相对于项目根的路径字符串。
+MODULE_VERSION_LOCATIONS: list[str] = [
+    m.alembic_version_dir for m in MODULE_MANIFEST if m.alembic_version_dir is not None
+]
+
+
+def get_module_manifest() -> list[ModuleDefinition]:
+    """返回模块清单的副本.
+
+    返回 ``MODULE_MANIFEST`` 的浅拷贝，防止外部修改原始清单。
+    """
+
+    return list(MODULE_MANIFEST)
+
+
+def get_module_version_locations() -> list[str]:
+    """返回 Alembic 版本目录列表的副本."""
+
+    return list(MODULE_VERSION_LOCATIONS)
