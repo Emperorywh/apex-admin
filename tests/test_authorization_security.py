@@ -24,6 +24,7 @@ from app.infrastructure.db.engine import create_db_engine
 from app.infrastructure.db.uow import SqlAlchemyUnitOfWork
 
 if TYPE_CHECKING:
+    from fastapi.routing import APIRoute
     from sqlalchemy.ext.asyncio import AsyncEngine
 
 
@@ -37,8 +38,12 @@ if TYPE_CHECKING:
 def test_all_management_routes_declare_permission() -> None:
     """路由注册测试——除显式公共接口外全部管理接口声明至少一个权限点 — SPEC 23.5/34.2.
 
-    通过遍历应用的全部路由，检查每个非公共端点的依赖树中是否存在
-    携带 ``__apex_permission__`` 标记的依赖函数。
+    通过遍历应用的全部路由（展开 ``_IncludedRouter`` 对象获取实际
+    ``APIRoute`` 实例），检查每个非公共、非自助、非示例端点的依赖树
+    中是否存在携带 ``__apex_permission__`` 标记的依赖函数。
+
+    SPEC 23.5: 公共接口必须显式声明。
+    SPEC 11.1: 自助端点仅需认证不需权限点。
     """
 
     from fastapi.routing import APIRoute
@@ -49,56 +54,102 @@ def test_all_management_routes_declare_permission() -> None:
     settings = Settings(ENVIRONMENT=Environment.TESTING)
     app = create_app(settings)
 
-    # 显式公共端点——SPEC 23.5: "公共接口必须显式声明"
+    # ── 显式豁免清单 ─────────────────────────────────────────────────────
+
+    # 公共接口——SPEC 23.5: "公共接口必须显式声明"
     public_paths = {
         "/api/v1/auth/login",
         "/api/v1/auth/refresh",
     }
-    # 健康检查和 meta 端点是公共的
-    public_prefixes = ("/health",)
+    # 健康检查与 meta 端点
+    public_prefixes = ("/health", "/api/v1/meta")
+    # 文档端点
+    docs_prefixes = ("/docs", "/redoc", "/openapi.json")
+    # 示例模块——演示用途，非管理接口
+    example_prefixes = ("/api/v1/example",)
+    # 自助端点——SPEC 23.5/11.1: 仅需认证不需权限点（按方法+路径精确匹配）
+    self_service_endpoints: set[tuple[str, str]] = {
+        ("GET", "/api/v1/users/me"),
+        ("PUT", "/api/v1/users/me"),
+        ("PUT", "/api/v1/users/me/password"),
+        ("POST", "/api/v1/auth/logout"),
+        ("POST", "/api/v1/auth/logout-others"),
+        ("GET", "/api/v1/auth/sessions"),
+    }
+
+    # ── 展开 _IncludedRouter 获取全部 APIRoute 实例 ──────────────────────
+    # FastAPI 0.139+ 中 include_router 注册的路由以 _IncludedRouter 对象
+    # 存在于 app.routes，而非 APIRoute 实例。需展开 original_router.routes
+    # 并拼接 include_context.prefix 得到完整路径。
+
+    all_api_routes: list[tuple[str, APIRoute]] = []  # (full_path, route)
+
+    for entry in app.routes:
+        if isinstance(entry, APIRoute):
+            # 直接 APIRoute（docs、openapi.json 等框架路由）
+            all_api_routes.append((entry.path, entry))
+            continue
+
+        include_context = getattr(entry, "include_context", None)
+        prefix = include_context.prefix if include_context else ""
+        original_router = getattr(entry, "original_router", None)
+        if original_router is not None:
+            for sub_route in original_router.routes:
+                if isinstance(sub_route, APIRoute):
+                    all_api_routes.append((prefix + sub_route.path, sub_route))
+
+    # ── 检查每个管理路由是否声明了权限点 ─────────────────────────────────
 
     missing: list[str] = []
+    management_routes_found = 0
 
-    for route in app.routes:
-        if not isinstance(route, APIRoute):
+    for full_path, route in all_api_routes:
+        # 跳过公共接口
+        if (
+            full_path in public_paths
+            or any(full_path.startswith(p) for p in public_prefixes)
+            or any(full_path.startswith(p) for p in docs_prefixes)
+            or any(full_path.startswith(p) for p in example_prefixes)
+        ):
             continue
 
-        full_path = route.path
-
-        # 跳过显式公共端点
-        if full_path in public_paths:
-            continue
-        if any(full_path.startswith(p) for p in public_prefixes):
+        # 跳过自助端点（按方法+路径精确匹配）
+        methods = route.methods or set()
+        if any((method, full_path) in self_service_endpoints for method in methods):
             continue
 
-        # 检查路由依赖树中是否存在权限标记
-        has_permission = _route_has_permission_dependency(route)
-        if not has_permission:
-            missing.append(
-                f"{list(route.methods)[0] if route.methods else '?'} {full_path}"
-            )
+        management_routes_found += 1
+
+        if not _route_has_permission_dependency(route):
+            method_label = sorted(methods)[0] if methods else "?"
+            missing.append(f"{method_label} {full_path}")
+
+    # 完整性护栏：确认确实枚举到了管理路由，防止路由枚举退化为空操作
+    assert management_routes_found >= 1, (
+        "路由枚举未发现任何管理接口——"
+        "可能是 FastAPI 路由结构变更导致 _IncludedRouter 展开失效"
+    )
 
     assert not missing, "以下管理接口未声明权限点（SPEC 23.5）:\n" + "\n".join(
         f"  {m}" for m in missing
     )
 
 
-def _route_has_permission_dependency(route: object) -> bool:
-    """检查路由的依赖树中是否存在携带 ``__apex_permission__`` 的依赖."""
+def _route_has_permission_dependency(route: APIRoute) -> bool:
+    """检查路由的依赖树中是否存在携带 ``__apex_permission__`` 的依赖.
 
-    from fastapi.routing import APIRoute
+    递归遍历 ``dependant.dependencies``（最多两层深度）。
+    """
 
-    assert isinstance(route, APIRoute)
+    def _has_perm_marker(dependant: object) -> bool:
+        call = getattr(dependant, "call", None)
+        return call is not None and hasattr(call, "__apex_permission__")
 
-    # 检查路由的直接参数依赖
     for dep in route.dependant.dependencies:
-        call = dep.call
-        if hasattr(call, "__apex_permission__"):
+        if _has_perm_marker(dep):
             return True
-        # 递归检查子依赖
         for sub_dep in dep.dependencies:
-            sub_call = sub_dep.call
-            if hasattr(sub_call, "__apex_permission__"):
+            if _has_perm_marker(sub_dep):
                 return True
 
     return False
