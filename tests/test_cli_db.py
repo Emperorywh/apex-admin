@@ -123,6 +123,17 @@ def test_cli_db_upgrade_no_business_data(
     # 用户模块的表名约定为 users
     if any(m.code == "identity" for m in get_module_manifest()):
         declared_tables.add("users")
+    # 认证模块的表名约定
+    if any(m.code == "auth" for m in get_module_manifest()):
+        declared_tables.add("auth_sessions")
+        declared_tables.add("auth_login_attempts")
+        declared_tables.add("auth_refresh_tokens")
+    # RBAC 模块的表名约定
+    if any(m.code == "rbac" for m in get_module_manifest()):
+        declared_tables.add("rbac_roles")
+        declared_tables.add("rbac_permissions")
+        declared_tables.add("rbac_role_permissions")
+        declared_tables.add("rbac_user_roles")
 
     unexpected = tables - declared_tables
     assert unexpected == set(), f"db upgrade 发现未声明的表: {unexpected}"

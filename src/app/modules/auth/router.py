@@ -72,10 +72,10 @@ def get_auth_use_case(request: Request) -> AuthUseCase:
     from app.core.security.digest import TokenDigestService
     from app.core.security.password import Argon2Hasher
     from app.infrastructure.db.uow import SqlAlchemyUnitOfWork
-    from app.modules.audit.adapter import SqlAlchemyLoginLogRepository
+    from app.modules.audit import adapter as _audit_adapter
     from app.modules.audit.security_log import StructlogSecurityLogger
     from app.modules.auth.use_case import AuthUseCase as _AuthUseCase
-    from app.modules.identity.adapter import SqlAlchemyUserAuthAdapter
+    from app.modules.identity import adapter as _identity_adapter
 
     settings = request.app.state.settings
     engine = request.app.state.db_engine
@@ -98,12 +98,12 @@ def get_auth_use_case(request: Request) -> AuthUseCase:
     def user_auth_port_factory(session):  # type: ignore[no-untyped-def]
         """从 session 构造用户认证 Port — SPEC 5.2 跨模块."""
 
-        return SqlAlchemyUserAuthAdapter(session)
+        return _identity_adapter.SqlAlchemyUserAuthAdapter(session)
 
     def login_log_factory(session):  # type: ignore[no-untyped-def]
         """从 session 构造登录日志 Port — SPEC 18.1."""
 
-        return SqlAlchemyLoginLogRepository(session)
+        return _audit_adapter.SqlAlchemyLoginLogRepository(session)
 
     def security_log_factory(session):  # type: ignore[no-untyped-def]
         """从 session 构造安全日志 Port — SPEC 5.7."""

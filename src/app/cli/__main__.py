@@ -87,6 +87,32 @@ def _create_parser() -> argparse.ArgumentParser:
         help="验证模块编码、路由、权限点、错误码、事件和 Alembic 单 head",
     )
 
+    # auth 子命令 — SPEC 25.2
+    auth_parser = subparsers.add_parser(
+        "auth",
+        help="身份与权限管理",
+    )
+    auth_sub = auth_parser.add_subparsers(
+        dest="auth_command",
+        required=True,
+    )
+    sync_parser = auth_sub.add_parser(
+        "sync-permissions",
+        help="幂等同步 G2 启用模块声明的权限点到权限目录",
+    )
+    sync_parser.add_argument(
+        "--clean-orphans",
+        action="store_true",
+        default=False,
+        help="清理孤立权限点（代码中已移除但仍存在于数据库的权限点）",
+    )
+    sync_parser.add_argument(
+        "--confirm",
+        action="store_true",
+        default=False,
+        help="确认执行破坏性操作（与 --clean-orphans 配合使用）",
+    )
+
     return parser
 
 
@@ -293,6 +319,106 @@ def _cmd_db_upgrade() -> int:
     return 0
 
 
+async def _run_sync_permissions(
+    database_url: str,
+    *,
+    clean_orphans: bool,
+) -> int:
+    """异步执行权限点目录同步 — SPEC 25.2."""
+
+    from app.infrastructure.db.engine import create_db_engine
+    from app.modules.rbac.sync import collect_declared_permissions, sync_permissions
+
+    engine = create_db_engine(database_url)
+    try:
+        declared = collect_declared_permissions()
+        result = await sync_permissions(
+            engine,
+            declared_permissions=declared,
+            clean_orphans=clean_orphans,
+        )
+
+        # SPEC 25.2: "权限同步默认只新增和更新，不自动删除"
+        if result.added:
+            print(f"新增权限点 ({len(result.added)}):")
+            for code in result.added:
+                print(f"  + {code}")
+
+        if result.updated:
+            print(f"更新权限点 ({len(result.updated)}):")
+            for code in result.updated:
+                print(f"  ~ {code}")
+
+        if result.orphaned:
+            print(
+                f"孤立权限点 ({len(result.orphaned)}) — 代码中已移除但仍存在于数据库:",
+            )
+            for code in result.orphaned:
+                print(f"  ! {code}")
+
+        if result.cleaned:
+            print(f"已清理孤立权限点 ({len(result.cleaned)}):")
+            for code in result.cleaned:
+                print(f"  - {code}")
+
+        if not result.added and not result.updated and not result.cleaned:
+            print(
+                f"权限同步完成，无新增或更新（共 {result.total_in_db} 个权限点）",
+            )
+        else:
+            print(
+                f"权限同步完成: 新增 {len(result.added)}，"
+                f"更新 {len(result.updated)}，"
+                f"孤立 {len(result.orphaned)}，"
+                f"清理 {len(result.cleaned)}，"
+                f"总计 {result.total_in_db}",
+            )
+
+        return 0
+    finally:
+        await engine.dispose()
+
+
+def _cmd_auth_sync_permissions(args: argparse.Namespace) -> int:
+    """执行 auth sync-permissions 命令 — SPEC 25.2.
+
+    SPEC 25.2:
+      - 幂等同步 G2 启用模块声明的权限点。
+      - 权限同步默认只新增和更新，不自动删除。
+      - 孤立权限点必须报告并由显式确认命令清理。
+
+    SPEC 25.3: "所有修复命令默认 dry-run；实际修改必须使用显式 ``--apply``"。
+    ``--clean-orphans`` 要求同时提供 ``--confirm`` 标志。
+    """
+
+    clean_orphans = getattr(args, "clean_orphans", False)
+    confirm = getattr(args, "confirm", False)
+
+    if clean_orphans and not confirm:
+        print(
+            "清理孤立权限点需要同时使用 --confirm 标志确认",
+            file=sys.stderr,
+        )
+        return 1
+
+    try:
+        settings = Settings()
+    except Exception as exc:
+        print(f"配置加载失败: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        return asyncio.run(
+            _run_sync_permissions(
+                settings.DATABASE_URL,
+                clean_orphans=clean_orphans,
+            ),
+        )
+    except Exception as exc:
+        print(f"权限同步失败: {exc}", file=sys.stderr)
+        return 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI 主入口 — 解析参数并分发到子命令.
 
@@ -311,6 +437,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "modules" and args.modules_command == "validate":
         return _cmd_modules_validate()
+
+    if args.command == "auth" and args.auth_command == "sync-permissions":
+        return _cmd_auth_sync_permissions(args)
 
     if args.command == "db":
         if args.db_command == "check":
