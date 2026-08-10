@@ -21,6 +21,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -65,6 +66,32 @@ def _find_free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 0))
         return int(s.getsockname()[1])
+
+
+def _cleanup_temp_dir(data_dir: Path) -> None:
+    """安全清理临时数据目录，带重试以应对 Windows 文件锁。
+
+    ``pg_ctl stop`` 后文件句柄可能需要短暂时间释放。本函数在删除
+    失败时等待并重试，避免 ``shutil.rmtree(ignore_errors=True)``
+    静默吞没清理失败导致残留目录。
+    """
+
+    # 短暂等待文件句柄释放（stop_server 内部已做进程级清理）。
+    time.sleep(0.5)
+
+    for attempt in range(3):
+        if not data_dir.exists():
+            return
+        try:
+            shutil.rmtree(data_dir)
+        except OSError:
+            if attempt < 2:
+                time.sleep(1.0)
+            else:
+                print(
+                    f"[conftest] 警告：临时数据目录清理失败：{data_dir}",
+                    file=sys.stderr,
+                )
 
 
 # ─── 会话级 fixture：测试数据库连接 URL ────────────────────────────────────
@@ -137,7 +164,16 @@ def database_url() -> Iterator[str]:
 
     try:
         dev_db.run_initdb(pg_bin_dir, data_dir)
-        dev_db.start_server(pg_bin_dir, data_dir, port, log_file)
+        # 临时实例为短生命周期，禁用 autovacuum 避免其 worker 在
+        # Windows 上崩溃（0xC0000142）触发 crash-recovery，
+        # 导致 pg_ctl stop 无法正常终止。
+        dev_db.start_server(
+            pg_bin_dir,
+            data_dir,
+            port,
+            log_file,
+            extra_opts="-c autovacuum=off",
+        )
         url = dev_db.get_connection_string(
             port=port,
             database=dev_db.PG_DATABASE,
@@ -147,4 +183,4 @@ def database_url() -> Iterator[str]:
     finally:
         # 确保 PostgreSQL 进程停止和临时目录清理位于同一 finally 路径。
         dev_db.stop_server(pg_bin_dir, data_dir)
-        shutil.rmtree(data_dir, ignore_errors=True)
+        _cleanup_temp_dir(data_dir)

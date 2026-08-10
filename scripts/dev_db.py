@@ -25,11 +25,13 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import os
 import shutil
 import subprocess
 import sys
+import time
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -423,6 +425,7 @@ def start_server(
     data_dir: Path,
     port: int,
     log_file: Path,
+    extra_opts: str = "",
 ) -> None:
     """通过 ``pg_ctl start`` 启动 PostgreSQL 服务。
 
@@ -433,6 +436,8 @@ def start_server(
         data_dir: 已初始化的数据目录路径。
         port: 监听端口。
         log_file: 服务日志输出文件路径。
+        extra_opts: 追加到 ``-o`` 的额外 PostgreSQL 配置选项
+            （如 ``-c autovacuum=off``），用于临时实例的定制化启动。
     """
 
     pg_ctl = str(
@@ -441,6 +446,11 @@ def start_server(
     log_file.parent.mkdir(parents=True, exist_ok=True)
 
     print(f"正在启动 PostgreSQL（端口 {port}）...")
+    # 构建 PostgreSQL 启动配置选项。
+    options = f"-c port={port} -c listen_addresses=127.0.0.1"
+    if extra_opts:
+        options += f" {extra_opts}"
+
     # 注意：不能使用 capture_output=True（即 stdout/stderr=PIPE）。
     # 在 Windows 上，pg_ctl start 会启动后台 postgres.exe 进程，
     # 该进程继承 PIPE 句柄并保持打开，导致 subprocess.run 永久阻塞。
@@ -457,7 +467,7 @@ def start_server(
             "-t",
             "30",
             "-o",
-            f"-c port={port} -c listen_addresses=127.0.0.1",
+            options,
         ],
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
@@ -476,8 +486,87 @@ def start_server(
     print(f"PostgreSQL 已启动（端口 {port}）")
 
 
+def _read_postmaster_pid(data_dir: Path) -> int | None:
+    """读取数据目录中 ``postmaster.pid`` 文件的首行 PID。
+
+    返回 None 表示文件不存在或无法解析（服务已停止或路径无效）。
+    """
+
+    pid_file = data_dir / "postmaster.pid"
+    if not pid_file.exists():
+        return None
+    try:
+        first_line = pid_file.read_text(
+            encoding="utf-8",
+            errors="replace",
+        ).splitlines()[0]
+        return int(first_line.strip())
+    except (ValueError, IndexError, OSError):
+        return None
+
+
+def _is_process_running(pid: int) -> bool:
+    """检查指定 PID 的进程是否仍在运行（Windows 使用 tasklist）。"""
+
+    if pid <= 0:
+        return False
+    try:
+        result = subprocess.run(
+            ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+    # CSV 格式下，存在匹配进程时输出以双引号开头
+    # （如 "postgres.exe","1234",...）；无匹配时输出信息行，不以引号开头。
+    stdout = result.stdout.strip()
+    return bool(stdout) and stdout.startswith('"')
+
+
+def _ensure_postmaster_stopped(data_dir: Path) -> None:
+    """Windows 防御：验证 postmaster 进程已退出，必要时强制终止。
+
+    pg_ctl stop 可能因 crash-recovery 状态而无法终止全部子进程
+    （如 autovacuum worker 崩溃后 postmaster 进入恢复模式）。
+    本函数读取 postmaster.pid 获取 PID，轮询验证进程退出，
+    超时后使用 taskkill /F /T 强制终止进程树。
+    """
+
+    pid = _read_postmaster_pid(data_dir)
+    if pid is None:
+        return
+
+    # 轮询验证进程已退出（最多 5 秒）。
+    deadline = time.monotonic() + 5.0
+    while time.monotonic() < deadline:
+        if not _is_process_running(pid):
+            return
+        time.sleep(0.5)
+
+    # 进程仍在运行，强制终止进程树。
+    print(
+        f"  postmaster (PID {pid}) 未正常退出，强制终止进程树...",
+        file=sys.stderr,
+    )
+    with contextlib.suppress(FileNotFoundError, subprocess.TimeoutExpired):
+        subprocess.run(
+            ["taskkill", "/F", "/T", "/PID", str(pid)],
+            capture_output=True,
+            timeout=10,
+        )
+
+    # 等待文件句柄释放。
+    time.sleep(0.5)
+
+
 def stop_server(pg_bin_dir: Path, data_dir: Path) -> None:
     """通过 ``pg_ctl stop`` 停止 PostgreSQL 服务（fast 模式）。
+
+    在 Windows 上，``pg_ctl stop`` 可能因 crash-recovery 状态而无法
+    终止全部子进程。本函数在 ``pg_ctl stop -w`` 完成后验证 postmaster
+    进程是否已退出，必要时强制终止进程树以确保资源释放。
 
     参数:
         pg_bin_dir: PostgreSQL ``bin/`` 目录路径。
@@ -489,17 +578,27 @@ def stop_server(pg_bin_dir: Path, data_dir: Path) -> None:
     )
     print("正在停止 PostgreSQL...")
     # 同 start_server，不使用 capture_output 避免 Windows 管道句柄继承。
+    # -w 显式等待停止完成（pg_ctl stop 默认不等待）。
     result = subprocess.run(
-        [pg_ctl, "stop", "-D", str(data_dir), "-m", "fast", "-t", "60"],
+        [pg_ctl, "stop", "-D", str(data_dir), "-w", "-m", "fast", "-t", "60"],
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
     if result.returncode != 0:
         # 服务可能已经停止，输出警告但不终止程序。
-        print(f"警告：停止可能未成功（退出码 {result.returncode}）", file=sys.stderr)
-    else:
-        print("PostgreSQL 已停止")
+        print(
+            f"警告：pg_ctl stop 未成功（退出码 {result.returncode}）",
+            file=sys.stderr,
+        )
+
+    # Windows 防御：即使 pg_ctl 报告成功，也验证 postmaster 进程已退出。
+    # 临时实例可能因子进程崩溃触发 crash-recovery，导致 pg_ctl stop
+    # 返回成功但 postmaster 子进程仍在运行。
+    if sys.platform == "win32":
+        _ensure_postmaster_stopped(data_dir)
+
+    print("PostgreSQL 已停止")
 
 
 def get_connection_string(
