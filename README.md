@@ -122,4 +122,4 @@ src/app/
 
 ## 技术栈
 
-详见 [SPEC 5.4](api/SPEC.md)。
+详见 [SPEC 5.4](api/SPEC.md) 和 [架构决策记录](docs/adr/README.md)。

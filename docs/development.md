@@ -187,9 +187,15 @@ import-linter 契约（SPEC 5.2）：
 - **分层依赖方向**：`api → application → domain`，`infrastructure` 只实现内层 Port，`composition` 可引用全部。
 - **模块间隔离**：禁止跨模块直接导入对方内部实现。
 
-## 8. 常见问题
+## 8. 架构决策记录
 
-### 8.1 `uv sync` 报版本不匹配
+所有具有持久影响的技术与架构决策记录在 `docs/adr/` 目录（SPEC 29.2）。
+升级主版本、替换组件或变更安全参数时必须新增 ADR。详见
+[ADR 说明](adr/README.md)。
+
+## 9. 常见问题
+
+### 9.1 `uv sync` 报版本不匹配
 
 确保 `.python-version` 文件存在且值为 `3.13`，uv 会自动安装所需 Python 版本：
 
@@ -197,19 +203,19 @@ import-linter 契约（SPEC 5.2）：
 uv python install 3.13
 ```
 
-### 8.2 集成测试报 Docker 连接失败
+### 9.2 集成测试报 Docker 连接失败
 
 Testcontainers 需要 Docker 运行。检查 Docker Desktop 或 Docker 守护进程是否已启动。
 
-### 8.3 `alembic heads` 输出多个 head
+### 9.3 `alembic heads` 输出多个 head
 
 SPEC 5.5 要求全局唯一 head。检查是否存在多个迁移文件的 `down_revision` 未指向当前 head。
 
-### 8.4 mypy 报找不到模块
+### 9.4 mypy 报找不到模块
 
 确保使用 `uv run` 前缀运行，它会正确设置 `PYTHONPATH` 指向 `src/` 目录。
 
-### 8.5 pip-audit 报已知漏洞
+### 9.5 pip-audit 报已知漏洞
 
 ```bash
 uv run pip-audit
