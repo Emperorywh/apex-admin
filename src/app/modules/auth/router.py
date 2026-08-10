@@ -13,6 +13,9 @@ SPEC 5.6: "Router 只能获得 Use Case，不得获得 AsyncSession、Repository
     POST   /auth/logout-others        退出其他会话
     GET    /auth/sessions             查看活动会话列表
 
+  管理端点 — 需要认证 + 权限校验:
+    POST   /auth/users/{user_id}/force-offline  管理员强制用户下线
+
 SPEC 12.4: 登录和刷新响应必须设置 ``Cache-Control: no-store``。
 SPEC 12.1: Access Token 仅在登录/刷新响应体中返回一次。
 SPEC 12.2: Refresh Token 仅经 Set-Cookie 下发，不进入 JSON 响应。
@@ -24,8 +27,11 @@ from __future__ import annotations
 from typing import Annotated, Literal, cast
 from uuid import UUID
 
-from fastapi import APIRouter, Cookie, Depends, Request, Response, status
+from fastapi import APIRouter, Cookie, Depends, Path, Request, Response, status
 
+from app.application.context import (
+    UseCaseContext,  # noqa: TC001 — FastAPI 运行时需要解析
+)
 from app.core.api.pagination import PageResponse
 from app.core.errors.exceptions import AuthorizationError
 from app.modules.auth.constants import (
@@ -37,6 +43,7 @@ from app.modules.auth.constants import (
 from app.modules.auth.dependencies import (
     AuthenticatedContext,  # noqa: TC001 — FastAPI 运行时需要解析
 )
+from app.modules.auth.permission import require_permission
 from app.modules.auth.schemas import (
     LoginRequest,
     LoginResponse,
@@ -404,6 +411,44 @@ async def list_sessions(
     return await use_case.list_sessions(
         user_id=UUID(ctx.actor_id),
     )
+
+
+# ── 管理端点 — 管理员强制下线（SPEC 12.3 / 18.1）────────────────────────────
+
+
+@router.post(
+    "/users/{user_id}/force-offline",
+    summary="管理员强制用户下线",
+    operation_id="auth_force_offline",
+)
+async def force_offline(
+    request: Request,
+    ctx: Annotated[
+        UseCaseContext,
+        Depends(require_permission("system:user:write")),
+    ],
+    use_case: UseCaseDep,
+    user_id: Annotated[UUID, Path(description="目标用户 ID")],
+) -> dict[str, object]:
+    """管理员强制用户下线 — SPEC 12.3 / 18.1.
+
+    SPEC 12.3: "管理员可以强制用户下线"。
+    吊销目标用户的全部活动会话，使目标用户下一个请求立即收到 401。
+    记录登录日志（SPEC 18.1）。
+
+    此端点属于管理接口，通过权限依赖保护（SPEC 23.5）。
+    """
+
+    ip_address = _get_client_ip(request)
+    user_agent = request.headers.get("User-Agent")
+
+    count = await use_case.force_offline(
+        ctx,
+        user_id,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    return {"user_id": str(user_id), "revoked_sessions": count}
 
 
 # ── 辅助函数 ────────────────────────────────────────────────────────────────

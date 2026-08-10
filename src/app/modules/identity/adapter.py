@@ -269,3 +269,19 @@ class SqlAlchemyUserAuthAdapter(UserAuthPort):
         stmt = update(UserORM).where(UserORM.id == user_id).values(**values)
         await self._session.execute(stmt)
         await self._session.flush()
+
+    async def count_active_users_by_ids(self, user_ids: set[UUID]) -> int:
+        """查询给定用户 ID 集合中处于启用状态的用户数量 — SPEC 13.4."""
+
+        if not user_ids:
+            return 0
+        stmt = (
+            select(func.count())
+            .select_from(UserORM)
+            .where(
+                UserORM.id.in_(user_ids),
+                UserORM.status == UserStatus.ACTIVE.value,
+            )
+        )
+        result = await self._session.execute(stmt)
+        return int(result.scalar() or 0)

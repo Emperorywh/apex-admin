@@ -164,12 +164,20 @@ class FixedIdGenerator(IdGenerator):
         return uuid4()
 
 
+#: RBAC 集成测试操作者 ID（有效 UUID）。
+_TEST_ACTOR_ID = "00000000-0000-0000-0000-0000000000aa"
+
+
 def _make_use_case(  # type: ignore[no-untyped-def]
     engine: AsyncEngine,
     *,
     role_ids: tuple[UUID, ...] | None = None,
 ) -> tuple[RbacUseCase, UseCaseContext]:
-    """构造测试用 RbacUseCase。"""
+    """构造测试用 RbacUseCase。
+
+    操作者 ID 为有效 UUID。测试需在数据库中为操作者创建超管角色
+    才能绕过管理范围校验；``_seed_super_admin`` 辅助此过程。
+    """
 
     from app.modules.audit.adapter import SqlAlchemyAuditRepository
     from app.modules.identity.adapter import SqlAlchemyUserAuthAdapter
@@ -183,6 +191,11 @@ def _make_use_case(  # type: ignore[no-untyped-def]
     def user_auth_port_factory(session):
         return SqlAlchemyUserAuthAdapter(session)
 
+    def user_rbac_port_factory(session):
+        from app.modules.rbac.adapter import SqlAlchemyUserRbacAdapter
+
+        return SqlAlchemyUserRbacAdapter(session)
+
     ids = role_ids or (uuid4(),)
     return (
         RbacUseCase(
@@ -191,8 +204,9 @@ def _make_use_case(  # type: ignore[no-untyped-def]
             id_generator=FixedIdGenerator(*ids),
             audit_factory=audit_factory,
             user_auth_port_factory=user_auth_port_factory,
+            user_rbac_port_factory=user_rbac_port_factory,
         ),
-        UseCaseContext(request_id="test-req", actor_id="admin-001"),
+        UseCaseContext(request_id="test-req", actor_id=_TEST_ACTOR_ID),
     )
 
 
@@ -205,6 +219,55 @@ def _make_builtin_role_use_case(  # type: ignore[no-untyped-def]
     """
 
     return _make_use_case(engine)
+
+
+async def _seed_super_admin_actor(database_url: str) -> None:
+    """为测试操作者创建超管角色并分配，使其通过管理范围校验。"""
+
+    from app.core.security.authorization import SUPER_ADMIN_ROLE_CODE
+
+    role_id = await _insert_builtin_role(
+        database_url,
+        code=SUPER_ADMIN_ROLE_CODE,
+        display_name="超级管理员",
+    )
+    now = datetime.now(UTC)
+    engine = create_db_engine(database_url)
+    try:
+        async with engine.begin() as conn:
+            # 创建操作者用户（如不存在）
+            await conn.execute(
+                text(
+                    "INSERT INTO users (id, username, display_name, "
+                    "password_hash, status, created_at, updated_at) "
+                    "VALUES (:id, :u, :dn, :ph, :st, :ca, :ua) "
+                    "ON CONFLICT (id) DO NOTHING",
+                ),
+                {
+                    "id": _TEST_ACTOR_ID,
+                    "u": "test_actor",
+                    "dn": "Test Actor",
+                    "ph": "$argon2id$fake",
+                    "st": "active",
+                    "ca": now,
+                    "ua": now,
+                },
+            )
+            # 分配超管角色
+            await conn.execute(
+                text(
+                    "INSERT INTO rbac_user_roles "
+                    "(user_id, role_id, created_at, created_by) "
+                    "VALUES (:uid, :rid, :ca, NULL)",
+                ),
+                {
+                    "uid": _TEST_ACTOR_ID,
+                    "rid": str(role_id),
+                    "ca": now,
+                },
+            )
+    finally:
+        await engine.dispose()
 
 
 async def _insert_builtin_role(
@@ -483,6 +546,7 @@ async def test_assign_permissions(database_url: str) -> None:
     await _apply_migrations(database_url)
     await _cleanup_tables(database_url)
     try:
+        await _seed_super_admin_actor(database_url)
         await _insert_permission(database_url, code="system:user:read")
         await _insert_permission(database_url, code="system:user:write")
 
@@ -759,6 +823,7 @@ async def test_disabled_role_permissions_not_in_effective_set(
     await _apply_migrations(database_url)
     await _cleanup_tables(database_url)
     try:
+        await _seed_super_admin_actor(database_url)
         user_id = await _seed_user(database_url)
         await _insert_permission(database_url, code="system:user:read")
         await _insert_permission(database_url, code="system:user:write")
@@ -868,6 +933,7 @@ async def test_permission_assignment_writes_audit(database_url: str) -> None:
     await _apply_migrations(database_url)
     await _cleanup_tables(database_url)
     try:
+        await _seed_super_admin_actor(database_url)
         await _insert_permission(database_url, code="system:user:read")
 
         engine = create_db_engine(database_url)
@@ -955,6 +1021,7 @@ async def test_permission_change_immediately_effective(database_url: str) -> Non
     await _apply_migrations(database_url)
     await _cleanup_tables(database_url)
     try:
+        await _seed_super_admin_actor(database_url)
         user_id = await _seed_user(database_url)
         await _insert_permission(database_url, code="system:user:read")
         await _insert_permission(database_url, code="system:user:write")

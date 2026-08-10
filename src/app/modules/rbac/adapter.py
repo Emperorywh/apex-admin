@@ -411,6 +411,31 @@ class SqlAlchemyUserRbacAdapter(UserRbacPort):
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_role_codes_by_user(self, user_id: UUID) -> set[str]:
+        """查询用户全部角色编码集合 — SPEC 13.4.
+
+        用于超管判定（检查是否拥有 ``super_admin`` 角色编码）。
+        """
+
+        stmt = (
+            select(RoleORM.code)
+            .join(UserRoleORM, UserRoleORM.role_id == RoleORM.id)
+            .where(UserRoleORM.user_id == user_id)
+        )
+        result = await self._session.execute(stmt)
+        return set(result.scalars().all())
+
+    async def get_user_ids_by_role_code(self, role_code: str) -> set[UUID]:
+        """查询拥有指定角色编码的全部用户 ID — SPEC 13.4."""
+
+        stmt = (
+            select(UserRoleORM.user_id)
+            .join(RoleORM, RoleORM.id == UserRoleORM.role_id)
+            .where(RoleORM.code == role_code)
+        )
+        result = await self._session.execute(stmt)
+        return set(result.scalars().all())
+
 
 # ── ORM ↔ 领域实体转换 ──────────────────────────────────────────────────────
 

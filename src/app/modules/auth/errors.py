@@ -16,7 +16,7 @@ SPEC 12.3: "用户禁用、角色禁用、权限移除或会话吊销提交后�
 from __future__ import annotations
 
 from app.core.errors.codes import default_registry
-from app.core.errors.exceptions import AuthenticationError
+from app.core.errors.exceptions import AuthenticationError, ConflictError
 
 # ── 错误码常量 ──────────────────────────────────────────────────────────────
 
@@ -31,6 +31,9 @@ AUTH_SESSION_NOT_FOUND = "AUTH.SESSION_NOT_FOUND"
 
 #: Refresh Token 无效 — 刷新失败（Token 不存在、已使用、已吊销或过期）。
 AUTH_REFRESH_FAILED = "AUTH.REFRESH_FAILED"
+
+#: 最后超管保护 — SPEC 13.4: 操作将使系统失去最后一个可用超级管理员。
+AUTH_LAST_SUPER_ADMIN = "AUTH.LAST_SUPER_ADMIN"
 
 
 # ── 模块异常类 ──────────────────────────────────────────────────────────────
@@ -70,6 +73,16 @@ class RefreshFailedError(AuthenticationError):
     code = AUTH_REFRESH_FAILED
 
 
+class LastSuperAdminError(ConflictError):
+    """最后超管保护 — HTTP 409.
+
+    SPEC 13.4: "防止系统失去最后一个可用超级管理员"。
+    禁用、降权或删除最后一个可用超级管理员时拒绝。
+    """
+
+    code = AUTH_LAST_SUPER_ADMIN
+
+
 # ── 注册到框架默认注册表 ──────────────────────────────────────────────────
 
 default_registry.register(
@@ -89,4 +102,10 @@ default_registry.register(
     401,
     meaning="刷新失败",
     scenario="Refresh Token 不存在、已吊销或过期",
+)
+default_registry.register(
+    AUTH_LAST_SUPER_ADMIN,
+    409,
+    meaning="最后超管保护",
+    scenario="操作将使系统失去最后一个可用超级管理员（SPEC 13.4）",
 )

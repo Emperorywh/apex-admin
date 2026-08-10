@@ -45,8 +45,9 @@ from app.core.api.pagination import (
     SortField,
     sort_dependency,
 )
-from app.core.context.dependencies import create_use_case_context
 from app.core.errors.exceptions import AuthenticationError
+from app.modules.auth.dependencies import get_authenticated_context_async
+from app.modules.auth.permission import require_permission
 from app.modules.identity.models import UserStatus
 from app.modules.identity.schemas import (
     SelfChangePasswordRequest,
@@ -109,6 +110,20 @@ def get_user_use_case(request: Request) -> UserUseCase:
 
         return _audit_adapter.SqlAlchemyAuditRepository(session)
 
+    def user_rbac_port_factory(session):  # type: ignore[no-untyped-def]
+        """从 session 构造用户 RBAC Port — SPEC 13.4."""
+
+        from app.modules.rbac.adapter import SqlAlchemyUserRbacAdapter
+
+        return SqlAlchemyUserRbacAdapter(session)
+
+    def user_auth_port_factory(session):  # type: ignore[no-untyped-def]
+        """从 session 构造用户认证信息 Port — SPEC 13.4."""
+
+        from app.modules.identity.adapter import SqlAlchemyUserAuthAdapter
+
+        return SqlAlchemyUserAuthAdapter(session)
+
     # SPEC 5.7: auth 模块的事务内事件处理器在禁用/重置密码 Use Case 的
     # 事务内同步执行，吊销该用户全部会话（SPEC 12.3）。
     # 处理器在当前 UoW 的 AsyncSession 上执行，与业务数据强一致。
@@ -124,20 +139,28 @@ def get_user_use_case(request: Request) -> UserUseCase:
         hasher=Argon2Hasher(),
         event_handlers=auth_event_handlers,
         audit_factory=audit_factory,
+        user_rbac_port_factory=user_rbac_port_factory,
+        user_auth_port_factory=user_auth_port_factory,
     )
 
 
 UseCaseDep = Annotated[UserUseCase, Depends(get_user_use_case)]
-ContextDep = Annotated[UseCaseContext, Depends(create_use_case_context)]
+
+# SPEC 13.3 / 23.5: 管理端通过权限依赖保护，自助端点仅认证。
+UserReadCtx = Annotated[UseCaseContext, Depends(require_permission("system:user:read"))]
+UserWriteCtx = Annotated[
+    UseCaseContext, Depends(require_permission("system:user:write"))
+]
 
 
-def require_actor(ctx: ContextDep) -> UseCaseContext:
+def require_actor(
+    ctx: Annotated[UseCaseContext, Depends(get_authenticated_context_async)],
+) -> UseCaseContext:
     """自助端点前置检查——确保已认证（actor_id 非 None）.
 
     SPEC 23.5: "默认拒绝未认证访问"。
-    自助端点需要从 ``UseCaseContext.actor_id`` 获取当前用户 ID，
-    未认证时（G1 阶段 actor_id 为 None）返回 401。
-    G2 认证实现后（TASK-013），认证依赖在到达此函数前已完成填充。
+    自助端点通过认证依赖（``get_authenticated_context_async``）保护，
+    不需要权限点（SPEC 23.5: 操作自身资源）。
     """
 
     if ctx.actor_id is None:
@@ -227,7 +250,7 @@ async def change_self_password(
 async def create_user(
     response: Response,
     request_body: UserCreateRequest,
-    ctx: ContextDep,
+    ctx: UserWriteCtx,
     use_case: UseCaseDep,
 ) -> UserResponse:
     """创建用户 — HTTP 201 + Location（SPEC 9.3）.
@@ -250,7 +273,7 @@ async def create_user(
     operation_id="list_users",
 )
 async def list_users(
-    ctx: ContextDep,
+    ctx: UserReadCtx,
     use_case: UseCaseDep,
     params: Annotated[PageParams, Depends()],
     sort: Annotated[
@@ -293,7 +316,7 @@ async def list_users(
     operation_id="get_user",
 )
 async def get_user(
-    ctx: ContextDep,
+    ctx: UserReadCtx,
     use_case: UseCaseDep,
     user_id: Annotated[UUID, Path(description="用户 ID")],
 ) -> UserResponse:
@@ -310,7 +333,7 @@ async def get_user(
 )
 async def update_user(
     request_body: UserUpdateRequest,
-    ctx: ContextDep,
+    ctx: UserWriteCtx,
     use_case: UseCaseDep,
     user_id: Annotated[UUID, Path(description="用户 ID")],
 ) -> UserResponse:
@@ -326,7 +349,7 @@ async def update_user(
     operation_id="enable_user",
 )
 async def enable_user(
-    ctx: ContextDep,
+    ctx: UserWriteCtx,
     use_case: UseCaseDep,
     user_id: Annotated[UUID, Path(description="用户 ID")],
 ) -> UserResponse:
@@ -345,7 +368,7 @@ async def enable_user(
     operation_id="disable_user",
 )
 async def disable_user(
-    ctx: ContextDep,
+    ctx: UserWriteCtx,
     use_case: UseCaseDep,
     user_id: Annotated[UUID, Path(description="用户 ID")],
 ) -> UserResponse:
@@ -366,7 +389,7 @@ async def disable_user(
 )
 async def reset_user_password(
     request_body: UserResetPasswordRequest,
-    ctx: ContextDep,
+    ctx: UserWriteCtx,
     use_case: UseCaseDep,
     user_id: Annotated[UUID, Path(description="用户 ID")],
 ) -> Response:
@@ -388,7 +411,7 @@ async def reset_user_password(
     operation_id="delete_user",
 )
 async def delete_user(
-    ctx: ContextDep,
+    ctx: UserWriteCtx,
     use_case: UseCaseDep,
     user_id: Annotated[UUID, Path(description="用户 ID")],
 ) -> Response:

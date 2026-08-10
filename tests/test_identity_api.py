@@ -23,9 +23,10 @@ from starlette.testclient import TestClient
 from app.application.context import UseCaseContext
 from app.composition.modules import MODULE_VERSION_LOCATIONS
 from app.core.config import Environment, Settings
-from app.core.context.dependencies import create_use_case_context
 from app.infrastructure.db.engine import create_db_engine
 from app.main import create_app
+from app.modules.auth.dependencies import get_authenticated_context_async
+from app.modules.auth.permission import ActorAuthorization, get_actor_authorization
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -82,15 +83,45 @@ async def _async_clean(engine) -> None:
         await conn.execute(text("DELETE FROM users"))
 
 
+_SUPER_ADMIN_CTX = UseCaseContext(
+    request_id="test-admin-req",
+    actor_id="00000000-0000-0000-0000-000000000001",
+)
+
+
+def _super_admin_auth_override() -> ActorAuthorization:
+    """模拟超管授权——API 契约测试用，不测试授权本身。"""
+
+    return ActorAuthorization(
+        ctx=_SUPER_ADMIN_CTX,
+        permissions=frozenset(),
+        is_super_admin=True,
+    )
+
+
+def _super_admin_ctx_override() -> UseCaseContext:
+    """模拟认证上下文——API 契约测试用。"""
+
+    return _SUPER_ADMIN_CTX
+
+
 @pytest.fixture()
 def api_client(migrated_database_url: str) -> Iterator[TestClient]:
-    """创建使用迁移后数据库的 TestClient。"""
+    """创建使用迁移后数据库的 TestClient。
+
+    覆盖认证和权限依赖，模拟超管身份，使 API 契约测试聚焦于
+    响应格式和状态码，而非授权逻辑（授权测试在独立文件中）。
+    """
 
     settings = Settings(
         ENVIRONMENT=Environment.TESTING,
         DATABASE_URL=migrated_database_url,
     )
     app = create_app(settings)
+    app.dependency_overrides[get_authenticated_context_async] = (
+        _super_admin_ctx_override
+    )
+    app.dependency_overrides[get_actor_authorization] = _super_admin_auth_override
     with TestClient(app) as client:
         yield client
 
@@ -376,7 +407,7 @@ def api_client_with_actor(
 ) -> Iterator[tuple[TestClient, str]]:
     """创建带 actor_id 的 TestClient——自助端点测试。
 
-    通过覆盖 ``create_use_case_context`` 依赖注入模拟认证，
+    通过覆盖认证依赖注入模拟已认证用户，
     使自助端点的 ``ctx.actor_id`` 指向已创建的用户。
     """
     settings = Settings(
@@ -385,19 +416,47 @@ def api_client_with_actor(
     )
     app = create_app(settings)
 
-    # 先创建用户并获取其 ID（使用原始 client）
+    # 先用超管身份创建用户并获取其 ID
+    admin_ctx = UseCaseContext(
+        request_id="test-setup-req",
+        actor_id="00000000-0000-0000-0000-000000000001",
+    )
+
+    def _setup_auth() -> UseCaseContext:
+        return admin_ctx
+
+    def _setup_perm() -> ActorAuthorization:
+        return ActorAuthorization(
+            ctx=admin_ctx,
+            permissions=frozenset(),
+            is_super_admin=True,
+        )
+
+    app.dependency_overrides[get_authenticated_context_async] = _setup_auth
+    app.dependency_overrides[get_actor_authorization] = _setup_perm
+
     with TestClient(app) as setup_client:
         user = _create_user(setup_client)
         actor_id = str(user["id"])
 
-    # 覆盖 context 依赖，模拟已认证
-    def _override_context() -> UseCaseContext:
-        return UseCaseContext(
-            request_id="test-self-req",
-            actor_id=actor_id,
+    # 覆盖认证和权限依赖，模拟已认证的自助用户
+    self_ctx = UseCaseContext(
+        request_id="test-self-req",
+        actor_id=actor_id,
+    )
+
+    def _override_auth() -> UseCaseContext:
+        return self_ctx
+
+    def _override_perm() -> ActorAuthorization:
+        return ActorAuthorization(
+            ctx=self_ctx,
+            permissions=frozenset(),
+            is_super_admin=False,
         )
 
-    app.dependency_overrides[create_use_case_context] = _override_context
+    app.dependency_overrides[get_authenticated_context_async] = _override_auth
+    app.dependency_overrides[get_actor_authorization] = _override_perm
 
     with TestClient(app) as client:
         yield client, actor_id
@@ -522,10 +581,20 @@ def test_self_change_password_missing_old_returns_422(
 
 @pytest.mark.g2
 @pytest.mark.api
-def test_self_profile_without_auth_returns_401(api_client: TestClient) -> None:
+def test_self_profile_without_auth_returns_401(
+    migrated_database_url: str,
+) -> None:
     """未认证访问自助端点返回 401 — SPEC 23.5."""
-    response = api_client.get("/api/v1/users/me")
-    assert response.status_code == 401
+
+    settings = Settings(
+        ENVIRONMENT=Environment.TESTING,
+        DATABASE_URL=migrated_database_url,
+    )
+    app = create_app(settings)
+    # 不覆盖认证依赖——模拟未认证请求
+    with TestClient(app) as client:
+        response = client.get("/api/v1/users/me")
+        assert response.status_code == 401
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

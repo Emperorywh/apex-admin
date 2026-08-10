@@ -76,6 +76,7 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from app.application.context import UseCaseContext
     from app.application.ports import Clock, IdGenerator
     from app.core.security.digest import TokenDigestService
     from app.infrastructure.db.uow import SqlAlchemyUnitOfWork
@@ -830,6 +831,72 @@ class AuthUseCase:
             occurred_at=now,
         )
         await login_log.record_login(entry)
+
+    # ── 管理员强制下线 ─────────────────────────────────────────────────────
+
+    async def force_offline(
+        self,
+        ctx: UseCaseContext,
+        target_user_id: UUID,
+        *,
+        ip_address: str,
+        user_agent: str | None,
+    ) -> int:
+        """管理员强制用户下线 — SPEC 12.3 / 18.1.
+
+        SPEC 12.3: "管理员可以强制用户下线"。
+        吊销目标用户的全部活动会话（含 Refresh Token Family），
+        使目标用户的下一个请求立即收到 401（SPEC 12.3: "会话吊销提交后，
+        后续请求立即按新状态拒绝"）。
+
+        SPEC 18.1: 强制下线记录登录日志。
+
+        此方法属于管理接口，路由层通过权限依赖保护。
+
+        参数:
+            ctx:             用例上下文（提供 actor_id 和 request_id）。
+            target_user_id:  目标用户 ID。
+            ip_address:      操作者 IP 地址。
+            user_agent:      操作者 User-Agent。
+
+        返回:
+            被吊销的会话数量。
+        """
+
+        now = self._clock.now()
+        async with self._uow_factory() as uow:
+            repo = self._create_session_repo(uow.session)
+            refresh_repo = self._create_refresh_repo(uow.session)
+            login_log = self._create_login_log(uow.session)
+
+            count = await repo.revoke_all_by_user(
+                target_user_id,
+                reason="admin_force_offline",
+            )
+
+            if count > 0:
+                # 吊销关联的全部 Refresh Token Family
+                sessions = await repo.list_active_by_user(target_user_id)
+                for s in sessions:
+                    await refresh_repo.revoke_by_session(
+                        s.id,
+                        reason=REFRESH_REVOKE_LOGOUT,
+                    )
+
+                await self._record_login_log(
+                    login_log,
+                    user_id=str(target_user_id),
+                    username=str(target_user_id),
+                    session_id=None,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    result="force_offline",
+                    failure_reason=None,
+                    now=now,
+                )
+
+            await uow.commit()
+            return count
 
     # ── 会话查看 ─────────────────────────────────────────────────────────────
 

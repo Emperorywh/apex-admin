@@ -71,7 +71,8 @@ if TYPE_CHECKING:
     from app.infrastructure.db.uow import SqlAlchemyUnitOfWork
     from app.modules.audit.models import ChangeDiff
     from app.modules.audit.port import AuditPort
-    from app.modules.identity.port import UserRepository
+    from app.modules.identity.port import UserAuthPort, UserRepository
+    from app.modules.rbac.port import UserRbacPort
 
 # ── 用户审计字段白名单 — SPEC 18.2 ──────────────────────────────────────────
 #
@@ -100,13 +101,15 @@ class UserUseCase:
     auth 模块（TASK-013）注册处理器吊销会话。
 
     构造参数:
-        uow_factory:    UoW 工厂，每次调用返回新 UoW。
-        clock:          时钟 Port（SPEC 5.8）。
-        id_generator:   标识生成器 Port（SPEC 5.8）。
-        hasher:         Argon2id 密码哈希服务（SPEC 12.1）。
-        event_handlers: 事务内事件处理器列表（SPEC 5.7）。
-        audit_factory:  审计 Port 工厂——从 AsyncSession 构造 AuditPort，
-                        由 Composition Root 注入避免跨模块依赖 Adapter。
+        uow_factory:        UoW 工厂，每次调用返回新 UoW。
+        clock:              时钟 Port（SPEC 5.8）。
+        id_generator:       标识生成器 Port（SPEC 5.8）。
+        hasher:             Argon2id 密码哈希服务（SPEC 12.1）。
+        event_handlers:     事务内事件处理器列表（SPEC 5.7）。
+        audit_factory:      审计 Port 工厂——从 AsyncSession 构造 AuditPort，
+                            由 Composition Root 注入避免跨模块依赖 Adapter。
+        user_rbac_port_factory: 用户 RBAC Port 工厂（SPEC 13.4 最后超管保护）。
+        user_auth_port_factory: 用户认证信息 Port 工厂（SPEC 13.4 统计活跃超管）。
     """
 
     def __init__(
@@ -118,6 +121,8 @@ class UserUseCase:
         hasher: Argon2Hasher,
         event_handlers: list[TransactionalEventHandler],
         audit_factory: Callable[[AsyncSession], AuditPort],
+        user_rbac_port_factory: Callable[[AsyncSession], UserRbacPort],
+        user_auth_port_factory: Callable[[AsyncSession], UserAuthPort],
     ) -> None:
         """初始化 Use Case，注入所有依赖."""
 
@@ -127,6 +132,8 @@ class UserUseCase:
         self._hasher = hasher
         self._event_handlers = event_handlers
         self._audit_factory = audit_factory
+        self._user_rbac_port_factory = user_rbac_port_factory
+        self._user_auth_port_factory = user_auth_port_factory
 
     def _create_repo(self, session: AsyncSession) -> UserRepository:
         """从 session 构造用户 Repository Adapter — SPEC 5.6."""
@@ -141,6 +148,50 @@ class UserUseCase:
         """
 
         return self._audit_factory(session)
+
+    def _create_user_rbac_port(self, session: AsyncSession) -> UserRbacPort:
+        """从 session 构造用户 RBAC Port — SPEC 5.2 / 13.4."""
+
+        return self._user_rbac_port_factory(session)
+
+    def _create_user_auth_port(self, session: AsyncSession) -> UserAuthPort:
+        """从 session 构造用户认证信息 Port — SPEC 5.2 / 13.4."""
+
+        return self._user_auth_port_factory(session)
+
+    async def _check_last_super_admin_protection(
+        self,
+        session: AsyncSession,
+        target_user_id: UUID,
+    ) -> None:
+        """最后超管保护 — SPEC 13.4.
+
+        SPEC 13.4: "防止系统失去最后一个可用超级管理员"。
+        检查目标用户是否为活跃超管，且是否为最后一个。
+        """
+
+        from app.core.security.authorization import SUPER_ADMIN_ROLE_CODE
+        from app.modules.auth.errors import LastSuperAdminError
+
+        rbac_port = self._create_user_rbac_port(session)
+        user_auth = self._create_user_auth_port(session)
+
+        role_codes = await rbac_port.get_role_codes_by_user(target_user_id)
+        from app.core.security.authorization import is_super_admin
+
+        if not is_super_admin(role_codes):
+            return
+
+        super_admin_user_ids = await rbac_port.get_user_ids_by_role_code(
+            SUPER_ADMIN_ROLE_CODE,
+        )
+        active_count = await user_auth.count_active_users_by_ids(
+            super_admin_user_ids,
+        )
+        if active_count <= 1:
+            raise LastSuperAdminError(
+                "无法禁用或删除最后一个可用超级管理员",
+            )
 
     def _make_audit_entry(
         self,
@@ -448,6 +499,9 @@ class UserUseCase:
             if existing.status == UserStatus.DISABLED:
                 raise UserAlreadyDisabledError(str(user_id))
 
+            # SPEC 13.4: 最后超管保护——禁用前检查
+            await self._check_last_super_admin_protection(uow.session, user_id)
+
             before_state = self._user_state(existing)
 
             updated = User(
@@ -597,6 +651,9 @@ class UserUseCase:
             existing = await repo.get_by_id(user_id)
             if existing is None:
                 raise UserNotFoundError(str(user_id))
+
+            # SPEC 13.4: 最后超管保护——删除前检查
+            await self._check_last_super_admin_protection(uow.session, user_id)
 
             # 检查该用户是否产生审计记录 — SPEC 11.3
             audit_count = await audit.count_by_resource("user", str(user_id))

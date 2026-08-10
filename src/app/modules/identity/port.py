@@ -171,3 +171,16 @@ class UserAuthPort(ABC):
             last_login_at:     最近登录时间（UTC）。
             new_password_hash: 新密码哈希（rehash 升级时提供，否则 None）。
         """
+
+    @abstractmethod
+    async def count_active_users_by_ids(self, user_ids: set[UUID]) -> int:
+        """查询给定用户 ID 集合中处于启用状态的用户数量 — SPEC 13.4.
+
+        用于最后超管保护——统计活跃超管数量时，需检查用户状态。
+
+        参数:
+            user_ids: 用户 ID 集合。
+
+        返回:
+            集合中处于 ACTIVE 状态的用户数量。
+        """

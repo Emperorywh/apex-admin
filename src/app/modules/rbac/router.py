@@ -37,7 +37,7 @@ from app.core.api.pagination import (
     SortField,
     sort_dependency,
 )
-from app.core.context.dependencies import create_use_case_context
+from app.modules.auth.permission import require_permission
 from app.modules.rbac.models import RoleStatus
 from app.modules.rbac.schemas import (
     AssignPermissionsRequest,
@@ -85,17 +85,31 @@ def get_rbac_use_case(request: Request) -> RbacUseCase:
 
         return _identity_adapter.SqlAlchemyUserAuthAdapter(session)
 
+    def user_rbac_port_factory(session):  # type: ignore[no-untyped-def]
+        """从 session 构造用户 RBAC Port — SPEC 5.2 / 13.3 二次校验."""
+
+        from app.modules.rbac.adapter import SqlAlchemyUserRbacAdapter
+
+        return SqlAlchemyUserRbacAdapter(session)
+
     return RbacUseCase(
         uow_factory=uow_factory,
         clock=SystemClock(),
         id_generator=UuidGenerator(),
         audit_factory=audit_factory,
         user_auth_port_factory=user_auth_port_factory,
+        user_rbac_port_factory=user_rbac_port_factory,
     )
 
 
 UseCaseDep = Annotated[RbacUseCase, Depends(get_rbac_use_case)]
-ContextDep = Annotated[UseCaseContext, Depends(create_use_case_context)]
+
+# SPEC 13.3 / 23.5: 管理端通过权限依赖保护。
+RoleReadCtx = Annotated[UseCaseContext, Depends(require_permission("rbac:role:read"))]
+RoleWriteCtx = Annotated[UseCaseContext, Depends(require_permission("rbac:role:write"))]
+AssignmentWriteCtx = Annotated[
+    UseCaseContext, Depends(require_permission("rbac:assignment:write"))
+]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -113,7 +127,7 @@ ContextDep = Annotated[UseCaseContext, Depends(create_use_case_context)]
 async def create_role(
     response: Response,
     request_body: RoleCreateRequest,
-    ctx: ContextDep,
+    ctx: RoleWriteCtx,
     use_case: UseCaseDep,
 ) -> RoleResponse:
     """创建角色 — HTTP 201 + Location（SPEC 9.3 / 13.2）.
@@ -133,7 +147,7 @@ async def create_role(
     operation_id="list_roles",
 )
 async def list_roles(
-    ctx: ContextDep,
+    ctx: RoleReadCtx,
     use_case: UseCaseDep,
     params: Annotated[PageParams, Depends()],
     sort: Annotated[
@@ -170,7 +184,7 @@ async def list_roles(
     operation_id="get_role_detail",
 )
 async def get_role_detail(
-    ctx: ContextDep,
+    ctx: RoleReadCtx,
     use_case: UseCaseDep,
     role_id: Annotated[UUID, Path(description="角色 ID")],
 ) -> RoleDetailResponse:
@@ -190,7 +204,7 @@ async def get_role_detail(
 )
 async def update_role(
     request_body: RoleUpdateRequest,
-    ctx: ContextDep,
+    ctx: RoleWriteCtx,
     use_case: UseCaseDep,
     role_id: Annotated[UUID, Path(description="角色 ID")],
 ) -> RoleResponse:
@@ -206,7 +220,7 @@ async def update_role(
     operation_id="enable_role",
 )
 async def enable_role(
-    ctx: ContextDep,
+    ctx: RoleWriteCtx,
     use_case: UseCaseDep,
     role_id: Annotated[UUID, Path(description="角色 ID")],
 ) -> RoleResponse:
@@ -225,7 +239,7 @@ async def enable_role(
     operation_id="disable_role",
 )
 async def disable_role(
-    ctx: ContextDep,
+    ctx: RoleWriteCtx,
     use_case: UseCaseDep,
     role_id: Annotated[UUID, Path(description="角色 ID")],
 ) -> RoleResponse:
@@ -245,7 +259,7 @@ async def disable_role(
     operation_id="delete_role",
 )
 async def delete_role(
-    ctx: ContextDep,
+    ctx: RoleWriteCtx,
     use_case: UseCaseDep,
     role_id: Annotated[UUID, Path(description="角色 ID")],
 ) -> Response:
@@ -268,7 +282,7 @@ async def delete_role(
 )
 async def assign_role_permissions(
     request_body: AssignPermissionsRequest,
-    ctx: ContextDep,
+    ctx: AssignmentWriteCtx,
     use_case: UseCaseDep,
     role_id: Annotated[UUID, Path(description="角色 ID")],
 ) -> RoleDetailResponse:
@@ -287,7 +301,7 @@ async def assign_role_permissions(
     operation_id="get_role_members",
 )
 async def get_role_members(
-    ctx: ContextDep,
+    ctx: RoleReadCtx,
     use_case: UseCaseDep,
     role_id: Annotated[UUID, Path(description="角色 ID")],
     params: Annotated[PageParams, Depends()],
@@ -313,7 +327,7 @@ async def get_role_members(
     operation_id="get_user_roles",
 )
 async def get_user_roles(
-    ctx: ContextDep,
+    ctx: AssignmentWriteCtx,
     use_case: UseCaseDep,
     user_id: Annotated[UUID, Path(description="用户 ID")],
 ) -> dict[str, object]:
@@ -333,7 +347,7 @@ async def get_user_roles(
 )
 async def assign_user_roles(
     request_body: AssignUserRolesRequest,
-    ctx: ContextDep,
+    ctx: AssignmentWriteCtx,
     use_case: UseCaseDep,
     user_id: Annotated[UUID, Path(description="用户 ID")],
 ) -> dict[str, object]:
@@ -352,7 +366,7 @@ async def assign_user_roles(
     operation_id="remove_user_role",
 )
 async def remove_user_role(
-    ctx: ContextDep,
+    ctx: AssignmentWriteCtx,
     use_case: UseCaseDep,
     user_id: Annotated[UUID, Path(description="用户 ID")],
     role_id: Annotated[UUID, Path(description="角色 ID")],

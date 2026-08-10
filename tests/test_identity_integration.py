@@ -237,6 +237,16 @@ def _make_use_case(  # type: ignore[no-untyped-def]
     def audit_factory(session):
         return SqlAlchemyAuditRepository(session)
 
+    def user_rbac_port_factory(session):
+        from app.modules.rbac.adapter import SqlAlchemyUserRbacAdapter
+
+        return SqlAlchemyUserRbacAdapter(session)
+
+    def user_auth_port_factory(session):
+        from app.modules.identity.adapter import SqlAlchemyUserAuthAdapter
+
+        return SqlAlchemyUserAuthAdapter(session)
+
     ids = user_ids or (uuid4(),)
     return (
         UserUseCase(
@@ -246,6 +256,8 @@ def _make_use_case(  # type: ignore[no-untyped-def]
             hasher=Argon2Hasher(),
             event_handlers=event_handlers or [],
             audit_factory=audit_factory,
+            user_rbac_port_factory=user_rbac_port_factory,
+            user_auth_port_factory=user_auth_port_factory,
         ),
         UseCaseContext(request_id="test-req", actor_id="admin-001"),
     )

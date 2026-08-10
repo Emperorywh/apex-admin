@@ -27,6 +27,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from app.core.api.pagination import SortField, total_pages
+from app.core.security.authorization import (
+    SUPER_ADMIN_ROLE_CODE,
+    check_management_scope,
+    is_super_admin,
+)
 from app.modules.audit.diff import FieldWhitelist, generate_diff
 from app.modules.audit.models import AuditEntry
 from app.modules.rbac.adapter import SqlAlchemyRbacRepository
@@ -61,7 +66,7 @@ if TYPE_CHECKING:
     from app.modules.audit.models import ChangeDiff
     from app.modules.audit.port import AuditPort
     from app.modules.identity.port import UserAuthPort
-    from app.modules.rbac.port import RbacRepository
+    from app.modules.rbac.port import RbacRepository, UserRbacPort
 
 
 # ── 角色审计字段白名单 — SPEC 18.2 ──────────────────────────────────────────
@@ -86,6 +91,8 @@ class RbacUseCase:
         audit_factory:         审计 Port 工厂。
         user_auth_port_factory: 用户认证信息 Port 工厂（跨模块，
                                从 AsyncSession 构造 UserAuthPort）。
+        user_rbac_port_factory: 用户 RBAC Port 工厂（从 AsyncSession 构造
+                               UserRbacPort，用于 UoW 内二次校验）。
     """
 
     def __init__(
@@ -96,6 +103,7 @@ class RbacUseCase:
         id_generator: IdGenerator,
         audit_factory: Callable[[AsyncSession], AuditPort],
         user_auth_port_factory: Callable[[AsyncSession], UserAuthPort],
+        user_rbac_port_factory: Callable[[AsyncSession], UserRbacPort],
     ) -> None:
         """初始化 Use Case，注入所有依赖."""
 
@@ -104,6 +112,7 @@ class RbacUseCase:
         self._id_generator = id_generator
         self._audit_factory = audit_factory
         self._user_auth_port_factory = user_auth_port_factory
+        self._user_rbac_port_factory = user_rbac_port_factory
 
     def _create_repo(self, session: AsyncSession) -> RbacRepository:
         """从 session 构造 RBAC Repository Adapter — SPEC 5.6."""
@@ -119,6 +128,76 @@ class RbacUseCase:
         """从 session 构造用户认证信息 Port — SPEC 5.2 跨模块."""
 
         return self._user_auth_port_factory(session)
+
+    def _create_user_rbac_port(self, session: AsyncSession) -> UserRbacPort:
+        """从 session 构造用户 RBAC Port — SPEC 5.2 跨模块.
+
+        用于 UoW 内二次校验（SPEC 13.3）。
+        """
+
+        return self._user_rbac_port_factory(session)
+
+    async def _verify_actor_authorization(
+        self,
+        session: AsyncSession,
+        actor_id: str | None,
+    ) -> tuple[frozenset[str], bool]:
+        """在当前 UoW 中重新读取操作者授权关系 — SPEC 13.3 二次校验.
+
+        SPEC 13.3: "关键写 Use Case 在当前 Unit of Work 中重新读取
+        授权关系并执行二次校验"。
+
+        返回:
+            (操作者有效权限集, 是否超管) 元组。
+            操作者 ID 为 None 或无法解析为 UUID 时返回空集（默认拒绝）。
+        """
+
+        from uuid import UUID
+
+        if actor_id is None:
+            return frozenset(), False
+
+        try:
+            actor_uuid = UUID(actor_id)
+        except ValueError:
+            return frozenset(), False
+
+        rbac_port = self._create_user_rbac_port(session)
+        permissions = await rbac_port.get_effective_permission_codes(actor_uuid)
+        role_codes = await rbac_port.get_role_codes_by_user(actor_uuid)
+        return frozenset(permissions), is_super_admin(role_codes)
+
+    async def _check_last_super_admin_protection(
+        self,
+        session: AsyncSession,
+        target_user_id: UUID,
+    ) -> None:
+        """最后超管保护 — SPEC 13.4.
+
+        检查目标用户是否为最后一个活跃超管。如果是，拒绝操作。
+
+        SPEC 13.4: "防止系统失去最后一个可用超级管理员"。
+        """
+
+        from app.modules.auth.errors import LastSuperAdminError
+
+        rbac_port = self._create_user_rbac_port(session)
+        user_auth = self._create_user_auth_port(session)
+
+        role_codes = await rbac_port.get_role_codes_by_user(target_user_id)
+        if not is_super_admin(role_codes):
+            return  # 非超管，无需保护
+
+        super_admin_user_ids = await rbac_port.get_user_ids_by_role_code(
+            SUPER_ADMIN_ROLE_CODE,
+        )
+        active_count = await user_auth.count_active_users_by_ids(
+            super_admin_user_ids,
+        )
+        if active_count <= 1:
+            raise LastSuperAdminError(
+                "无法移除最后一个可用超级管理员的角色",
+            )
 
     def _make_audit_entry(
         self,
@@ -491,6 +570,11 @@ class RbacUseCase:
             if existing is None:
                 raise RoleNotFoundError(str(role_id))
 
+            # SPEC 13.3: UoW 内二次校验——重新读取操作者授权关系
+            actor_permissions, actor_is_super = await self._verify_actor_authorization(
+                uow.session, ctx.actor_id
+            )
+
             # 验证所有权限编码存在 — SPEC 13.2
             requested_codes = set(request.permission_codes)
             if requested_codes:
@@ -504,6 +588,13 @@ class RbacUseCase:
                 permission_ids = {p.id for p in found}
             else:
                 permission_ids = set()
+
+            # SPEC 13.2: 管理范围校验——普通管理员只能授予自身范围内的权限
+            check_management_scope(
+                actor_permissions=actor_permissions,
+                target_permissions=frozenset(requested_codes),
+                actor_is_super_admin=actor_is_super,
+            )
 
             # 获取旧权限列表用于审计
             old_codes = await repo.get_role_permission_codes(role_id)
@@ -605,6 +696,13 @@ class RbacUseCase:
 
                 raise UserNotFoundError(str(user_id))
 
+            # SPEC 13.3: UoW 内二次校验——重新读取操作者授权关系
+            actor_permissions, actor_is_super = (
+                await self._verify_actor_authorization(uow.session, ctx.actor_id)
+                if ctx.actor_id
+                else (frozenset(), True)
+            )
+
             # 解析目标角色编码为角色实体 — 通过 Repository Port
             requested_codes = set(request.role_codes)
             target_roles = await repo.get_roles_by_codes(requested_codes)
@@ -617,13 +715,33 @@ class RbacUseCase:
 
             target_role_ids = {r.id for r in target_roles}
 
-            # 获取现有分配
+            # SPEC 13.2: 管理范围校验——普通管理员只能授予自身范围内的角色
+            # 角色的管理范围 = 该角色的全部权限编码集合
+            target_permissions: set[str] = set()
+            for role in target_roles:
+                role_perms = await repo.get_role_permission_codes(role.id)
+                target_permissions.update(role_perms)
+            check_management_scope(
+                actor_permissions=actor_permissions,
+                target_permissions=frozenset(target_permissions),
+                actor_is_super_admin=actor_is_super,
+            )
+
+            # SPEC 13.4: 最后超管保护——移除超管角色时检查
             existing_assignments = await repo.list_user_roles(user_id)
             existing_role_ids = {a.role_id for a in existing_assignments}
-
-            # 查询现有角色的编码（用于审计 diff）
             existing_roles = await repo.get_roles_by_ids(existing_role_ids)
             existing_code_map = {r.id: r.code for r in existing_roles}
+            existing_role_codes = set(existing_code_map.values())
+            has_super_admin = SUPER_ADMIN_ROLE_CODE in existing_role_codes
+            removing_super_admin = has_super_admin and (
+                SUPER_ADMIN_ROLE_CODE not in requested_codes
+            )
+            if removing_super_admin:
+                await self._check_last_super_admin_protection(
+                    uow.session,
+                    user_id,
+                )
 
             # 计算差异
             to_add = target_role_ids - existing_role_ids
@@ -690,6 +808,14 @@ class RbacUseCase:
         async with self._uow_factory() as uow:
             repo = self._create_repo(uow.session)
             audit = self._create_audit(uow.session)
+
+            # SPEC 13.4: 最后超管保护——移除超管角色时检查
+            role = await repo.get_role_by_id(role_id)
+            if role is not None and role.code == SUPER_ADMIN_ROLE_CODE:
+                await self._check_last_super_admin_protection(
+                    uow.session,
+                    user_id,
+                )
 
             removed = await repo.remove_user_role(user_id, role_id)
             if not removed:

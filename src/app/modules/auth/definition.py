@@ -23,6 +23,7 @@ from __future__ import annotations
 from app.core.modules.definition import ModuleDefinition
 from app.modules.auth.errors import (
     AUTH_INVALID_CREDENTIALS,
+    AUTH_LAST_SUPER_ADMIN,
     AUTH_REFRESH_FAILED,
     AUTH_SESSION_NOT_FOUND,
 )
@@ -54,14 +55,15 @@ MODULE_DEFINITION = ModuleDefinition(
     api_tag=MODULE_API_TAG,
     # SPEC 5.5: auth 模块不向外公开 Port（其他模块通过事件向 auth 发送指令）。
     application_ports=(),
-    required_dependencies=("audit", "identity"),  # 登录日志 + 用户认证信息
+    required_dependencies=("audit", "identity", "rbac"),  # 日志 + 用户状态 + RBAC 查询
     optional_dependencies=(),
     routers=(auth_router,),
-    permission_codes=(),  # RBAC 在 TASK-015/016 实现。
+    permission_codes=(),  # auth 端点复用 identity 的 system:user:* 权限点。
     error_codes=(
         AUTH_INVALID_CREDENTIALS,
         AUTH_SESSION_NOT_FOUND,
         AUTH_REFRESH_FAILED,
+        AUTH_LAST_SUPER_ADMIN,
     ),
     audit_actions=(),  # 登录日志使用 LoginLogPort，不走 AuditPort。
     protected_resource_types=(RESOURCE_TYPE_SESSION,),

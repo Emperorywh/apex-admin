@@ -253,3 +253,30 @@ class UserRbacPort(ABC):
         返回:
             角色 ID 列表。
         """
+
+    @abstractmethod
+    async def get_role_codes_by_user(self, user_id: UUID) -> set[str]:
+        """查询用户全部角色编码集合 — SPEC 13.4.
+
+        用于超管判定（检查是否拥有 ``super_admin`` 角色编码）。
+        每次调用查库，无 TTL 缓存（SPEC 13.3）。
+
+        参数:
+            user_id: 用户 ID。
+
+        返回:
+            用户全部角色编码集合（含启用和禁用角色）。
+        """
+
+    @abstractmethod
+    async def get_user_ids_by_role_code(self, role_code: str) -> set[UUID]:
+        """查询拥有指定角色编码的全部用户 ID — SPEC 13.4.
+
+        用于最后超管保护——统计拥有 ``super_admin`` 角色的用户数量。
+
+        参数:
+            role_code: 角色编码。
+
+        返回:
+            拥有该角色编码的全部用户 ID 集合。
+        """
