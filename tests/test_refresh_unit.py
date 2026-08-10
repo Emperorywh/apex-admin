@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 import pytest
 
 from app.core.config import Settings
@@ -138,6 +140,49 @@ class TestAllowedOriginsParsing:
 
         settings = Settings(ALLOWED_ORIGINS="http://localhost")
         assert "https://evil.com" not in settings.allowed_origin_set
+
+
+@pytest.mark.g2
+@pytest.mark.unit
+class TestValidateOriginRejection:
+    """``_validate_origin`` 拒绝非法与缺失 Origin — SPEC 12.4."""
+
+    @staticmethod
+    def _make_request(origin: str | None) -> MagicMock:
+        """构造携带指定 Origin 头的 mock Request。"""
+
+        request = MagicMock()
+        request.headers = {} if origin is None else {"origin": origin}
+        request.app.state.settings = Settings(ALLOWED_ORIGINS="http://localhost")
+        return request
+
+    def test_rejects_origin_not_in_whitelist(self) -> None:
+        """不在白名单的 Origin 抛出 AuthorizationError — SPEC 12.4."""
+
+        from app.core.errors.exceptions import AuthorizationError
+        from app.modules.auth.router import _validate_origin
+
+        request = self._make_request("https://evil.com")
+        with pytest.raises(AuthorizationError):
+            _validate_origin(request)
+
+    def test_rejects_missing_origin_header(self) -> None:
+        """缺失 Origin 头抛出 AuthorizationError — SPEC 12.4."""
+
+        from app.core.errors.exceptions import AuthorizationError
+        from app.modules.auth.router import _validate_origin
+
+        request = self._make_request(None)
+        with pytest.raises(AuthorizationError):
+            _validate_origin(request)
+
+    def test_accepts_valid_origin(self) -> None:
+        """白名单中的 Origin 通过校验（不抛异常）— SPEC 12.4."""
+
+        from app.modules.auth.router import _validate_origin
+
+        request = self._make_request("http://localhost")
+        _validate_origin(request)  # 不应抛出异常
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
