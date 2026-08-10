@@ -31,6 +31,14 @@ OPENAPI_TAGS: list[dict[str, str]] = [
         "name": "meta",
         "description": "应用元数据端点 — 应用名称、版本与运行环境（SPEC 6.1）",
     },
+    {
+        "name": "example",
+        "description": (
+            "最小示例模块 — 端到端演示 Router/Use Case/Port/Adapter/"
+            "迁移/权限/错误码/事件完整接入（SPEC 30.2 / 34.1）。"
+            "派生项目可整体删除。"
+        ),
+    },
 ]
 
 

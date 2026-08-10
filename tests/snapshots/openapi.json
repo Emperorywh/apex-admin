@@ -72,10 +72,386 @@
           }
         }
       }
+    },
+    "/api/v1/example/items": {
+      "post": {
+        "tags": [
+          "example"
+        ],
+        "summary": "创建示例条目",
+        "description": "创建示例条目 — HTTP 201（SPEC 9.3）.\n\n创建成功返回 201 和资源 Schema（SPEC 9.3: \"创建成功返回 HTTP 201\"）。\n名称冲突返回 409 problem+json（EXAMPLE.CONFLICT）。",
+        "operationId": "create_example_item",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExampleItemCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExampleItemResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "example"
+        ],
+        "summary": "分页查询示例条目列表",
+        "description": "分页查询示例条目列表 — SPEC 9.4 分页排序.\n\n分页参数: ``page``（默认 1）、``page_size``（默认 20）。\n排序参数: ``sort``，逗号分隔，``-`` 前缀降序。\n排序字段白名单: ``name``、``created_at``、``updated_at``。",
+        "operationId": "list_example_items",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "页码，从 1 开始",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "页码，从 1 开始"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "每页数量，范围 1-100",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "每页数量，范围 1-100"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "排序字段，逗号分隔，- 前缀表示降序",
+              "title": "Sort"
+            },
+            "description": "排序字段，逗号分隔，- 前缀表示降序"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResponse_ExampleItemResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/example/items/{item_id}": {
+      "get": {
+        "tags": [
+          "example"
+        ],
+        "summary": "查询单个示例条目",
+        "description": "查询单个示例条目 — 不存在返回 404 problem+json（EXAMPLE.NOT_FOUND）。",
+        "operationId": "get_example_item",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "条目 ID",
+              "title": "Item Id"
+            },
+            "description": "条目 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExampleItemResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "example"
+        ],
+        "summary": "更新示例条目",
+        "description": "更新示例条目 — 全量更新（PUT 语义，SPEC 9.2）。",
+        "operationId": "update_example_item",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "条目 ID",
+              "title": "Item Id"
+            },
+            "description": "条目 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExampleItemUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExampleItemResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "example"
+        ],
+        "summary": "删除示例条目",
+        "description": "删除示例条目 — HTTP 204 无响应体（SPEC 9.3）。",
+        "operationId": "delete_example_item",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "条目 ID",
+              "title": "Item Id"
+            },
+            "description": "条目 ID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "ExampleItemCreateRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "description": "条目名称"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "条目描述"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "ExampleItemCreateRequest",
+        "description": "创建示例条目请求 — SPEC 9.2.\n\n继承 ``StrictBaseModel``（``extra=\"forbid\"``），\n携带未知字段的请求返回 422（SPEC 9.2）。\n\n属性:\n    name:        条目名称，1-200 字符。\n    description: 条目描述，最多 1000 字符，可为空。"
+      },
+      "ExampleItemResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ExampleItemResponse",
+        "description": "示例条目响应模型 — SPEC 9.3.\n\nSPEC 9.3: \"普通成功响应直接返回资源 Schema，不使用成功信封\"。\n响应模型不使用 ``extra=\"forbid\"``（响应可能有扩展字段）。\nJSON 字段使用 snake_case，时间为带时区 ISO 8601 字符串。"
+      },
+      "ExampleItemUpdateRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "description": "条目名称"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "条目描述"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "ExampleItemUpdateRequest",
+        "description": "全量更新示例条目请求 — SPEC 9.2.\n\nPUT 语义：所有字段必填。\n继承 ``StrictBaseModel``（``extra=\"forbid\"``）。"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
       "MetaResponse": {
         "properties": {
           "name": {
@@ -100,6 +476,82 @@
         ],
         "title": "MetaResponse",
         "description": "应用元数据响应模型.\n\n返回应用名称、版本和当前运行环境。\n不包含任何敏感配置信息（SPEC 6.2: 健康检查返回内容不泄露敏感配置）。"
+      },
+      "PageResponse_ExampleItemResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ExampleItemResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "pages"
+        ],
+        "title": "PageResponse[ExampleItemResponse]"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
       }
     }
   },
@@ -111,6 +563,10 @@
     {
       "name": "meta",
       "description": "应用元数据端点 — 应用名称、版本与运行环境（SPEC 6.1）"
+    },
+    {
+      "name": "example",
+      "description": "最小示例模块 — 端到端演示 Router/Use Case/Port/Adapter/迁移/权限/错误码/事件完整接入（SPEC 30.2 / 34.1）。派生项目可整体删除。"
     }
   ]
 }

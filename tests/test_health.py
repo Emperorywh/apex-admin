@@ -26,13 +26,15 @@ async def _migrate_db(database_url: str) -> None:
     """在线程中执行 alembic upgrade（避免 asyncio.run 与 pytest 事件循环冲突）。"""
 
     from alembic import command
-    from alembic.config import Config
 
-    from app.infrastructure.db.migrations import ALEMBIC_INI_PATH
+    from app.composition.modules import MODULE_VERSION_LOCATIONS
+    from app.infrastructure.db.migrations import get_alembic_config
 
     def _upgrade() -> None:
-        config = Config(str(ALEMBIC_INI_PATH))
-        config.set_main_option("sqlalchemy.url", database_url)
+        config = get_alembic_config(
+            database_url=database_url,
+            version_locations=MODULE_VERSION_LOCATIONS,
+        )
         command.upgrade(config, "head")
 
     await asyncio.to_thread(_upgrade)
@@ -70,7 +72,9 @@ async def test_health_check_healthy_when_db_available(
     monkeypatch.setenv("APEX_DATABASE_URL", database_url)
     await _migrate_db(database_url)
 
-    head_revision = get_head_revision()
+    from app.composition.modules import MODULE_VERSION_LOCATIONS
+
+    head_revision = get_head_revision(MODULE_VERSION_LOCATIONS)
     engine = create_db_engine(database_url)
     try:
         checker = DbHealthChecker(engine, expected_revision=head_revision)
@@ -158,12 +162,14 @@ def test_health_ready_200_when_db_available(
 
     # 先同步执行迁移
     from alembic import command
-    from alembic.config import Config
 
-    from app.infrastructure.db.migrations import ALEMBIC_INI_PATH
+    from app.composition.modules import MODULE_VERSION_LOCATIONS
+    from app.infrastructure.db.migrations import get_alembic_config
 
-    config = Config(str(ALEMBIC_INI_PATH))
-    config.set_main_option("sqlalchemy.url", database_url)
+    config = get_alembic_config(
+        database_url=database_url,
+        version_locations=MODULE_VERSION_LOCATIONS,
+    )
     command.upgrade(config, "head")
 
     settings = Settings(DATABASE_URL=database_url)
@@ -220,12 +226,14 @@ def test_health_ready_recovers_without_restart(
 
     # 先同步执行迁移
     from alembic import command
-    from alembic.config import Config
 
-    from app.infrastructure.db.migrations import ALEMBIC_INI_PATH
+    from app.composition.modules import MODULE_VERSION_LOCATIONS
+    from app.infrastructure.db.migrations import get_alembic_config
 
-    config = Config(str(ALEMBIC_INI_PATH))
-    config.set_main_option("sqlalchemy.url", database_url)
+    config = get_alembic_config(
+        database_url=database_url,
+        version_locations=MODULE_VERSION_LOCATIONS,
+    )
     command.upgrade(config, "head")
 
     # "断库"实例 — 连接不可达地址（connect_timeout 避免卡住）
@@ -257,12 +265,14 @@ def test_health_response_no_sensitive_config(
 
     # 先同步执行迁移
     from alembic import command
-    from alembic.config import Config
 
-    from app.infrastructure.db.migrations import ALEMBIC_INI_PATH
+    from app.composition.modules import MODULE_VERSION_LOCATIONS
+    from app.infrastructure.db.migrations import get_alembic_config
 
-    config = Config(str(ALEMBIC_INI_PATH))
-    config.set_main_option("sqlalchemy.url", database_url)
+    config = get_alembic_config(
+        database_url=database_url,
+        version_locations=MODULE_VERSION_LOCATIONS,
+    )
     command.upgrade(config, "head")
 
     settings = Settings(DATABASE_URL=database_url)

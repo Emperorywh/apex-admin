@@ -79,7 +79,8 @@ def test_cli_db_upgrade_no_business_data(
 ) -> None:
     """db upgrade 不创建业务数据（SPEC 25.1）。
 
-    验证迁移后不存在业务表（G1 阶段无业务模块）。
+    SPEC 25.1: "不得隐式创建管理员或业务数据"。
+    迁移创建模块声明的表结构，但不插入业务演示数据。
     """
 
     from sqlalchemy import text
@@ -107,12 +108,17 @@ def test_cli_db_upgrade_no_business_data(
             await engine.dispose()
 
     tables = asyncio.run(_check_tables())
-    # alembic_version 表是迁移框架的，允许存在
-    # 不应有任何业务表
-    business_tables = tables - {"alembic_version"}
-    assert business_tables == set(), (
-        f"db upgrade 不应创建业务表，发现: {business_tables}"
-    )
+    # alembic_version 是迁移框架表，允许存在
+    # 各 G1 模块声明的表由迁移创建，允许存在（当前: example_items）
+    from app.composition.modules import get_module_manifest
+
+    declared_tables: set[str] = {"alembic_version"}
+    # 示例模块的表名约定为 example_items
+    if any(m.code == "example" for m in get_module_manifest()):
+        declared_tables.add("example_items")
+
+    unexpected = tables - declared_tables
+    assert unexpected == set(), f"db upgrade 发现未声明的表: {unexpected}"
 
 
 # ── 参数错误退出码 ────────────────────────────────────────────────────────

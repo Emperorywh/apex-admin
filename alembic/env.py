@@ -59,10 +59,15 @@ config.set_main_option("sqlalchemy.url", _settings.DATABASE_URL)
 
 if MODULE_VERSION_LOCATIONS:
     existing_locations = config.get_main_option("version_locations") or ""
+    # 始终包含默认 versions 目录，确保框架初始迁移与各模块迁移
+    # 共同组成全局单头 revision 图（SPEC 5.5 / 8.2）。
+    script_loc = config.get_main_option("script_location") or "alembic"
+    default_versions = f"{script_loc}/versions"
+    all_locations = [default_versions, *MODULE_VERSION_LOCATIONS]
     combined = (
-        f"{existing_locations} {' '.join(MODULE_VERSION_LOCATIONS)}".strip()
+        f"{existing_locations} {' '.join(all_locations)}".strip()
         if existing_locations
-        else " ".join(MODULE_VERSION_LOCATIONS)
+        else " ".join(all_locations)
     )
     config.set_main_option("version_locations", combined)
 

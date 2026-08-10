@@ -139,4 +139,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # meta 端点使用 API 前缀（SPEC 9.1）
     app.include_router(meta_router, prefix=settings.API_PREFIX)
 
+    # 业务模块路由 — 从显式模块清单装配（SPEC 5.5）
+    #
+    # 遍历 MODULE_MANIFEST 中所有已注册模块的 Router 列表，
+    # 挂载到统一 API 前缀下。新增模块只需在 composition/modules.py
+    # 的 MODULE_MANIFEST 中增加一项即可自动注册路由（SPEC 5.5）。
+    from app.composition.modules import get_module_manifest
+
+    for module_def in get_module_manifest():
+        for module_router in module_def.routers:
+            app.include_router(module_router, prefix=settings.API_PREFIX)
+
     return app

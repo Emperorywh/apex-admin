@@ -12,14 +12,15 @@ SPEC 5.5:
   - Alembic 可以按模块存放版本文件，但所有启用模块必须组成一个
     全局单头 revision 图。
 
-当前 G1 阶段无业务模块，模块清单为空。``MODULE_VERSION_LOCATIONS``
-从清单中派生，供 ``alembic/env.py`` 和 ``migrations.py`` 使用。
-后续 TASK 添加业务模块时，在 ``MODULE_MANIFEST`` 中追加对应条目。
+``MODULE_VERSION_LOCATIONS`` 从清单中派生，供 ``alembic/env.py``
+和 ``migrations.py`` 使用。新增模块时在 ``MODULE_MANIFEST`` 中追加对应条目。
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+
+from app.modules.example.definition import MODULE_DEFINITION as EXAMPLE_MODULE
 
 if TYPE_CHECKING:
     from app.core.modules.definition import ModuleDefinition
@@ -30,8 +31,10 @@ if TYPE_CHECKING:
 #: 禁止通过扫描包、导入副作用或命名约定自动发现模块"。
 #:
 #: 新增模块时在此列表追加一项，同时新增模块自身代码。
-#: G1 阶段无业务模块，清单为空。
-MODULE_MANIFEST: list[ModuleDefinition] = []
+#: 当前已注册: example（最小示例模块，SPEC 30.2 / 34.1）。
+MODULE_MANIFEST: list[ModuleDefinition] = [
+    EXAMPLE_MODULE,
+]
 
 #: 已启用模块的 Alembic 迁移版本目录列表.
 #:

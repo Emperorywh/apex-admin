@@ -87,13 +87,24 @@ def _apply_version_locations(
     SPEC 8.2: env.py 仅从模块注册表收集 version_locations。
     此处将注册表条目写入 config，使 ScriptDirectory 的版本扫描
     覆盖所有已启用模块。
+
+    Alembic 的 ``version_locations`` 配置项覆盖默认的 ``versions`` 目录
+    而非追加。因此必须显式包含默认 ``versions`` 目录，确保框架初始迁移
+    （``alembic/versions/``）和各模块迁移版本目录共同组成全局单头
+    revision 图（SPEC 5.5 / 8.2）。
     """
 
     existing = config.get_main_option("version_locations") or ""
+    # 始终包含默认 versions 目录。
+    # Alembic 在此版本中将 version_locations 相对于 CWD 解析，
+    # 因此使用 ``<script_location>/versions`` 显式指定路径。
+    script_loc = config.get_main_option("script_location") or "alembic"
+    default_versions = f"{script_loc}/versions"
+    all_locations = [default_versions, *version_locations]
     combined = (
-        f"{existing} {' '.join(version_locations)}".strip()
+        f"{existing} {' '.join(all_locations)}".strip()
         if existing
-        else " ".join(version_locations)
+        else " ".join(all_locations)
     )
     config.set_main_option("version_locations", combined)
 

@@ -15,7 +15,7 @@ from sqlalchemy import text
 
 from app.composition.modules import MODULE_VERSION_LOCATIONS
 from app.infrastructure.db.engine import create_db_engine
-from app.infrastructure.db.migrations import ALEMBIC_INI_PATH, get_head_revision
+from app.infrastructure.db.migrations import get_head_revision
 
 # ── 辅助函数 ───────────────────────────────────────────────────────────────
 
@@ -68,7 +68,6 @@ async def test_alembic_upgrade_head_on_empty_db(
     """空库执行 alembic upgrade head 成功（SPEC 8.2）。"""
 
     from alembic import command
-    from alembic.config import Config
 
     # 创建独立空数据库避免与其他测试的迁移状态冲突
     db_name = "apex_test_mig_head"
@@ -80,15 +79,21 @@ async def test_alembic_upgrade_head_on_empty_db(
         # 设置环境变量使 env.py 中的 Settings() 加载正确的 URL
         monkeypatch.setenv("APEX_DATABASE_URL", empty_db_url)
 
+        # 使用 get_alembic_config 确保版本目录正确设置（含默认 versions）
+        from app.composition.modules import MODULE_VERSION_LOCATIONS
+        from app.infrastructure.db.migrations import get_alembic_config
+
         def _upgrade() -> None:
-            config = Config(str(ALEMBIC_INI_PATH))
-            config.set_main_option("sqlalchemy.url", empty_db_url)
+            config = get_alembic_config(
+                database_url=empty_db_url,
+                version_locations=MODULE_VERSION_LOCATIONS,
+            )
             command.upgrade(config, "head")
 
         # 在线程中执行避免 asyncio.run 与 pytest 事件循环冲突
         await asyncio.to_thread(_upgrade)
 
-        # 验证 alembic_version 表存在且包含预期 revision
+        # 验证 alembic_version 表存在且包含预期 head revision
         engine = create_db_engine(empty_db_url)
         try:
             async with engine.connect() as conn:
@@ -97,7 +102,16 @@ async def test_alembic_upgrade_head_on_empty_db(
                 )
                 row = result.fetchone()
                 assert row is not None
-                assert row[0] == "0001_initial"
+                assert row[0] == "0002_example_items"
+
+                # 验证示例模块表已创建
+                table_result = await conn.execute(
+                    text(
+                        "SELECT table_name FROM information_schema.tables "
+                        "WHERE table_name = 'example_items'",
+                    ),
+                )
+                assert table_result.fetchone() is not None
         finally:
             await engine.dispose()
     finally:
@@ -107,17 +121,22 @@ async def test_alembic_upgrade_head_on_empty_db(
 @pytest.mark.g1
 @pytest.mark.integration
 async def test_alembic_single_head() -> None:
-    """alembic heads 恰好输出一个 head（SPEC 8.2）。"""
+    """alembic heads 恰好输出一个 head（SPEC 8.2）。
 
-    from alembic.config import Config
+    包含示例模块迁移版本目录后仍只有一个 head。
+    """
+
     from alembic.script import ScriptDirectory
 
-    config = Config(str(ALEMBIC_INI_PATH))
+    from app.composition.modules import MODULE_VERSION_LOCATIONS
+    from app.infrastructure.db.migrations import get_alembic_config
+
+    config = get_alembic_config(version_locations=MODULE_VERSION_LOCATIONS)
     script_dir = ScriptDirectory.from_config(config)
     heads = script_dir.get_heads()
 
     assert len(heads) == 1, f"Expected exactly one head, got {heads}"
-    assert heads[0] == "0001_initial"
+    assert heads[0] == "0002_example_items"
 
 
 @pytest.mark.g1
@@ -126,21 +145,24 @@ def test_env_py_collects_version_locations_from_registry() -> None:
     """env.py 仅从模块注册表收集 version_locations（SPEC 8.2）。
 
     验证模块注册表存在且为列表类型。
-    当前 G1 阶段为空列表（无业务模块）。
+    示例模块注册后包含其迁移版本目录。
     """
 
     assert isinstance(MODULE_VERSION_LOCATIONS, list)
-    # G1 阶段无业务模块
-    assert len(MODULE_VERSION_LOCATIONS) == 0
+    # 示例模块已注册，包含至少一个迁移版本目录
+    assert len(MODULE_VERSION_LOCATIONS) >= 1
 
 
 @pytest.mark.g1
 @pytest.mark.unit
-def test_initial_migration_has_no_business_tables() -> None:
-    """初始迁移不创建业务模块表结构（SPEC nonGoals）。
+def test_head_revision_includes_example_module() -> None:
+    """全局 head revision 包含示例模块迁移（SPEC 8.2 / 30.2）。
 
-    验证初始迁移文件存在且 revision/down_revision 设置正确。
+    示例模块迁移 0002_example_items 的 down_revision 指向 0001_initial，
+    组成全局单头 revision 图。
     """
 
-    head = get_head_revision()
-    assert head == "0001_initial"
+    from app.composition.modules import MODULE_VERSION_LOCATIONS
+
+    head = get_head_revision(MODULE_VERSION_LOCATIONS)
+    assert head == "0002_example_items"
