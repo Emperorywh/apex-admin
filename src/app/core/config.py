@@ -113,6 +113,13 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_HMAC_KEY: SecretStr | None = None
     REFRESH_TOKEN_HMAC_KEY: SecretStr | None = None
 
+    # ── Origin 白名单（SPEC 12.4）────────────────────────────────────
+    # Refresh/Logout 等读取 Cookie 的状态变更接口校验 Origin 是否精确匹配白名单。
+    # 逗号分隔（如 "http://localhost:3000,https://admin.example.com"）。
+    # G2 只支持同站部署，默认 localhost。
+
+    ALLOWED_ORIGINS: str = "http://localhost"
+
     # ── 日志级别 ──────────────────────────────────────────────────────
 
     LOG_LEVEL: str = "INFO"
@@ -160,6 +167,20 @@ class Settings(BaseSettings):
         if secret is None:
             return None
         return secret.get_secret_value()
+
+    @property
+    def allowed_origin_set(self) -> frozenset[str]:
+        """解析 ``ALLOWED_ORIGINS`` 为不可变集合 — SPEC 12.4.
+
+        逗号分隔的 Origin 列表，空白被去除，空项被忽略。
+        用于 Refresh/Logout 端点的 Origin 精确匹配校验。
+        """
+
+        return frozenset(
+            origin.strip()
+            for origin in self.ALLOWED_ORIGINS.split(",")
+            if origin.strip()
+        )
 
     @staticmethod
     def _validate_production_keys(

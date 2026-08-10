@@ -1,4 +1,4 @@
-"""认证模块领域实体 — SPEC 12.3 / 12.4.
+"""认证模块领域实体 — SPEC 12.2 / 12.3 / 12.4.
 
 领域实体是不可变 ``frozen dataclass``，不依赖 FastAPI、ORM 或任何基础设施类型
 （SPEC 5.2: "领域规则不得依赖 FastAPI、ORM、HTTP 或具体存储 SDK"）。
@@ -83,3 +83,39 @@ class LoginAttempt:
     failed_count: int
     last_failed_at: datetime | None
     locked_until: datetime | None
+
+
+@dataclass(frozen=True)
+class RefreshToken:
+    """Refresh Token 领域实体 — SPEC 12.2.
+
+    SPEC 12.2: "每个 Refresh Token 记录所属 Session、Token Family、前驱、
+    创建时间、使用时间、过期时间和吊销原因"。
+
+    SPEC 12.2: "数据库只保存 ... HMAC-SHA-256 摘要，不保存明文 Token"。
+
+    刷新时旧 Token 标记 ``used_at``，新 Token 插入同一 ``family_id`` 链。
+    已使用 Token 再次出现时视为重放，立即吊销整个 Session 和 Token Family。
+
+    属性:
+        id:              Token 全局唯一标识（UUID）。
+        session_id:      所属会话 ID（跨模块引用 auth_sessions）。
+        family_id:       Token Family 标识 — 同一登录会话的全部轮换 Token
+                         共享同一 ``family_id``，重放检测按 Family 吊销。
+        token_digest:    HMAC-SHA-256 摘要（64 字符十六进制），不存明文。
+        predecessor_id:  前驱 Token ID（首个 Token 为 None）。
+        created_at:      创建时间（UTC）。
+        used_at:         使用时间（UTC，未使用为 None）。
+        expires_at:      过期时间（UTC，不晚于会话绝对过期）。
+        revoked_reason:  吊销原因（未吊销为 None）。
+    """
+
+    id: UUID
+    session_id: UUID
+    family_id: UUID
+    token_digest: str
+    predecessor_id: UUID | None
+    created_at: datetime
+    used_at: datetime | None
+    expires_at: datetime
+    revoked_reason: str | None

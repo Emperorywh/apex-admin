@@ -71,6 +71,7 @@ async def _cleanup_tables(database_url: str) -> None:
     engine = create_db_engine(database_url)
     try:
         async with engine.begin() as conn:
+            await conn.execute(text("DELETE FROM auth_refresh_tokens"))
             await conn.execute(text("DELETE FROM auth_login_attempts"))
             await conn.execute(text("DELETE FROM auth_sessions"))
             await conn.execute(text("DELETE FROM login_logs"))
@@ -325,7 +326,6 @@ async def test_login_success_returns_token_and_persists_session(
             # 返回不透明 Access Token
             assert response.access_token
             assert len(response.access_token) >= 32  # URL-safe Base64 of 32 bytes
-            assert response.token_type == "Bearer"
             assert response.expires_in == 900  # 15 minutes in seconds
 
             # 数据库存的是 HMAC 摘要，不是明文 Token

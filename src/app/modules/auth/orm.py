@@ -117,3 +117,49 @@ class LoginAttemptORM(Base):
             unique=True,
         ),
     )
+
+
+class RefreshTokenORM(Base):
+    """Refresh Token ORM 模型 — 映射 ``auth_refresh_tokens`` 表（SPEC 12.2）.
+
+    SPEC 12.2: "每个 Refresh Token 记录所属 Session、Token Family、前驱、
+    创建时间、使用时间、过期时间和吊销原因"。
+    SPEC 12.2: ``token_digest`` 存储 HMAC-SHA-256 摘要，不存明文 Token。
+    SPEC 5.5: ``session_id`` 不做数据库外键。
+
+    Token Family 是同一登录会话的全部轮换 Token 集合。刷新时旧 Token
+    标记 ``used_at``，新 Token 插入同一 ``family_id`` 链。
+    """
+
+    __tablename__ = "auth_refresh_tokens"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    session_id: Mapped[UUID] = mapped_column(nullable=False)
+    family_id: Mapped[UUID] = mapped_column(nullable=False)
+    token_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    predecessor_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    revoked_reason: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    __table_args__ = (
+        # Token 摘要唯一索引 — 每个摘要最多一条记录。
+        Index("ix_auth_refresh_tokens_digest_unique", token_digest, unique=True),
+        # 会话 ID 索引 — 支持按会话查询和批量吊销。
+        Index("ix_auth_refresh_tokens_session_id", session_id),
+        # Token Family 索引 — 刷新事务对 Family 加行锁。
+        Index("ix_auth_refresh_tokens_family_id", family_id),
+    )

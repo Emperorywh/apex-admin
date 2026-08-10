@@ -8,7 +8,7 @@ SPEC 5.6: "Repository Adapter 由 Composition Root 使用当前 Unit of Work
 Port 定义在内层（模块 Application），不依赖 SQLAlchemy 或任何 ORM 类型。
 Infrastructure 层的 Adapter 实现此 Port。
 
-会话 Port 和登录失败计数 Port 分离，各自只暴露所需方法。
+会话 Port、Refresh Token Port 和登录失败计数 Port 分离，各自只暴露所需方法。
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from app.modules.auth.models import LoginAttempt, Session
+    from app.modules.auth.models import LoginAttempt, RefreshToken, Session
 
 
 class SessionRepository(ABC):
@@ -67,6 +67,20 @@ class SessionRepository(ABC):
 
         返回:
             会话领域实体；不存在或不属于该用户时返回 None。
+        """
+
+    @abstractmethod
+    async def get_by_session_id(self, session_id: UUID) -> Session | None:
+        """按会话 ID 查找会话（无用户约束）— SPEC 12.2 刷新流程内部使用.
+
+        刷新流程从 Refresh Token 记录中获取 session_id，需要直接查找
+        对应会话以校验有效性（SPEC 12.2: "刷新时检查用户和会话状态"）。
+
+        参数:
+            session_id: 会话 ID。
+
+        返回:
+            会话领域实体；不存在返回 None。
         """
 
     @abstractmethod
@@ -135,6 +149,25 @@ class SessionRepository(ABC):
         参数:
             session_id:        会话 ID。
             last_activity_at:  新的最近活动时间（UTC）。
+        """
+
+    @abstractmethod
+    async def replace_access_token(
+        self,
+        session_id: UUID,
+        *,
+        new_digest: str,
+        new_token_expires_at: object,
+    ) -> None:
+        """替换会话的 Access Token 摘要 — SPEC 12.2 刷新用.
+
+        SPEC 12.2: "刷新成功时替换当前 Access Token 摘要，旧 Access Token
+        立即失效；同一会话同时最多一个有效 Access Token"。
+
+        参数:
+            session_id:            会话 ID。
+            new_digest:            新 Access Token 的 HMAC-SHA-256 摘要。
+            new_token_expires_at:  新 Token 过期时间（UTC）。
         """
 
     @abstractmethod
@@ -234,4 +267,107 @@ class LoginAttemptRepository(ABC):
         参数:
             dimension: 维度标识。
             key:       维度键值。
+        """
+
+
+class RefreshTokenRepository(ABC):
+    """Refresh Token Repository Port — SPEC 12.2.
+
+    SPEC 12.2:
+      - Refresh Token 每次使用都必须轮换，新旧状态变更在同一数据库事务中完成。
+      - 刷新事务对当前 Token Family 加行锁。
+      - 已使用 Refresh Token 再次出现时视为重放，立即吊销整个 Session 和
+        Token Family。
+
+    Port 方法签名不包含 SQLAlchemy 类型。行锁方法 ``lock_family`` 确保并发
+    刷新请求对同一 Token Family 串行化。
+    """
+
+    @abstractmethod
+    async def add(self, token: RefreshToken) -> None:
+        """添加新 Refresh Token 到当前事务 — SPEC 12.2.
+
+        参数:
+            token: 待添加的 Refresh Token 领域实体。
+        """
+
+    @abstractmethod
+    async def get_by_digest(self, digest: str) -> RefreshToken | None:
+        """按 HMAC 摘要查找 Refresh Token（不加锁）— SPEC 12.2.
+
+        用于首次快速查找 Token 及其 ``family_id``。获取 ``family_id`` 后
+        调用 ``lock_family`` 加行锁，再重新读取以确保读到最新状态。
+
+        参数:
+            digest: Refresh Token 的 HMAC-SHA-256 摘要。
+
+        返回:
+            Refresh Token 领域实体；不存在返回 None。
+        """
+
+    @abstractmethod
+    async def lock_family(self, family_id: UUID) -> None:
+        """对当前 Token Family 加行锁 — SPEC 12.2.
+
+        SPEC 12.2: "刷新事务对当前 Token Family 加行锁；同一 Refresh Token
+        并发请求只允许一个成功"。
+
+        对 Family 中所有行执行 ``SELECT ... FOR UPDATE``，持有锁直到
+        当前事务提交或回滚。并发请求在此阻塞，保证同一 Family 内的
+        刷新操作串行化。
+
+        参数:
+            family_id: Token Family 标识。
+        """
+
+    @abstractmethod
+    async def mark_used(
+        self,
+        token_id: UUID,
+        *,
+        used_at: object,
+    ) -> None:
+        """标记 Refresh Token 为已使用 — SPEC 12.2.
+
+        设置 ``used_at`` 时间戳。已标记 ``used_at`` 的 Token 再次出现时
+        触发重放检测。
+
+        参数:
+            token_id: Token ID。
+            used_at:  使用时间（UTC）。
+        """
+
+    @abstractmethod
+    async def revoke_family(
+        self,
+        family_id: UUID,
+        *,
+        reason: str,
+    ) -> None:
+        """吊销整个 Token Family — SPEC 12.2.
+
+        SPEC 12.2: "已使用 Refresh Token 再次出现时视为重放，立即吊销整个
+        Session 和 Token Family"。
+
+        对 Family 中所有未标记吊销原因的 Token 设置 ``revoked_reason``。
+
+        参数:
+            family_id: Token Family 标识。
+            reason:    吊销原因。
+        """
+
+    @abstractmethod
+    async def revoke_by_session(
+        self,
+        session_id: UUID,
+        *,
+        reason: str,
+    ) -> None:
+        """吊销会话关联的全部 Refresh Token.
+
+        用于退出登录等场景，与 Session 吊销在同一事务中完成。
+
+        参数:
+            session_id: 会话 ID。
+            reason:     吊销原因。
         """

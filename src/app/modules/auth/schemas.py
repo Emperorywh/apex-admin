@@ -1,10 +1,11 @@
-"""认证模块请求与响应 Schema — SPEC 9.2 / 9.3 / 12.1.
+"""认证模块请求与响应 Schema — SPEC 9.2 / 9.3 / 12.1 / 12.2.
 
 SPEC 9.2 约定:
   - 请求模型使用 ``extra="forbid"``。
   - 字符串长度、格式具有约束。
 
 SPEC 12.1: Access Token 仅在登录响应体中返回一次。
+SPEC 12.2: 刷新响应仅返回新 Access Token，Refresh Token 仅经 Set-Cookie 下发。
 SPEC 12.4: 登录和刷新响应必须设置 ``Cache-Control: no-store``
 （Cache-Control 头由 Router 设置，不在 Schema 中）。
 
@@ -71,6 +72,27 @@ class LoginResponse(BaseModel):
     model_config = {"extra": "forbid"}
 
     access_token: str = Field(description="不透明 Access Token（仅返回一次）")
+    token_type: str = Field(default="Bearer", description="Token 类型")
+    expires_in: int = Field(description="Token 有效期（秒）")
+
+
+class RefreshResponse(BaseModel):
+    """刷新响应 — SPEC 12.2.
+
+    SPEC 12.2: 刷新成功时响应体仅包含新 Access Token。新 Refresh Token
+    仅经 Set-Cookie 下发，不进入 JSON 响应（SPEC 12.2 / 12.4）。
+    SPEC 12.4: 刷新响应必须设置 ``Cache-Control: no-store``
+    （由 Router 设置响应头）。
+
+    属性:
+        access_token: 新不透明 Access Token 字符串。
+        token_type:   固定为 ``"Bearer"``。
+        expires_in:   Token 有效期（秒），默认 900（15 分钟）。
+    """
+
+    model_config = {"extra": "forbid"}
+
+    access_token: str = Field(description="新不透明 Access Token")
     token_type: str = Field(default="Bearer", description="Token 类型")
     expires_in: int = Field(description="Token 有效期（秒）")
 

@@ -1,4 +1,4 @@
-"""认证 Use Case — Application 层应用服务（SPEC 5.2 / 5.6 / 12.1 / 12.3 / 12.4 / 18.1）.
+"""认证 Use Case — Application 层应用服务（SPEC 5.2 / 5.6 / 12.1~12.4 / 18.1）.
 
 SPEC 5.6 事务管理:
   - 一个最外层写 Use Case 对应一个 Unit of Work 和一个 AsyncSession。
@@ -6,9 +6,16 @@ SPEC 5.6 事务管理:
 
 SPEC 12.1 账号密码认证:
   - 登录前检查用户状态。
-  - 登录成功创建服务端会话。
+  - 登录成功创建服务端会话与 Refresh Token Family。
   - 登录成功时使用 check_needs_rehash 判断并在同一事务中升级旧参数哈希。
   - 登录失败记录安全事件。
+
+SPEC 12.2 Token 存储与刷新:
+  - Refresh Token 每次使用轮换，新旧状态变更在同一事务。
+  - 刷新事务对 Token Family 加行锁，并发只允许一个成功。
+  - 已使用 Refresh Token 再次出现视为重放，吊销整个 Session 与 Family。
+  - 刷新后旧 Access Token 立即失效，同会话同时最多一个有效 Access Token。
+  - 刷新时检查用户和会话状态。
 
 SPEC 12.4 登录安全:
   - 防止通过错误响应枚举有效用户。
@@ -28,6 +35,7 @@ SPEC 18.1 登录日志:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -37,6 +45,7 @@ from app.core.security.token import generate_token
 from app.modules.audit.models import LoginLogEntry
 from app.modules.auth.adapter import (
     SqlAlchemyLoginAttemptRepository,
+    SqlAlchemyRefreshTokenRepository,
     SqlAlchemySessionRepository,
 )
 from app.modules.auth.constants import (
@@ -47,14 +56,16 @@ from app.modules.auth.constants import (
     DIMENSION_IP,
     FAILURE_LOCK_DURATION,
     IP_FAILURE_LIMIT,
+    REFRESH_REVOKE_LOGOUT,
+    REFRESH_REVOKE_REPLAY,
+    REFRESH_REVOKE_SESSION_REVOKED,
     SESSION_ABSOLUTE_TIMEOUT,
     SESSION_IDLE_TIMEOUT,
 )
-from app.modules.auth.errors import InvalidCredentialsError
-from app.modules.auth.models import Session
+from app.modules.auth.errors import InvalidCredentialsError, RefreshFailedError
+from app.modules.auth.models import RefreshToken, Session
 from app.modules.auth.schemas import (
     LoginRequest,
-    LoginResponse,
     LogoutResponse,
     SessionResponse,
 )
@@ -69,7 +80,11 @@ if TYPE_CHECKING:
     from app.core.security.digest import TokenDigestService
     from app.infrastructure.db.uow import SqlAlchemyUnitOfWork
     from app.modules.audit.port import LoginLogPort, SecurityLogPort
-    from app.modules.auth.port import LoginAttemptRepository, SessionRepository
+    from app.modules.auth.port import (
+        LoginAttemptRepository,
+        RefreshTokenRepository,
+        SessionRepository,
+    )
     from app.modules.identity.port import UserAuthPort
 
 
@@ -80,6 +95,37 @@ FAILURE_REASON_WRONG_PASSWORD = "wrong_password"
 FAILURE_REASON_USER_DISABLED = "user_disabled"
 FAILURE_REASON_ACCOUNT_LOCKED = "account_locked"
 FAILURE_REASON_IP_LOCKED = "ip_locked"
+FAILURE_REASON_REFRESH_REPLAY = "refresh_replay"
+
+
+# ── 内部结果类型 ─────────────────────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class LoginResult:
+    """登录内部结果 — 不直接用于 JSON 响应.
+
+    Router 从此对象提取 ``access_token`` 构建 ``LoginResponse`` JSON 体，
+    并将 ``refresh_token`` 通过 ``Set-Cookie`` 头下发（SPEC 12.1 / 12.4）。
+    """
+
+    access_token: str
+    expires_in: int
+    refresh_token: str
+
+
+@dataclass(frozen=True)
+class RefreshResult:
+    """刷新内部结果 — SPEC 12.2.
+
+    Router 从此对象提取 ``access_token`` 构建 ``RefreshResponse`` JSON 体，
+    并将新 ``refresh_token`` 通过 ``Set-Cookie`` 头下发。Refresh Token
+    不进入 JSON 响应（SPEC 12.2 / 12.4）。
+    """
+
+    access_token: str
+    expires_in: int
+    refresh_token: str
 
 
 class AuthUseCase:
@@ -132,6 +178,11 @@ class AuthUseCase:
 
         return SqlAlchemyLoginAttemptRepository(session)
 
+    def _create_refresh_repo(self, session: AsyncSession) -> RefreshTokenRepository:
+        """从 session 构造 Refresh Token Repository Adapter — SPEC 12.2."""
+
+        return SqlAlchemyRefreshTokenRepository(session)
+
     def _create_user_auth_port(self, session: AsyncSession) -> UserAuthPort:
         """从 session 构造用户认证信息 Port — SPEC 5.2 跨模块."""
 
@@ -156,8 +207,8 @@ class AuthUseCase:
         ip_address: str,
         user_agent: str | None,
         request_id: str,
-    ) -> LoginResponse:
-        """账号密码登录 — SPEC 12.1 / 12.4.
+    ) -> LoginResult:
+        """账号密码登录 — SPEC 12.1 / 12.2 / 12.4.
 
         登录流程:
           1. 检查账号和 IP 双维度失败限制（SPEC 12.4）。
@@ -181,7 +232,9 @@ class AuthUseCase:
             request_id: 请求标识。
 
         返回:
-            登录成功响应（含 Access Token，仅返回一次）。
+            ``LoginResult``（含 Access Token 和 Refresh Token）。
+            Router 将 Access Token 放入 JSON 响应体，Refresh Token 经
+            ``Set-Cookie`` 下发（SPEC 12.1 / 12.4）。
 
         抛出:
             InvalidCredentialsError: 所有登录失败场景。
@@ -364,8 +417,15 @@ class AuthUseCase:
             raw_token = generate_token()
             token_digest = self._digest_service.digest_access_token(raw_token)
 
+            # 生成 Refresh Token — SPEC 12.2（至少 256 bit 熵）
+            raw_refresh_token = generate_token()
+            refresh_digest = self._digest_service.digest_refresh_token(
+                raw_refresh_token,
+            )
+
             # 创建会话
             session_id = self._id_generator.generate_id()
+            absolute_expires = now + SESSION_ABSOLUTE_TIMEOUT
             new_session = Session(
                 id=session_id,
                 user_id=user_info.id,
@@ -375,12 +435,30 @@ class AuthUseCase:
                 user_agent=user_agent,
                 created_at=now,
                 last_activity_at=now,
-                absolute_expires_at=now + SESSION_ABSOLUTE_TIMEOUT,
+                absolute_expires_at=absolute_expires,
                 token_expires_at=now + ACCESS_TOKEN_TTL,
                 revoked=False,
                 revoked_reason=None,
             )
             await session_repo.add(new_session)
+
+            # 创建 Refresh Token Family 首个 Token — SPEC 12.2
+            refresh_repo = self._create_refresh_repo(uow.session)
+            family_id = self._id_generator.generate_id()
+            refresh_token_id = self._id_generator.generate_id()
+            new_refresh = RefreshToken(
+                id=refresh_token_id,
+                session_id=session_id,
+                family_id=family_id,
+                token_digest=refresh_digest,
+                predecessor_id=None,
+                created_at=now,
+                used_at=None,
+                # SPEC 12.3: Refresh Token 过期时间不晚于会话绝对过期
+                expires_at=absolute_expires,
+                revoked_reason=None,
+            )
+            await refresh_repo.add(new_refresh)
 
             # SPEC 12.1: rehash 升级（同事务）
             new_hash: str | None = None
@@ -409,10 +487,10 @@ class AuthUseCase:
 
             await uow.commit()
 
-            return LoginResponse(
+            return LoginResult(
                 access_token=raw_token,
-                token_type="Bearer",
                 expires_in=int(ACCESS_TOKEN_TTL.total_seconds()),
+                refresh_token=raw_refresh_token,
             )
 
     # ── 退出登录 ─────────────────────────────────────────────────────────────
@@ -447,9 +525,17 @@ class AuthUseCase:
         now = self._clock.now()
         async with self._uow_factory() as uow:
             repo = self._create_session_repo(uow.session)
+            refresh_repo = self._create_refresh_repo(uow.session)
             login_log = self._create_login_log(uow.session)
 
             revoked = await repo.revoke(session_id, reason="user_logout")
+
+            # SPEC 12.4: Logout 吊销服务端会话并删除客户端 Cookie。
+            # 同事务吊销会话关联的全部 Refresh Token。
+            await refresh_repo.revoke_by_session(
+                session_id,
+                reason=REFRESH_REVOKE_LOGOUT,
+            )
 
             if revoked:
                 await self._record_login_log(
@@ -520,6 +606,230 @@ class AuthUseCase:
 
             await uow.commit()
             return LogoutResponse(revoked_count=count)
+
+    # ── Refresh Token 轮换 ────────────────────────────────────────────────────
+
+    async def refresh(
+        self,
+        raw_refresh_token: str,
+        *,
+        ip_address: str,
+        user_agent: str | None,
+        request_id: str,
+    ) -> RefreshResult:
+        """Refresh Token 轮换 — SPEC 12.2.
+
+        刷新流程（所有状态变更在同一事务中完成）:
+          1. 计算 Refresh Token 摘要，查找 Token 记录。
+          2. 对 Token Family 加行锁（``SELECT ... FOR UPDATE``）。
+          3. 重新读取 Token 状态 — 已使用则触发重放检测。
+          4. 重放: 吊销整个 Session 和 Token Family，记录安全事件。
+          5. 正常轮换: 标记旧 Token ``used_at``，生成新 Refresh/Access Token，
+             插入新 Token 记录，替换会话的 Access Token 摘要。
+
+        SPEC 12.2:
+          - 新旧状态变更在同一事务。
+          - 对 Token Family 加行锁，并发只允许一个成功。
+          - 已使用 Token 再次出现 → 重放 → 吊销 Session 和 Family。
+          - 旧 Access Token 立即失效，同会话同时最多一个有效 Access Token。
+          - 刷新时检查用户和会话状态。
+
+        SPEC 12.3: "会话被吊销后不可继续刷新"。
+        SPEC 12.3: Refresh Token 过期时间不晚于会话绝对过期。
+
+        参数:
+            raw_refresh_token: 明文 Refresh Token（从 Cookie 提取）。
+            ip_address:        客户端 IP。
+            user_agent:        User-Agent。
+            request_id:        请求标识。
+
+        返回:
+            ``RefreshResult``（含新 Access Token 和新 Refresh Token）。
+
+        抛出:
+            RefreshFailedError: Token 不存在、已吊销、过期或会话无效。
+        """
+
+        now = self._clock.now()
+        refresh_digest = self._digest_service.digest_refresh_token(raw_refresh_token)
+
+        async with self._uow_factory() as uow:
+            refresh_repo = self._create_refresh_repo(uow.session)
+            session_repo = self._create_session_repo(uow.session)
+            user_auth = self._create_user_auth_port(uow.session)
+            login_log = self._create_login_log(uow.session)
+            security_log = self._create_security_log(uow.session)
+
+            # ── 1. 查找 Refresh Token（不加锁）─ SPEC 12.2 ──
+            token = await refresh_repo.get_by_digest(refresh_digest)
+            if token is None:
+                raise RefreshFailedError("刷新令牌无效")
+
+            # ── 2. 对 Token Family 加行锁 — SPEC 12.2 ──
+            # 并发请求在此阻塞，保证同一 Family 的刷新操作串行化。
+            await refresh_repo.lock_family(token.family_id)
+
+            # ── 3. 重新读取 Token 状态（锁后最新值）─ SPEC 12.2 ──
+            token = await refresh_repo.get_by_digest(refresh_digest)
+            if token is None:
+                raise RefreshFailedError("刷新令牌无效")
+
+            # ── 4. 重放检测 — SPEC 12.2 ──
+            # 已使用或已吊销的 Token 再次出现 → 重放
+            if token.used_at is not None or token.revoked_reason is not None:
+                await self._handle_replay(
+                    refresh_repo=refresh_repo,
+                    session_repo=session_repo,
+                    security_log=security_log,
+                    login_log=login_log,
+                    token=token,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    request_id=request_id,
+                    now=now,
+                )
+                await uow.commit()
+                raise RefreshFailedError("刷新令牌无效")
+
+            # ── 5. 校验 Token 过期 — SPEC 12.2 ──
+            if now >= token.expires_at:
+                raise RefreshFailedError("刷新令牌已过期")
+
+            # ── 6. 校验会话状态 — SPEC 12.2 / 12.3 ──
+            session = await session_repo.get_by_session_id(token.session_id)
+            if session is None or session.revoked:
+                raise RefreshFailedError("会话已失效")
+
+            # SPEC 12.3: 会话绝对过期后不可刷新
+            if now >= session.absolute_expires_at:
+                raise RefreshFailedError("会话已过期")
+
+            # SPEC 12.2: "刷新时检查用户状态"
+            from app.modules.identity.models import UserStatus
+
+            user_status = await user_auth.get_status_by_id(session.user_id)
+            if user_status is None or user_status == UserStatus.DISABLED:
+                raise RefreshFailedError("用户状态无效")
+
+            # ── 7. 正常轮换 — SPEC 12.2 ──
+            # 7a. 标记旧 Token 为已使用
+            await refresh_repo.mark_used(token.id, used_at=now)
+
+            # 7b. 生成新 Access Token 和新 Refresh Token
+            new_raw_access_token = generate_token()
+            new_access_digest = self._digest_service.digest_access_token(
+                new_raw_access_token,
+            )
+            new_raw_refresh_token = generate_token()
+            new_refresh_digest = self._digest_service.digest_refresh_token(
+                new_raw_refresh_token,
+            )
+
+            # 7c. 替换会话的 Access Token 摘要 — 旧 Access Token 立即失效
+            #     同会话同时最多一个有效 Access Token（SPEC 12.2）
+            new_token_expires = now + ACCESS_TOKEN_TTL
+            await session_repo.replace_access_token(
+                token.session_id,
+                new_digest=new_access_digest,
+                new_token_expires_at=new_token_expires,
+            )
+
+            # 7d. 插入新 Refresh Token 记录（同一 Family，前驱为旧 Token）
+            new_refresh = RefreshToken(
+                id=self._id_generator.generate_id(),
+                session_id=token.session_id,
+                family_id=token.family_id,
+                token_digest=new_refresh_digest,
+                predecessor_id=token.id,
+                created_at=now,
+                used_at=None,
+                # SPEC 12.3: 过期时间不晚于会话绝对过期
+                expires_at=session.absolute_expires_at,
+                revoked_reason=None,
+            )
+            await refresh_repo.add(new_refresh)
+
+            await uow.commit()
+
+            return RefreshResult(
+                access_token=new_raw_access_token,
+                expires_in=int(ACCESS_TOKEN_TTL.total_seconds()),
+                refresh_token=new_raw_refresh_token,
+            )
+
+    # ── 重放处理 ─────────────────────────────────────────────────────────────
+
+    async def _handle_replay(
+        self,
+        *,
+        refresh_repo: RefreshTokenRepository,
+        session_repo: SessionRepository,
+        security_log: SecurityLogPort,
+        login_log: LoginLogPort,
+        token: RefreshToken,
+        ip_address: str,
+        user_agent: str | None,
+        request_id: str,
+        now: datetime,
+    ) -> None:
+        """处理 Refresh Token 重放 — SPEC 12.2.
+
+        SPEC 12.2: "已使用 Refresh Token 再次出现时视为重放，立即吊销整个
+        Session 和 Token Family"。
+
+        操作在同一事务中完成:
+          1. 吊销整个 Token Family（设置 revoked_reason）。
+          2. 吊销关联的 Session。
+          3. 记录安全事件（独立安全日志，SPEC 5.7）。
+          4. 记录刷新异常登录日志（SPEC 18.1）。
+        """
+
+        # 吊销整个 Token Family 和 Session
+        await refresh_repo.revoke_family(
+            token.family_id,
+            reason=REFRESH_REVOKE_REPLAY,
+        )
+        await session_repo.revoke(
+            token.session_id,
+            reason=REFRESH_REVOKE_SESSION_REVOKED,
+        )
+
+        # 记录安全事件 — SPEC 5.7 / 12.4
+        from datetime import UTC
+
+        from app.modules.audit.models import SecurityEvent
+
+        security_event = SecurityEvent(
+            event_type="refresh_replay_detected",
+            actor_id=str(token.session_id),
+            module="auth",
+            action="auth.refresh.replay",
+            resource_type="refresh_token_family",
+            resource_id=str(token.family_id),
+            request_id=request_id,
+            ip_address=ip_address,
+            failure_reason=(
+                f"{FAILURE_REASON_REFRESH_REPLAY} (family={token.family_id})"
+            ),
+            occurred_at=datetime.now(UTC),
+        )
+        security_log.log_security_event(security_event)
+
+        # 记录刷新异常登录日志 — SPEC 18.1
+        from uuid import uuid4
+
+        entry = LoginLogEntry(
+            id=uuid4(),
+            user_id=None,
+            username="(refresh_replay)",
+            session_id=str(token.session_id),
+            ip_address=ip_address,
+            user_agent=user_agent,
+            result="token_refresh_error",
+            failure_reason=FAILURE_REASON_REFRESH_REPLAY,
+            occurred_at=now,
+        )
+        await login_log.record_login(entry)
 
     # ── 会话查看 ─────────────────────────────────────────────────────────────
 

@@ -23,6 +23,7 @@ from __future__ import annotations
 from app.core.modules.definition import ModuleDefinition
 from app.modules.auth.errors import (
     AUTH_INVALID_CREDENTIALS,
+    AUTH_REFRESH_FAILED,
     AUTH_SESSION_NOT_FOUND,
 )
 from app.modules.auth.handlers import (
@@ -60,6 +61,7 @@ MODULE_DEFINITION = ModuleDefinition(
     error_codes=(
         AUTH_INVALID_CREDENTIALS,
         AUTH_SESSION_NOT_FOUND,
+        AUTH_REFRESH_FAILED,
     ),
     audit_actions=(),  # 登录日志使用 LoginLogPort，不走 AuditPort。
     protected_resource_types=(RESOURCE_TYPE_SESSION,),

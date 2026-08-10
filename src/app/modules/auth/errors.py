@@ -29,6 +29,9 @@ AUTH_UNAUTHENTICATED = "AUTH.UNAUTHENTICATED"
 #: 会话不存在 — 退出或查看不存在会话时使用。
 AUTH_SESSION_NOT_FOUND = "AUTH.SESSION_NOT_FOUND"
 
+#: Refresh Token 无效 — 刷新失败（Token 不存在、已使用、已吊销或过期）。
+AUTH_REFRESH_FAILED = "AUTH.REFRESH_FAILED"
+
 
 # ── 模块异常类 ──────────────────────────────────────────────────────────────
 
@@ -56,6 +59,17 @@ class SessionNotFoundError(AuthenticationError):
     code = AUTH_SESSION_NOT_FOUND
 
 
+class RefreshFailedError(AuthenticationError):
+    """Refresh Token 刷新失败 — HTTP 401.
+
+    SPEC 12.2: 刷新失败场景包括 Token 不存在、已使用（重放已由独立逻辑
+    处理并吊销 Family）、已吊销、过期或会话无效。
+    所有失败返回相同错误码，不泄露具体原因。
+    """
+
+    code = AUTH_REFRESH_FAILED
+
+
 # ── 注册到框架默认注册表 ──────────────────────────────────────────────────
 
 default_registry.register(
@@ -69,4 +83,10 @@ default_registry.register(
     401,
     meaning="会话不存在",
     scenario="退出或查看不存在的会话",
+)
+default_registry.register(
+    AUTH_REFRESH_FAILED,
+    401,
+    meaning="刷新失败",
+    scenario="Refresh Token 不存在、已吊销或过期",
 )

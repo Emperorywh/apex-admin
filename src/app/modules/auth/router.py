@@ -1,29 +1,39 @@
-"""认证模块 Router — API 层（SPEC 5.2 / 9.1 / 12.1 / 12.3 / 12.4）.
+"""认证模块 Router — API 层（SPEC 5.2 / 9.1 / 12.1 / 12.2 / 12.3 / 12.4）.
 
 SPEC 5.2: "禁止路由层直接访问数据库"。
 SPEC 5.6: "Router 只能获得 Use Case，不得获得 AsyncSession、Repository"。
 
 路由组织（SPEC 9.1）:
   公开端点 — ``/auth`` 前缀:
-    POST   /auth/login               登录（返回 Access Token，Cache-Control: no-store）
+    POST   /auth/login               登录（返回 Access Token + Set-Cookie）
+    POST   /auth/refresh             刷新 Access Token（Set-Cookie 新 Refresh Token）
 
   受保护端点 — 需要认证依赖:
-    POST   /auth/logout               退出当前会话
+    POST   /auth/logout               退出当前会话（删除 Cookie）
     POST   /auth/logout-others        退出其他会话
     GET    /auth/sessions             查看活动会话列表
 
-SPEC 12.4: 登录响应必须设置 ``Cache-Control: no-store``。
-SPEC 12.1: Access Token 仅在登录响应体中返回一次。
+SPEC 12.4: 登录和刷新响应必须设置 ``Cache-Control: no-store``。
+SPEC 12.1: Access Token 仅在登录/刷新响应体中返回一次。
+SPEC 12.2: Refresh Token 仅经 Set-Cookie 下发，不进入 JSON 响应。
+SPEC 12.4: Refresh/Logout 校验 Origin 精确匹配白名单。
 """
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal, cast
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, Cookie, Depends, Request, Response, status
 
 from app.core.api.pagination import PageResponse
+from app.core.errors.exceptions import AuthorizationError
+from app.modules.auth.constants import (
+    REFRESH_COOKIE_NAME,
+    REFRESH_COOKIE_PATH,
+    REFRESH_COOKIE_SAMESITE,
+    SESSION_ABSOLUTE_TIMEOUT,
+)
 from app.modules.auth.dependencies import (
     AuthenticatedContext,  # noqa: TC001 — FastAPI 运行时需要解析
 )
@@ -31,6 +41,7 @@ from app.modules.auth.schemas import (
     LoginRequest,
     LoginResponse,
     LogoutResponse,
+    RefreshResponse,
     SessionResponse,
 )
 from app.modules.auth.use_case import AuthUseCase
@@ -118,6 +129,63 @@ def get_auth_use_case(request: Request) -> AuthUseCase:
 UseCaseDep = Annotated[AuthUseCase, Depends(get_auth_use_case)]
 
 
+# ── Origin 校验 — SPEC 12.4 ──────────────────────────────────────────────
+
+
+def _validate_origin(request: Request) -> None:
+    """校验请求 Origin 是否精确匹配部署配置白名单 — SPEC 12.4.
+
+    SPEC 12.4: "Refresh、Logout 等读取 Cookie 的状态变更接口必须校验
+    Origin 是否精确匹配部署配置白名单"。
+
+    缺少 Origin 头或不在白名单中时返回 403 Forbidden。
+    """
+
+    origin = request.headers.get("origin")
+    if origin is None:
+        raise AuthorizationError("缺少 Origin 头")
+
+    settings = request.app.state.settings
+    if origin not in settings.allowed_origin_set:
+        raise AuthorizationError("非法 Origin")
+
+
+def _set_refresh_cookie(response: Response, raw_refresh_token: str) -> None:
+    """设置 ``__Host-apex_refresh`` Cookie — SPEC 12.4.
+
+    SPEC 12.4: Cookie 固定命名 ``__Host-apex_refresh``，设置 ``Secure``、
+    ``HttpOnly``、``SameSite=Strict``、``Path=/``，不得设置 ``Domain``。
+    ``__Host-`` 前缀要求浏览器强制这些属性。
+    本地开发经 ``localhost`` 可信来源规则在 HTTP 下使用 Secure。
+    """
+
+    response.set_cookie(
+        key=REFRESH_COOKIE_NAME,
+        value=raw_refresh_token,
+        max_age=int(SESSION_ABSOLUTE_TIMEOUT.total_seconds()),
+        path=REFRESH_COOKIE_PATH,
+        secure=True,
+        httponly=True,
+        samesite=cast("Literal['strict']", REFRESH_COOKIE_SAMESITE),
+    )
+
+
+def _delete_refresh_cookie(response: Response) -> None:
+    """删除 ``__Host-apex_refresh`` Cookie — SPEC 12.4.
+
+    SPEC 12.4: "Logout 必须吊销服务端会话并使用相同 Cookie 属性
+    删除客户端 Cookie"。
+    """
+
+    response.delete_cookie(
+        key=REFRESH_COOKIE_NAME,
+        path=REFRESH_COOKIE_PATH,
+        secure=True,
+        httponly=True,
+        samesite=cast("Literal['strict']", REFRESH_COOKIE_SAMESITE),
+    )
+
+
 # ── 公开端点 ────────────────────────────────────────────────────────────────
 
 
@@ -132,11 +200,13 @@ async def login(
     request_body: LoginRequest,
     use_case: UseCaseDep,
 ) -> Response:
-    """账号密码登录 — SPEC 12.1 / 12.4.
+    """账号密码登录 — SPEC 12.1 / 12.2 / 12.4.
 
     SPEC 12.1: 登录成功创建服务端会话，返回不透明 Access Token。
+    SPEC 12.2: 登录成功创建 Refresh Token Family，经 Set-Cookie 下发。
     SPEC 12.4: 登录响应必须设置 ``Cache-Control: no-store``。
     SPEC 12.1: Access Token 仅在响应体中返回一次。
+    SPEC 12.4: Refresh Token 仅经 Set-Cookie 下发，不进入 JSON 响应。
 
     登录失败返回 401（``AUTH.INVALID_CREDENTIALS``），所有失败路径
     返回完全一致的响应，防止账号枚举（SPEC 12.4）。
@@ -155,12 +225,81 @@ async def login(
     )
 
     # SPEC 12.4: Cache-Control: no-store
+    # SPEC 12.2: Refresh Token 仅经 Set-Cookie，不进入 JSON 响应
+    login_response = LoginResponse(
+        access_token=result.access_token,
+        token_type="Bearer",
+        expires_in=result.expires_in,
+    )
     response = Response(
-        content=result.model_dump_json(),
+        content=login_response.model_dump_json(),
         media_type="application/json",
         status_code=status.HTTP_200_OK,
         headers={"Cache-Control": "no-store"},
     )
+    _set_refresh_cookie(response, result.refresh_token)
+    return response
+
+
+@router.post(
+    "/refresh",
+    response_model=RefreshResponse,
+    summary="刷新 Access Token",
+    operation_id="auth_refresh",
+)
+async def refresh(
+    request: Request,
+    use_case: UseCaseDep,
+    refresh_token: str | None = Cookie(
+        default=None,
+        alias=REFRESH_COOKIE_NAME,
+    ),
+) -> Response:
+    """Refresh Token 轮换 — SPEC 12.2 / 12.4.
+
+    SPEC 12.2: 使用 Refresh Token 获取新的 Access Token。
+    旧 Refresh Token 立即失效，新 Refresh Token 仅经 Set-Cookie 下发。
+    SPEC 12.4: 校验 Origin 精确匹配白名单（防止 CSRF）。
+    SPEC 12.4: 刷新响应必须设置 ``Cache-Control: no-store``。
+    SPEC 12.2: Refresh Token 不进入 JSON 响应。
+
+    刷新失败返回 401（``AUTH.REFRESH_FAILED``），不泄露失败原因。
+    """
+
+    # SPEC 12.4: Origin 校验
+    _validate_origin(request)
+
+    # SPEC 12.2: 必须携带 Refresh Token Cookie
+    if refresh_token is None:
+        from app.modules.auth.errors import RefreshFailedError
+
+        raise RefreshFailedError("刷新令牌无效")
+
+    ip_address = _get_client_ip(request)
+    user_agent = request.headers.get("User-Agent")
+    request_id = str(request.scope.get("request_id", ""))
+
+    result = await use_case.refresh(
+        refresh_token,
+        ip_address=ip_address,
+        user_agent=user_agent,
+        request_id=request_id,
+    )
+
+    # SPEC 12.4: Cache-Control: no-store
+    # SPEC 12.2: 新 Refresh Token 仅经 Set-Cookie，不进入 JSON 响应
+    refresh_response = RefreshResponse(
+        access_token=result.access_token,
+        token_type="Bearer",
+        expires_in=result.expires_in,
+    )
+    response = Response(
+        content=refresh_response.model_dump_json(),
+        media_type="application/json",
+        status_code=status.HTTP_200_OK,
+        headers={"Cache-Control": "no-store"},
+    )
+    _set_refresh_cookie(response, result.refresh_token)
     return response
 
 
@@ -177,12 +316,16 @@ async def logout(
     request: Request,
     ctx: AuthenticatedContext,
     use_case: UseCaseDep,
-) -> LogoutResponse:
-    """退出当前会话 — SPEC 12.3.
+) -> Response:
+    """退出当前会话 — SPEC 12.3 / 12.4.
 
     SPEC 12.3: "用户可以退出当前会话"。
     仅吊销当前会话，不影响其他会话。
+    SPEC 12.4: 校验 Origin 并删除客户端 Cookie。
     """
+
+    # SPEC 12.4: Origin 校验
+    _validate_origin(request)
 
     assert ctx.actor_id is not None
     assert ctx.session_id is not None
@@ -190,13 +333,22 @@ async def logout(
     ip_address = _get_client_ip(request)
     user_agent = request.headers.get("User-Agent")
 
-    return await use_case.logout_current(
+    result = await use_case.logout_current(
         session_id=UUID(ctx.session_id),
         user_id=UUID(ctx.actor_id),
         ip_address=ip_address,
         user_agent=user_agent,
         request_id=ctx.request_id,
     )
+
+    response = Response(
+        content=result.model_dump_json(),
+        media_type="application/json",
+        status_code=status.HTTP_200_OK,
+    )
+    # SPEC 12.4: 使用相同 Cookie 属性删除客户端 Cookie
+    _delete_refresh_cookie(response)
+    return response
 
 
 @router.post(

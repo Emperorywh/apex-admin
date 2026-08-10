@@ -17,9 +17,13 @@ from uuid import uuid4
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from app.modules.auth.models import LoginAttempt, Session
-from app.modules.auth.orm import LoginAttemptORM, SessionORM
-from app.modules.auth.port import LoginAttemptRepository, SessionRepository
+from app.modules.auth.models import LoginAttempt, RefreshToken, Session
+from app.modules.auth.orm import LoginAttemptORM, RefreshTokenORM, SessionORM
+from app.modules.auth.port import (
+    LoginAttemptRepository,
+    RefreshTokenRepository,
+    SessionRepository,
+)
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -62,6 +66,14 @@ class SqlAlchemySessionRepository(SessionRepository):
             SessionORM.id == session_id,
             SessionORM.user_id == user_id,
         )
+        result = await self._session.execute(stmt)
+        orm = result.scalar_one_or_none()
+        return _session_to_domain(orm) if orm else None
+
+    async def get_by_session_id(self, session_id: UUID) -> Session | None:
+        """按会话 ID 查找会话（无用户约束）— SPEC 12.2 刷新流程内部使用."""
+
+        stmt = select(SessionORM).where(SessionORM.id == session_id)
         result = await self._session.execute(stmt)
         orm = result.scalar_one_or_none()
         return _session_to_domain(orm) if orm else None
@@ -127,6 +139,30 @@ class SqlAlchemySessionRepository(SessionRepository):
             update(SessionORM)
             .where(SessionORM.id == session_id)
             .values(last_activity_at=last_activity_at)
+        )
+        await self._session.execute(stmt)
+        await self._session.flush()
+
+    async def replace_access_token(
+        self,
+        session_id: UUID,
+        *,
+        new_digest: str,
+        new_token_expires_at: object,
+    ) -> None:
+        """替换会话的 Access Token 摘要 — SPEC 12.2 刷新用.
+
+        旧 Access Token 摘要被覆盖，立即失效。同一会话同时最多一个
+        有效 Access Token（SPEC 12.2）。
+        """
+
+        stmt = (
+            update(SessionORM)
+            .where(SessionORM.id == session_id)
+            .values(
+                access_token_digest=new_digest,
+                token_expires_at=new_token_expires_at,
+            )
         )
         await self._session.execute(stmt)
         await self._session.flush()
@@ -257,6 +293,106 @@ class SqlAlchemyLoginAttemptRepository(LoginAttemptRepository):
         await self._session.flush()
 
 
+class SqlAlchemyRefreshTokenRepository(RefreshTokenRepository):
+    """SQLAlchemy Refresh Token Repository Adapter.
+
+    实现 ``RefreshTokenRepository`` Port（SPEC 12.2）。
+
+    SPEC 12.2:
+      - Token 轮换在同一事务中完成新旧状态变更。
+      - 刷新事务对 Token Family 加行锁（``SELECT ... FOR UPDATE``）。
+      - 并发请求只允许一个成功。
+    """
+
+    def __init__(self, session: AsyncSession) -> None:
+        """初始化 Adapter，绑定当前事务的 AsyncSession."""
+
+        self._session = session
+
+    async def add(self, token: RefreshToken) -> None:
+        """添加新 Refresh Token 到当前事务."""
+
+        orm = _refresh_token_to_orm(token)
+        self._session.add(orm)
+        await self._session.flush()
+
+    async def get_by_digest(self, digest: str) -> RefreshToken | None:
+        """按 HMAC 摘要查找 Refresh Token（不加锁）."""
+
+        stmt = select(RefreshTokenORM).where(RefreshTokenORM.token_digest == digest)
+        result = await self._session.execute(stmt)
+        orm = result.scalar_one_or_none()
+        return _refresh_token_to_domain(orm) if orm else None
+
+    async def lock_family(self, family_id: UUID) -> None:
+        """对 Token Family 加行锁 — SPEC 12.2.
+
+        对 Family 中所有行执行 ``SELECT ... FOR UPDATE``。锁在事务提交
+        或回滚后释放，保证并发刷新请求串行化。
+        """
+
+        stmt = (
+            select(RefreshTokenORM)
+            .where(RefreshTokenORM.family_id == family_id)
+            .with_for_update()
+        )
+        await self._session.execute(stmt)
+
+    async def mark_used(
+        self,
+        token_id: UUID,
+        *,
+        used_at: object,
+    ) -> None:
+        """标记 Refresh Token 为已使用."""
+
+        stmt = (
+            update(RefreshTokenORM)
+            .where(RefreshTokenORM.id == token_id)
+            .values(used_at=used_at)
+        )
+        await self._session.execute(stmt)
+        await self._session.flush()
+
+    async def revoke_family(
+        self,
+        family_id: UUID,
+        *,
+        reason: str,
+    ) -> None:
+        """吊销整个 Token Family — SPEC 12.2 重放检测."""
+
+        stmt = (
+            update(RefreshTokenORM)
+            .where(
+                RefreshTokenORM.family_id == family_id,
+                RefreshTokenORM.revoked_reason.is_(None),
+            )
+            .values(revoked_reason=reason)
+        )
+        await self._session.execute(stmt)
+        await self._session.flush()
+
+    async def revoke_by_session(
+        self,
+        session_id: UUID,
+        *,
+        reason: str,
+    ) -> None:
+        """吊销会话关联的全部 Refresh Token."""
+
+        stmt = (
+            update(RefreshTokenORM)
+            .where(
+                RefreshTokenORM.session_id == session_id,
+                RefreshTokenORM.revoked_reason.is_(None),
+            )
+            .values(revoked_reason=reason)
+        )
+        await self._session.execute(stmt)
+        await self._session.flush()
+
+
 # ── ORM ↔ 领域实体转换 ──────────────────────────────────────────────────────
 
 
@@ -308,4 +444,36 @@ def _attempt_to_domain(orm: LoginAttemptORM) -> LoginAttempt:
         failed_count=orm.failed_count,
         last_failed_at=orm.last_failed_at,
         locked_until=orm.locked_until,
+    )
+
+
+def _refresh_token_to_domain(orm: RefreshTokenORM) -> RefreshToken:
+    """ORM 模型 → 领域实体转换 — SPEC 5.2 职责分离."""
+
+    return RefreshToken(
+        id=orm.id,
+        session_id=orm.session_id,
+        family_id=orm.family_id,
+        token_digest=orm.token_digest,
+        predecessor_id=orm.predecessor_id,
+        created_at=orm.created_at,
+        used_at=orm.used_at,
+        expires_at=orm.expires_at,
+        revoked_reason=orm.revoked_reason,
+    )
+
+
+def _refresh_token_to_orm(token: RefreshToken) -> RefreshTokenORM:
+    """领域实体 → ORM 模型转换."""
+
+    return RefreshTokenORM(
+        id=token.id,
+        session_id=token.session_id,
+        family_id=token.family_id,
+        token_digest=token.token_digest,
+        predecessor_id=token.predecessor_id,
+        created_at=token.created_at,
+        used_at=token.used_at,
+        expires_at=token.expires_at,
+        revoked_reason=token.revoked_reason,
     )
