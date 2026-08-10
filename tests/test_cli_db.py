@@ -1,0 +1,138 @@
+"""CLI db 命令测试 — SPEC 25.1.
+
+覆盖验收标准:
+  - db check 库可用返回 0、断库返回非 0。
+  - db upgrade 仅执行 alembic upgrade head 且不创建业务数据。
+  - 所有命令成功返回 0，参数错误返回 2。
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from app.cli.__main__ import main as cli_main
+
+# ── db check ──────────────────────────────────────────────────────────────
+
+
+@pytest.mark.g1
+@pytest.mark.integration
+def test_cli_db_check_exit_zero_when_db_available(
+    database_url: str,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """库可用时 db check 退出码 0（SPEC 25.1）。"""
+
+    monkeypatch.setenv("APEX_DATABASE_URL", database_url)
+    exit_code = cli_main(["db", "check"])
+
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    # 输出中不应包含敏感配置（只显示连接状态）
+    assert "DATABASE_URL" not in captured.out
+
+
+@pytest.mark.g1
+@pytest.mark.integration
+def test_cli_db_check_nonzero_when_db_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """断库时 db check 退出码非 0（SPEC 25.1）。"""
+
+    monkeypatch.setenv(
+        "APEX_DATABASE_URL",
+        "postgresql+psycopg://nobody@127.0.0.1:1/nonexistent?connect_timeout=3",
+    )
+    exit_code = cli_main(["db", "check"])
+
+    assert exit_code != 0
+    assert exit_code != 2  # 不是参数错误
+
+
+@pytest.mark.g1
+@pytest.mark.integration
+def test_cli_db_upgrade_exit_zero(
+    database_url: str,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """db upgrade 执行 alembic upgrade head 且退出码 0（SPEC 25.1）。
+
+    SPEC 25.1: 不得隐式创建管理员或业务数据。
+    """
+
+    monkeypatch.setenv("APEX_DATABASE_URL", database_url)
+    exit_code = cli_main(["db", "upgrade"])
+
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    assert "head" in captured.out.lower() or "迁移" in captured.out
+
+
+@pytest.mark.g1
+@pytest.mark.integration
+def test_cli_db_upgrade_no_business_data(
+    database_url: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """db upgrade 不创建业务数据（SPEC 25.1）。
+
+    验证迁移后不存在业务表（G1 阶段无业务模块）。
+    """
+
+    from sqlalchemy import text
+
+    from app.infrastructure.db.engine import create_db_engine
+
+    monkeypatch.setenv("APEX_DATABASE_URL", database_url)
+    exit_code = cli_main(["db", "upgrade"])
+    assert exit_code == 0
+
+    # 同步检查数据库表（CLI 内部使用 asyncio.run，不能在 async 测试中调用）
+    import asyncio
+
+    async def _check_tables() -> set[str]:
+        engine = create_db_engine(database_url)
+        try:
+            async with engine.connect() as conn:
+                result = await conn.execute(
+                    text(
+                        "SELECT tablename FROM pg_tables WHERE schemaname = 'public'",
+                    ),
+                )
+                return {row[0] for row in result.fetchall()}
+        finally:
+            await engine.dispose()
+
+    tables = asyncio.run(_check_tables())
+    # alembic_version 表是迁移框架的，允许存在
+    # 不应有任何业务表
+    business_tables = tables - {"alembic_version"}
+    assert business_tables == set(), (
+        f"db upgrade 不应创建业务表，发现: {business_tables}"
+    )
+
+
+# ── 参数错误退出码 ────────────────────────────────────────────────────────
+
+
+@pytest.mark.g1
+@pytest.mark.unit
+def test_cli_db_no_subcommand_exit_2() -> None:
+    """db 无子命令时退出码 2。"""
+
+    with pytest.raises(SystemExit) as exc_info:
+        cli_main(["db"])
+    assert exc_info.value.code == 2
+
+
+@pytest.mark.g1
+@pytest.mark.unit
+def test_cli_db_bad_arg_exit_2() -> None:
+    """db 非法参数时退出码 2。"""
+
+    with pytest.raises(SystemExit) as exc_info:
+        cli_main(["db", "check", "--bad-arg"])
+    assert exc_info.value.code == 2

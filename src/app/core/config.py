@@ -87,10 +87,19 @@ class Settings(BaseSettings):
     API_PREFIX: str = "/api/v1"
 
     # ── 数据库配置 ────────────────────────────────────────────────────
-    # SQLAlchemy 异步 URL，驱动固定 postgresql+psycopg。
-    # 开发默认值指向本地，实际连接由 TASK-004 实现。
+    # SQLAlchemy 异步 URL，驱动固定 postgresql+psycopg（SPEC 5.4 / 8.1）。
+    # 开发默认值指向 dev_db.py 供应的本地实例（端口 55432、用户 apex、
+    # 数据库 postgres）。生产环境必须通过环境变量设置。
 
-    DATABASE_URL: str = "postgresql+psycopg://localhost/apex_admin"
+    DATABASE_URL: str = "postgresql+psycopg://apex@127.0.0.1:55432/postgres"
+
+    # SPEC 26.1 容量基线:
+    #   默认 API Worker 数量为 2，每 Worker pool_size=5、max_overflow=5，
+    #   即每 Worker 峰值 10 个连接、API 侧峰值合计 20 个连接。
+    #   修改前必须完成容量计算:
+    #   API Worker × (pool_size + max_overflow) + 预留 ≤ max_connections - 监控预留
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 5
 
     # ── Token HMAC 摘要密钥（SPEC 12.2）──────────────────────────────
     # 数据库只保存 HMAC-SHA-256 摘要，密钥不入数据库。

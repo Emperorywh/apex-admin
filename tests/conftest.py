@@ -15,6 +15,7 @@ Tier 3 复用 ``scripts/dev_db.py`` 下载的 EDB 免安装二进制，在 pytes
 
 from __future__ import annotations
 
+import asyncio
 import os
 import shutil
 import socket
@@ -29,6 +30,15 @@ import pytest
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+
+# ─── Windows 事件循环策略 ───────────────────────────────────────────────
+#
+# psycopg3 异步模式与 Windows 的 ProactorEventLoop 不兼容。
+# 在测试启动前切换为 SelectorEventLoop，确保所有异步测试可正常连接数据库。
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 
 # ─── 将 scripts/ 加入模块搜索路径以复用 dev_db 的二进制管理逻辑 ────────────
 
