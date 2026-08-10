@@ -113,6 +113,37 @@ def _create_parser() -> argparse.ArgumentParser:
         help="确认执行破坏性操作（与 --clean-orphans 配合使用）",
     )
 
+    # auth create-admin — SPEC 25.2
+    create_admin_parser = auth_sub.add_parser(
+        "create-admin",
+        help="安全创建首个管理员（密码经标准输入传入）",
+    )
+    create_admin_parser.add_argument(
+        "--username",
+        required=True,
+        help="管理员用户名（幂等自然键）",
+    )
+
+    # auth rotate-token-keys — SPEC 23.2
+    auth_sub.add_parser(
+        "rotate-token-keys",
+        help="生成 Token HMAC 密钥轮换配置（双密钥短期切换）",
+    )
+
+    # dev 子命令 — 开发演示数据（SPEC 8.5）
+    dev_parser = subparsers.add_parser(
+        "dev",
+        help="开发工具（仅限开发/测试环境）",
+    )
+    dev_sub = dev_parser.add_subparsers(
+        dest="dev_command",
+        required=True,
+    )
+    dev_sub.add_parser(
+        "seed-demo",
+        help="创建开发演示数据（仅限非生产环境）",
+    )
+
     return parser
 
 
@@ -419,6 +450,336 @@ def _cmd_auth_sync_permissions(args: argparse.Namespace) -> int:
         return 1
 
 
+# ── auth create-admin — SPEC 25.2 ─────────────────────────────────────────
+
+
+def _read_password_from_stdin() -> str:
+    """从受控标准输入读取密码 — SPEC 25.2 / 23.2.
+
+    SPEC 25.2: "管理员初始密码只能通过交互式隐藏输入或受控标准输入传入，
+    不允许作为命令行参数"。
+    SPEC 23.2: "禁止记录和回显密码"。
+
+    当标准输入为 TTY 时使用 getpass 隐藏输入；管道输入时直接读取一行。
+    密码不在任何地方被打印或记录。
+    """
+
+    import getpass
+
+    if sys.stdin.isatty():
+        password = getpass.getpass("请输入管理员密码: ")
+    else:
+        # 管道/重定向模式 — 从标准输入读取一行
+        line = sys.stdin.readline()
+        password = line.rstrip("\n").rstrip("\r")
+
+    return password
+
+
+async def _run_create_admin(
+    database_url: str,
+    *,
+    username: str,
+    password: str,
+) -> int:
+    """异步执行 create-admin — 创建管理员并分配超管角色.
+
+    SPEC 25.2 / 8.5:
+      - 创建管理员用户，密码使用 Argon2id 哈希。
+      - 分配内置 super_admin 角色。
+      - 幂等：同名管理员已存在时报告成功，不创建重复记录。
+      - 密码不写入日志、不输出到命令行。
+    """
+
+    from app.application.ports import SystemClock, UuidGenerator
+    from app.core.security.authorization import SUPER_ADMIN_ROLE_CODE
+    from app.core.security.password import (
+        Argon2Hasher,
+        PasswordPolicyError,
+        validate_password_length,
+    )
+    from app.infrastructure.db.engine import create_db_engine
+    from app.infrastructure.db.uow import SqlAlchemyUnitOfWork
+    from app.modules.identity.adapter import SqlAlchemyUserRepository
+    from app.modules.identity.models import User, UserStatus
+    from app.modules.rbac.adapter import SqlAlchemyRbacRepository
+    from app.modules.rbac.initializers import BuiltinRolesInitializer
+
+    # SPEC 23.2: 校验密码长度策略
+    try:
+        validate_password_length(password)
+    except PasswordPolicyError as exc:
+        print(f"密码策略校验失败: {exc}", file=sys.stderr)
+        return 1
+
+    hasher = Argon2Hasher()
+    password_hash = hasher.hash(password)
+    clock = SystemClock()
+    id_gen = UuidGenerator()
+    now = clock.now()
+
+    engine = create_db_engine(database_url)
+    try:
+        uow = SqlAlchemyUnitOfWork(engine)
+        async with uow:
+            user_repo = SqlAlchemyUserRepository(uow.session)
+            rbac_repo = SqlAlchemyRbacRepository(uow.session)
+
+            # 1. 幂等检查 — 同名管理员已存在则报告成功
+            existing = await user_repo.get_by_username(username)
+            if existing is not None:
+                print(f"管理员 '{username}' 已存在，跳过创建（幂等）")
+                await uow.commit()
+                return 0
+
+            # 2. 确保内置角色存在（运行初始化器）
+            initializer = BuiltinRolesInitializer()
+            await initializer.initialize(uow.session)
+
+            # 3. 创建管理员用户
+            user = User(
+                id=id_gen.generate_id(),
+                username=username,
+                display_name=username,
+                password_hash=password_hash,
+                status=UserStatus.ACTIVE,
+                phone=None,
+                email=None,
+                last_login_at=None,
+                password_updated_at=now,
+                created_at=now,
+                updated_at=now,
+                created_by="cli:create-admin",
+                updated_by="cli:create-admin",
+            )
+            await user_repo.add(user)
+
+            # 4. 查找 super_admin 角色并分配
+            roles = await rbac_repo.get_roles_by_codes({SUPER_ADMIN_ROLE_CODE})
+            if not roles:
+                print(
+                    f"内置角色 '{SUPER_ADMIN_ROLE_CODE}' 不存在",
+                    file=sys.stderr,
+                )
+                return 1
+            super_admin_role = roles[0]
+            await rbac_repo.add_user_role(
+                user.id,
+                super_admin_role.id,
+                now=now,
+                created_by="cli:create-admin",
+            )
+
+            await uow.commit()
+
+        print(f"管理员 '{username}' 创建成功，已分配超级管理员角色")
+        return 0
+    finally:
+        await engine.dispose()
+
+
+def _cmd_auth_create_admin(args: argparse.Namespace) -> int:
+    """执行 auth create-admin 命令 — SPEC 25.2.
+
+    SPEC 25.2:
+      - 安全创建首个管理员。
+      - 管理员初始密码只能通过交互式隐藏输入或受控标准输入传入。
+      - 密码不写入日志、不输出到命令行。
+      - 幂等：同名管理员已存在时报告成功，不创建重复记录。
+    """
+
+    username = args.username
+
+    password = _read_password_from_stdin()
+    if not password:
+        print("密码不能为空", file=sys.stderr)
+        return 1
+
+    try:
+        settings = Settings()
+    except Exception as exc:
+        print(f"配置加载失败: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        return asyncio.run(
+            _run_create_admin(
+                settings.DATABASE_URL,
+                username=username,
+                password=password,
+            ),
+        )
+    except Exception as exc:
+        # SPEC 23.2: 异常信息中不得包含密码
+        print(f"创建管理员失败: {exc}", file=sys.stderr)
+        return 1
+
+
+# ── auth rotate-token-keys — SPEC 23.2 ────────────────────────────────────
+
+
+def _cmd_auth_rotate_token_keys() -> int:
+    """执行 auth rotate-token-keys 命令 — SPEC 23.2.
+
+    SPEC 23.2: "密钥轮换必须具有独立管理命令和双密钥短期切换步骤，
+    不得通过永久 fallback 兼容旧密钥"。
+
+    生成新的 CSPRNG 密钥并输出轮换配置说明。
+    当前密钥值不从配置中读取或输出——操作者自行将当前环境变量复制到 _PREVIOUS。
+    """
+
+    from datetime import UTC, datetime, timedelta
+
+    from app.core.security.token import generate_token
+
+    # SPEC 12.2: 密钥至少 256 bit 熵 = 32 字节
+    # 使用 generate_token() 生成 URL-safe base64 编码的随机串
+    new_access_key = generate_token()
+    new_refresh_key = generate_token()
+
+    expires_at = datetime.now(UTC) + timedelta(hours=24)
+
+    print("=" * 60)
+    print("Token HMAC 密钥轮换 — SPEC 23.2")
+    print("=" * 60)
+    print()
+    print("请按以下步骤完成双密钥短期切换：")
+    print()
+    print("1. 将当前密钥复制到 _PREVIOUS 环境变量（操作者自行完成）：")
+    print("   APEX_ACCESS_TOKEN_HMAC_KEY_PREVIOUS=<当前 ACCESS_TOKEN_HMAC_KEY>")
+    print("   APEX_REFRESH_TOKEN_HMAC_KEY_PREVIOUS=<当前 REFRESH_TOKEN_HMAC_KEY>")
+    print()
+    print("2. 设置新密钥：")
+    print(f"   APEX_ACCESS_TOKEN_HMAC_KEY={new_access_key}")
+    print(f"   APEX_REFRESH_TOKEN_HMAC_KEY={new_refresh_key}")
+    print()
+    print("3. 设置轮换窗口过期时间（UTC ISO 8601）：")
+    print(f"   APEX_KEY_ROTATION_EXPIRES_AT={expires_at.isoformat()}")
+    print()
+    print("4. 重启应用 — 轮换窗口内新旧密钥均可验证 Token")
+    print()
+    print("5. 窗口过期后，移除 _PREVIOUS 和 _EXPIRES_AT 环境变量并重启")
+    print("   旧密钥在窗口过期后自动失效，不存在永久 fallback（SPEC 23.2）")
+    print()
+    print("=" * 60)
+
+    return 0
+
+
+# ── dev seed-demo — SPEC 8.5 ──────────────────────────────────────────────
+
+
+async def _run_dev_seed_demo(database_url: str) -> int:
+    """异步执行 dev seed-demo — 创建开发演示数据.
+
+    SPEC 8.5: "开发演示数据和生产初始化数据使用不同命令与数据源"。
+    此命令仅在非生产环境使用，创建少量演示数据用于本地开发。
+    """
+
+    from app.application.ports import SystemClock, UuidGenerator
+    from app.core.security.authorization import SUPER_ADMIN_ROLE_CODE
+    from app.core.security.password import Argon2Hasher
+    from app.infrastructure.db.engine import create_db_engine
+    from app.infrastructure.db.uow import SqlAlchemyUnitOfWork
+    from app.modules.identity.adapter import SqlAlchemyUserRepository
+    from app.modules.identity.models import User, UserStatus
+    from app.modules.rbac.adapter import SqlAlchemyRbacRepository
+    from app.modules.rbac.initializers import BuiltinRolesInitializer
+    from app.modules.rbac.sync import collect_declared_permissions, sync_permissions
+
+    hasher = Argon2Hasher()
+    clock = SystemClock()
+    id_gen = UuidGenerator()
+    now = clock.now()
+
+    # 开发演示密码（不用于生产）
+    demo_password = "demo-admin-password-123"
+    password_hash = hasher.hash(demo_password)
+
+    engine = create_db_engine(database_url)
+    try:
+        # 1. 同步权限点目录
+        declared = collect_declared_permissions()
+        await sync_permissions(engine, declared_permissions=declared)
+
+        # 2. 创建演示管理员
+        uow = SqlAlchemyUnitOfWork(engine)
+        async with uow:
+            user_repo = SqlAlchemyUserRepository(uow.session)
+            rbac_repo = SqlAlchemyRbacRepository(uow.session)
+
+            # 确保内置角色存在
+            initializer = BuiltinRolesInitializer()
+            await initializer.initialize(uow.session)
+
+            existing = await user_repo.get_by_username("demo-admin")
+            if existing is None:
+                demo_user = User(
+                    id=id_gen.generate_id(),
+                    username="demo-admin",
+                    display_name="演示管理员",
+                    password_hash=password_hash,
+                    status=UserStatus.ACTIVE,
+                    phone=None,
+                    email=None,
+                    last_login_at=None,
+                    password_updated_at=now,
+                    created_at=now,
+                    updated_at=now,
+                    created_by="cli:dev:seed-demo",
+                    updated_by="cli:dev:seed-demo",
+                )
+                await user_repo.add(demo_user)
+
+                roles = await rbac_repo.get_roles_by_codes({SUPER_ADMIN_ROLE_CODE})
+                if roles:
+                    await rbac_repo.add_user_role(
+                        demo_user.id,
+                        roles[0].id,
+                        now=now,
+                        created_by="cli:dev:seed-demo",
+                    )
+
+            await uow.commit()
+
+        print("开发演示数据已创建:")
+        print("  演示管理员: demo-admin")
+        print(f"  演示密码: {demo_password}")
+        print("  权限点目录: 已同步")
+        print()
+        print("警告: 此命令仅限开发/测试环境使用，生产环境禁止运行（SPEC 8.5）")
+        return 0
+    finally:
+        await engine.dispose()
+
+
+def _cmd_dev_seed_demo() -> int:
+    """执行 dev seed-demo 命令 — SPEC 8.5.
+
+    SPEC 8.5: "开发演示数据和生产初始化数据使用不同命令与数据源"。
+    此命令仅在非生产环境允许执行。
+    """
+
+    try:
+        settings = Settings()
+    except Exception as exc:
+        print(f"配置加载失败: {exc}", file=sys.stderr)
+        return 1
+
+    if settings.ENVIRONMENT.value == "production":
+        print(
+            "dev seed-demo 禁止在生产环境执行（SPEC 8.5）",
+            file=sys.stderr,
+        )
+        return 1
+
+    try:
+        return asyncio.run(_run_dev_seed_demo(settings.DATABASE_URL))
+    except Exception as exc:
+        print(f"开发演示数据创建失败: {exc}", file=sys.stderr)
+        return 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI 主入口 — 解析参数并分发到子命令.
 
@@ -438,8 +799,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "modules" and args.modules_command == "validate":
         return _cmd_modules_validate()
 
-    if args.command == "auth" and args.auth_command == "sync-permissions":
-        return _cmd_auth_sync_permissions(args)
+    if args.command == "auth":
+        if args.auth_command == "sync-permissions":
+            return _cmd_auth_sync_permissions(args)
+        if args.auth_command == "create-admin":
+            return _cmd_auth_create_admin(args)
+        if args.auth_command == "rotate-token-keys":
+            return _cmd_auth_rotate_token_keys()
+
+    if args.command == "dev" and args.dev_command == "seed-demo":
+        return _cmd_dev_seed_demo()
 
     if args.command == "db":
         if args.db_command == "check":

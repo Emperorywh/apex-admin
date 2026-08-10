@@ -129,6 +129,40 @@ uv run alembic heads
 - CI 从空数据库执行 `alembic upgrade head`（SPEC 8.2）。
 - 不要求提供自动 downgrade；不可逆迁移必须在文件中说明恢复方式。
 
+### 4.1 数据初始化 — 开发与生产分离（SPEC 8.5）
+
+开发演示数据和生产初始化数据使用不同命令与数据源，禁止混用。
+
+#### 生产初始化命令
+
+| 命令 | 用途 | 数据源 |
+| --- | --- | --- |
+| `uv run python -m app.cli db upgrade` | 执行数据库结构迁移，不创建业务数据（SPEC 25.1） | Alembic 迁移脚本 |
+| `uv run python -m app.cli auth create-admin --username <用户名>` | 安全创建首个管理员（密码经标准输入传入） | 运维交互输入 |
+| `uv run python -m app.cli auth sync-permissions` | 幂等同步各模块声明的权限点到权限目录 | 各模块 ModuleDefinition 声明 |
+| `uv run python -m app.cli auth rotate-token-keys` | 生成 Token HMAC 密钥轮换配置 | CSPRNG 随机生成 |
+
+生产环境部署流程：
+1. `db upgrade` — 执行迁移
+2. `auth sync-permissions` — 同步权限点目录
+3. `auth create-admin` — 创建首个管理员
+4. （可选）`auth rotate-token-keys` — 轮换 Token 密钥
+
+#### 开发演示数据命令
+
+| 命令 | 用途 | 限制 |
+| --- | --- | --- |
+| `uv run python -m app.cli dev seed-demo` | 创建开发演示管理员和权限数据 | 仅限非生产环境（ENVIRONMENT != production） |
+
+`dev seed-demo` 命令在生产环境下拒绝执行。它创建的演示数据（如 `demo-admin` 用户）
+仅供本地开发调试使用，不进入生产环境。
+
+#### 密码安全（SPEC 23.2 / 25.2）
+
+- `auth create-admin` 的初始密码只能通过受控标准输入传入，不接受命令行参数。
+- 密码不写入日志、不输出到命令行、不进入命令历史。
+- 密码使用 Argon2id 哈希后存储，明文密码不持久化。
+
 ## 5. 运行测试
 
 ### 5.1 全部测试

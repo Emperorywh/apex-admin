@@ -15,6 +15,7 @@ SPEC 7.1 / 7.2 / 12.2:
 
 from __future__ import annotations
 
+from datetime import datetime  # noqa: TC003 — pydantic 运行时类型解析需要
 from enum import StrEnum
 from typing import Any
 
@@ -112,6 +113,16 @@ class Settings(BaseSettings):
 
     ACCESS_TOKEN_HMAC_KEY: SecretStr | None = None
     REFRESH_TOKEN_HMAC_KEY: SecretStr | None = None
+
+    # ── Token HMAC 密钥轮换（SPEC 23.2）──────────────────────────────
+    # 密钥轮换期间的前一代密钥（dual-key 短期切换）。
+    # 设置 _PREVIOUS 密钥和 KEY_ROTATION_EXPIRES_AT 后，
+    # TokenDigestService 在窗口内同时接受新旧密钥的摘要。
+    # 超窗后前一代密钥失效，无永久 fallback（SPEC 23.2）。
+
+    ACCESS_TOKEN_HMAC_KEY_PREVIOUS: SecretStr | None = None
+    REFRESH_TOKEN_HMAC_KEY_PREVIOUS: SecretStr | None = None
+    KEY_ROTATION_EXPIRES_AT: datetime | None = None
 
     # ── Origin 白名单（SPEC 12.4）────────────────────────────────────
     # Refresh/Logout 等读取 Cookie 的状态变更接口校验 Origin 是否精确匹配白名单。

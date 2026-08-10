@@ -33,6 +33,7 @@ from app.modules.rbac.errors import (
     RBAC_USER_ROLE_ALREADY_ASSIGNED,
     RBAC_USER_ROLE_NOT_ASSIGNED,
 )
+from app.modules.rbac.initializers import BuiltinRolesInitializer
 from app.modules.rbac.port import UserRbacPort
 from app.modules.rbac.router import router as rbac_router
 
@@ -103,7 +104,7 @@ MODULE_DEFINITION = ModuleDefinition(
         AUDIT_USER_ROLE_REMOVE,
     ),
     protected_resource_types=("role",),
-    initializers=(),
+    initializers=(BuiltinRolesInitializer(),),
     management_commands=(
         ManagementCommand(
             name="auth sync-permissions",

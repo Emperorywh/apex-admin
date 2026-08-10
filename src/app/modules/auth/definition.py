@@ -20,7 +20,7 @@ SPEC 12.3: 事件处理器在 identity 模块的禁用/重置密码 Use Case 事
 
 from __future__ import annotations
 
-from app.core.modules.definition import ModuleDefinition
+from app.core.modules.definition import ManagementCommand, ModuleDefinition
 from app.modules.auth.errors import (
     AUTH_INVALID_CREDENTIALS,
     AUTH_LAST_SUPER_ADMIN,
@@ -68,7 +68,16 @@ MODULE_DEFINITION = ModuleDefinition(
     audit_actions=(),  # 登录日志使用 LoginLogPort，不走 AuditPort。
     protected_resource_types=(RESOURCE_TYPE_SESSION,),
     initializers=(),
-    management_commands=(),  # auth create-admin 在后续任务实现。
+    management_commands=(
+        ManagementCommand(
+            name="auth create-admin",
+            description="安全创建首个管理员（密码经标准输入传入，不落日志）",
+        ),
+        ManagementCommand(
+            name="auth rotate-token-keys",
+            description="Token HMAC 密钥双密钥短期切换轮换",
+        ),
+    ),
     event_handlers=(
         RevokeSessionsOnUserDisabled(),
         RevokeSessionsOnPasswordReset(),

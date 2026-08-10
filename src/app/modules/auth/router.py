@@ -87,14 +87,34 @@ def get_auth_use_case(request: Request) -> AuthUseCase:
     settings = request.app.state.settings
     engine = request.app.state.db_engine
 
-    # 构造 Token 摘要服务 — SPEC 12.2
+    # 构造 Token 摘要服务 — SPEC 12.2 / 23.2
     access_key = settings.ACCESS_TOKEN_HMAC_KEY
     assert access_key is not None
     refresh_key = settings.REFRESH_TOKEN_HMAC_KEY
     assert refresh_key is not None
+
+    # SPEC 23.2: 密钥轮换 — 前一代密钥和轮换窗口
+    prev_access_raw = (
+        settings.ACCESS_TOKEN_HMAC_KEY_PREVIOUS.get_secret_value()
+        if settings.ACCESS_TOKEN_HMAC_KEY_PREVIOUS is not None
+        else None
+    )
+    prev_refresh_raw = (
+        settings.REFRESH_TOKEN_HMAC_KEY_PREVIOUS.get_secret_value()
+        if settings.REFRESH_TOKEN_HMAC_KEY_PREVIOUS is not None
+        else None
+    )
+
     digest_service = TokenDigestService(
         access_key=access_key.get_secret_value().encode("utf-8"),
         refresh_key=refresh_key.get_secret_value().encode("utf-8"),
+        previous_access_key=(
+            prev_access_raw.encode("utf-8") if prev_access_raw else None
+        ),
+        previous_refresh_key=(
+            prev_refresh_raw.encode("utf-8") if prev_refresh_raw else None
+        ),
+        rotation_expires_at=settings.KEY_ROTATION_EXPIRES_AT,
     )
 
     def uow_factory() -> SqlAlchemyUnitOfWork:
