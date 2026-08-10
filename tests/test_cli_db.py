@@ -120,6 +120,9 @@ def test_cli_db_upgrade_no_business_data(
     if any(m.code == "audit" for m in get_module_manifest()):
         declared_tables.add("audit_logs")
         declared_tables.add("login_logs")
+    # 用户模块的表名约定为 users
+    if any(m.code == "identity" for m in get_module_manifest()):
+        declared_tables.add("users")
 
     unexpected = tables - declared_tables
     assert unexpected == set(), f"db upgrade 发现未声明的表: {unexpected}"

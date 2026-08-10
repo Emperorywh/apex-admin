@@ -33,8 +33,13 @@ class AuditPort(ABC):
     不自行提交或回滚事务（SPEC 5.6: "被调用模块的公开 Application Port
     不得提交、回滚或开启隐藏事务"）。
 
-    SPEC 8.3 / 18.2: 审计日志不可变。此 Port 仅提供写入（INSERT）方法，
-    不提供 UPDATE 或 DELETE 方法。
+    SPEC 8.3 / 18.2: 审计日志不可变。此 Port 的写入方法仅提供 INSERT
+    （``record_audit``），不提供 UPDATE 或 DELETE 方法。
+    ``count_by_resource`` 为只读查询方法，不修改审计数据，不违反不可变约束。
+
+    审计查询能力（``count_by_resource``）支持 SPEC 11.3 删除策略:
+    已产生审计记录的用户物理删除被拒绝——调用方通过此方法检查
+    资源是否已有审计记录，以决定是否允许物理删除。
     """
 
     @abstractmethod
@@ -46,6 +51,26 @@ class AuditPort(ABC):
 
         参数:
             entry: 操作审计条目（不可变，含显示名快照和变更差异）。
+        """
+
+    @abstractmethod
+    async def count_by_resource(
+        self,
+        resource_type: str,
+        resource_id: str,
+    ) -> int:
+        """查询指定资源的审计记录数量 — 只读，不修改审计数据.
+
+        SPEC 11.3 删除策略支持: 调用方通过此方法检查资源是否已有审计记录，
+        以决定是否允许物理删除（SPEC 11.3: "已产生审计记录的用户不得因物理
+        删除导致审计信息失真"）。
+
+        参数:
+            resource_type: 目标资源类型（如 ``"user"``）。
+            resource_id:   目标资源标识。
+
+        返回:
+            匹配的审计记录数量。
         """
 
 

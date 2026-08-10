@@ -102,7 +102,7 @@ async def test_alembic_upgrade_head_on_empty_db(
                 )
                 row = result.fetchone()
                 assert row is not None
-                assert row[0] == "0003_audit_tables"
+                assert row[0] == "0004_users"
 
                 # 验证示例模块表已创建
                 table_result = await conn.execute(
@@ -136,7 +136,7 @@ async def test_alembic_single_head() -> None:
     heads = script_dir.get_heads()
 
     assert len(heads) == 1, f"Expected exactly one head, got {heads}"
-    assert heads[0] == "0003_audit_tables"
+    assert heads[0] == "0004_users"
 
 
 @pytest.mark.g1
@@ -160,10 +160,11 @@ def test_head_revision_includes_example_module() -> None:
 
     示例模块迁移 0002_example_items 的 down_revision 指向 0001_initial，
     审计模块迁移 0003_audit_tables 的 down_revision 指向 0002_example_items，
+    用户模块迁移 0004_users 的 down_revision 指向 0003_audit_tables，
     组成全局单头 revision 图。
     """
 
     from app.composition.modules import MODULE_VERSION_LOCATIONS
 
     head = get_head_revision(MODULE_VERSION_LOCATIONS)
-    assert head == "0003_audit_tables"
+    assert head == "0004_users"

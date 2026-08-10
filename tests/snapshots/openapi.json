@@ -328,6 +328,518 @@
           }
         }
       }
+    },
+    "/api/v1/users/me": {
+      "get": {
+        "tags": [
+          "identity"
+        ],
+        "summary": "查询当前用户资料",
+        "description": "查询当前用户自己的资料 — SPEC 11.1: \"用户查询自己的资料\".",
+        "operationId": "get_self_profile",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "identity"
+        ],
+        "summary": "更新当前用户资料",
+        "description": "更新当前用户自己的资料 — SPEC 11.1: \"用户更新允许自助修改的资料\".\n\n仅允许白名单字段（display_name、phone、email）。\n``SelfProfileUpdateRequest`` 继承 ``extra=\"forbid\"``，\n携带 username 或 status 等字段的请求返回 422（SPEC 9.2）。",
+        "operationId": "update_self_profile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelfProfileUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/me/password": {
+      "put": {
+        "tags": [
+          "identity"
+        ],
+        "summary": "修改当前用户密码",
+        "description": "修改当前用户自己的密码 — SPEC 11.1: \"用户修改自己的密码\".\n\n必须提供旧密码（校验旧密码是否正确）。\n旧密码不正确返回 409（``USER.INVALID_OLD_PASSWORD``）。\n成功返回 204 无响应体（SPEC 9.3）。",
+        "operationId": "change_self_password",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelfChangePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users": {
+      "post": {
+        "tags": [
+          "identity"
+        ],
+        "summary": "创建用户",
+        "description": "创建用户 — HTTP 201 + Location（SPEC 9.3）.\n\n创建成功返回 201 和资源 Schema，Location 头指向新建用户详情\n（SPEC 9.3: \"创建成功返回 HTTP 201，并在适用时返回 Location\"）。\n用户名冲突返回 409（``USER.ALREADY_EXISTS``）。",
+        "operationId": "create_user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "identity"
+        ],
+        "summary": "分页查询用户列表",
+        "description": "分页查询用户列表 — SPEC 9.4 分页排序.\n\n分页参数: ``page``（默认 1）、``page_size``（默认 20）。\n排序参数: ``sort``，逗号分隔，``-`` 前缀降序。\n排序白名单: ``username``、``display_name``、``created_at``、``updated_at``。\n筛选参数: ``status``（active / disabled，可选）。",
+        "operationId": "list_users",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "按用户状态筛选（active / disabled）",
+              "title": "Status"
+            },
+            "description": "按用户状态筛选（active / disabled）"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "页码，从 1 开始",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "页码，从 1 开始"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "每页数量，范围 1-100",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "每页数量，范围 1-100"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "排序字段，逗号分隔，- 前缀表示降序",
+              "title": "Sort"
+            },
+            "description": "排序字段，逗号分隔，- 前缀表示降序"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResponse_UserResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{user_id}": {
+      "get": {
+        "tags": [
+          "identity"
+        ],
+        "summary": "查询用户详情",
+        "description": "查询用户详情 — 不存在返回 404（``USER.NOT_FOUND``）。",
+        "operationId": "get_user",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "用户 ID",
+              "title": "User Id"
+            },
+            "description": "用户 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "identity"
+        ],
+        "summary": "更新用户资料",
+        "description": "更新用户资料（管理端）— SPEC 11.1: \"更新用户基本资料\".",
+        "operationId": "update_user",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "用户 ID",
+              "title": "User Id"
+            },
+            "description": "用户 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "identity"
+        ],
+        "summary": "物理删除用户",
+        "description": "物理删除用户 — SPEC 11.3 删除策略.\n\nSPEC 11.3:\n  - \"已产生审计记录的用户不得因物理删除导致审计信息失真\"。\n  - \"默认优先采用禁用或注销，而不是直接删除用户\"。\n\n已产生审计记录的用户物理删除被拒绝（409 ``USER.HAS_AUDIT_RECORDS``）。\n应优先使用禁用（``POST /users/{id}/disable``）替代物理删除。\n无审计记录的用户可物理删除，成功返回 204（SPEC 9.3）。",
+        "operationId": "delete_user",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "用户 ID",
+              "title": "User Id"
+            },
+            "description": "用户 ID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{user_id}/enable": {
+      "post": {
+        "tags": [
+          "identity"
+        ],
+        "summary": "启用用户",
+        "description": "启用用户 — SPEC 11.1: \"启用用户\".\n\n已启用用户返回 409（``USER.ALREADY_ACTIVE``）。",
+        "operationId": "enable_user",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "用户 ID",
+              "title": "User Id"
+            },
+            "description": "用户 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{user_id}/disable": {
+      "post": {
+        "tags": [
+          "identity"
+        ],
+        "summary": "禁用用户",
+        "description": "禁用用户 — SPEC 11.1: \"禁用用户\".\n\n禁用时发布 ``USER.DISABLED`` 事件，auth 模块（TASK-013）吊销全部会话。\n已禁用用户返回 409（``USER.ALREADY_DISABLED``）。",
+        "operationId": "disable_user",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "用户 ID",
+              "title": "User Id"
+            },
+            "description": "用户 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{user_id}/reset-password": {
+      "post": {
+        "tags": [
+          "identity"
+        ],
+        "summary": "重置用户密码",
+        "description": "管理员重置用户密码 — SPEC 11.1: \"重置用户密码\".\n\n重置后发布 ``USER.PASSWORD_RESET_BY_ADMIN`` 事件，\nauth 模块（TASK-013）吊销该用户全部会话。\n成功返回 204 无响应体（SPEC 9.3）。",
+        "operationId": "reset_user_password",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "用户 ID",
+              "title": "User Id"
+            },
+            "description": "用户 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserResetPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -513,6 +1025,326 @@
         ],
         "title": "PageResponse[ExampleItemResponse]"
       },
+      "PageResponse_UserResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/UserResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "pages"
+        ],
+        "title": "PageResponse[UserResponse]"
+      },
+      "SelfChangePasswordRequest": {
+        "properties": {
+          "old_password": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Old Password",
+            "description": "旧密码（需校验）"
+          },
+          "new_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 12,
+            "title": "New Password",
+            "description": "新密码（12-128 Unicode 字符，SPEC 23.2）"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "old_password",
+          "new_password"
+        ],
+        "title": "SelfChangePasswordRequest",
+        "description": "自助修改密码请求 — SPEC 11.1.\n\nSPEC 11.1: \"用户修改自己的密码\"。\n自助改密必须提供旧密码（SPEC: 自助改密必须校验旧密码），\n与管理员重置密码不同——管理员重置不需要旧密码。\n\n属性:\n    old_password: 旧明文密码（用于校验）。\n    new_password: 新明文密码，12-128 Unicode 字符（SPEC 23.2）。"
+      },
+      "SelfProfileUpdateRequest": {
+        "properties": {
+          "display_name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Display Name",
+            "description": "显示名称"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone",
+            "description": "手机号（可选）"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email",
+            "description": "邮箱（可选）"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "display_name"
+        ],
+        "title": "SelfProfileUpdateRequest",
+        "description": "自助更新资料请求 — SPEC 11.1 / 9.2.\n\nSPEC 11.1: \"用户更新允许自助修改的资料\"。\n自助端点仅允许白名单字段：display_name、phone、email。\nusername、status 等字段不在白名单内。\n\n继承 ``StrictBaseModel``（``extra=\"forbid\"``），携带未知字段\n（如 username、status）的请求返回 422（SPEC 9.2）。\n\n属性:\n    display_name: 显示名称，1-200 字符。\n    phone:        手机号（可选），最多 50 字符。\n    email:        邮箱（可选），最多 255 字符，格式校验。"
+      },
+      "UserCreateRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 3,
+            "title": "Username",
+            "description": "用户名/登录账号"
+          },
+          "display_name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Display Name",
+            "description": "显示名称"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 12,
+            "title": "Password",
+            "description": "初始密码（12-128 Unicode 字符，SPEC 23.2）"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone",
+            "description": "手机号（可选）"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email",
+            "description": "邮箱（可选）"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "username",
+          "display_name",
+          "password"
+        ],
+        "title": "UserCreateRequest",
+        "description": "创建用户请求 — SPEC 9.2 / 11.1 / 23.2.\n\n继承 ``StrictBaseModel``（``extra=\"forbid\"``），携带未知字段的请求返回 422。\n\n属性:\n    username:     用户名，3-100 字符。\n    display_name: 显示名称，1-200 字符。\n    password:     初始明文密码，12-128 Unicode 字符（SPEC 23.2）。\n    phone:        手机号（可选），最多 50 字符。\n    email:        邮箱（可选），最多 255 字符，格式校验。"
+      },
+      "UserResetPasswordRequest": {
+        "properties": {
+          "new_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 12,
+            "title": "New Password",
+            "description": "新密码（12-128 Unicode 字符，SPEC 23.2）"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "new_password"
+        ],
+        "title": "UserResetPasswordRequest",
+        "description": "管理员重置密码请求 — SPEC 11.1.\n\n管理员设置新密码，不需要旧密码（SPEC 11.1: \"重置用户密码\"）。\n重置后发布 ``USER.PASSWORD_RESET_BY_ADMIN`` 事件，\nauth 模块（TASK-013）吊销该用户全部会话。\n\n属性:\n    new_password: 新明文密码，12-128 Unicode 字符（SPEC 23.2）。"
+      },
+      "UserResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "last_login_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Login At"
+          },
+          "password_updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password Updated At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "display_name",
+          "status",
+          "phone",
+          "email",
+          "last_login_at",
+          "password_updated_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "UserResponse",
+        "description": "用户响应模型 — SPEC 9.3 / 11.2.\n\nSPEC 9.3: \"普通成功响应直接返回资源 Schema，不使用成功信封\"。\nSPEC 9.3: \"敏感字段不得进入响应模型\"。\n密码哈希不出现在响应中（SPEC 23.2: \"禁止记录和回显密码\"）。\n\nJSON 字段使用 snake_case，时间为带时区 ISO 8601 字符串。\n响应模型不使用 ``extra=\"forbid\"``（响应可能有扩展字段），\n但字段命名遵循 snake_case 约定。"
+      },
+      "UserUpdateRequest": {
+        "properties": {
+          "display_name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Display Name",
+            "description": "显示名称"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone",
+            "description": "手机号（可选）"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email",
+            "description": "邮箱（可选）"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "display_name"
+        ],
+        "title": "UserUpdateRequest",
+        "description": "更新用户资料请求（管理端全量更新）— SPEC 9.2 / 11.1.\n\n管理端可更新显示名称、手机号和邮箱。\nusername 不可变更——用户名是全局唯一的稳定登录账号标识，\n变更会影响历史审计记录可追溯性（SPEC 11.3: \"用户名称发生变化时，\n历史审计记录仍能识别当时操作者\"——通过显示名快照解决，\nusername 本身保持不变）。\n\n属性:\n    display_name: 显示名称，1-200 字符。\n    phone:        手机号（可选），最多 50 字符。\n    email:        邮箱（可选），最多 255 字符，格式校验。"
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -567,6 +1399,10 @@
     {
       "name": "example",
       "description": "最小示例模块 — 端到端演示 Router/Use Case/Port/Adapter/迁移/权限/错误码/事件完整接入（SPEC 30.2 / 34.1）。派生项目可整体删除。"
+    },
+    {
+      "name": "identity",
+      "description": "用户管理 — 用户生命周期（创建/详情/分页/更新/启用/禁用/重置密码）、自助资料与改密、删除策略与审计（SPEC 11.1 / 11.2 / 11.3）。"
     }
   ]
 }

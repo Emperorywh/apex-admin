@@ -16,6 +16,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from sqlalchemy import func, select
+
 from app.modules.audit.orm import AuditLogORM, LoginLogORM
 from app.modules.audit.port import AuditPort, LoginLogPort
 
@@ -76,6 +78,28 @@ class SqlAlchemyAuditRepository(AuditPort):
         )
         self._session.add(orm)
         await self._session.flush()
+
+    async def count_by_resource(
+        self,
+        resource_type: str,
+        resource_id: str,
+    ) -> int:
+        """查询指定资源的审计记录数量 — 只读.
+
+        SPEC 11.3: 支持删除策略——调用方检查资源是否已有审计记录。
+        此方法只执行 SELECT，不修改审计数据，不违反不可变约束。
+        """
+
+        stmt = (
+            select(func.count())
+            .select_from(AuditLogORM)
+            .where(
+                AuditLogORM.resource_type == resource_type,
+                AuditLogORM.resource_id == resource_id,
+            )
+        )
+        result = await self._session.execute(stmt)
+        return int(result.scalar() or 0)
 
 
 class SqlAlchemyLoginLogRepository(LoginLogPort):

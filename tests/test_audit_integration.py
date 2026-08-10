@@ -485,7 +485,11 @@ class TestNoUpdateDeletePaths:
     """
 
     def test_audit_adapter_no_update_delete(self) -> None:
-        """SqlAlchemyAuditRepository 无 update/delete 方法。"""
+        """SqlAlchemyAuditRepository 无 update/delete 方法。
+
+        ``record_audit`` 为写入（INSERT），``count_by_resource`` 为只读查询
+        （SELECT），两者均不修改审计数据，不违反不可变约束。
+        """
 
         from app.modules.audit.adapter import SqlAlchemyAuditRepository
 
@@ -497,8 +501,8 @@ class TestNoUpdateDeletePaths:
             )
             if not name.startswith("_")
         }
-        # 只允许 record_audit（INSERT）
-        assert public_methods == {"record_audit"}
+        # 允许的公开方法: record_audit（INSERT）+ count_by_resource（只读 SELECT）
+        assert public_methods == {"record_audit", "count_by_resource"}
         # 不存在 update/delete
         assert not any("update" in m.lower() for m in public_methods)
         assert not any("delete" in m.lower() for m in public_methods)
@@ -523,7 +527,11 @@ class TestNoUpdateDeletePaths:
         assert not any("delete" in m.lower() for m in public_methods)
 
     def test_audit_port_no_update_delete(self) -> None:
-        """AuditPort 无 update/delete 抽象方法。"""
+        """AuditPort 无 update/delete 抽象方法。
+
+        ``record_audit`` 为写入（INSERT），``count_by_resource`` 为只读查询，
+        两者均不修改审计数据。
+        """
 
         from app.modules.audit.port import AuditPort
 
@@ -533,6 +541,7 @@ class TestNoUpdateDeletePaths:
             if not name.startswith("_") and callable(member)
         }
         assert "record_audit" in public_methods
+        assert "count_by_resource" in public_methods
         assert not any("update" in m.lower() for m in public_methods)
         assert not any("delete" in m.lower() for m in public_methods)
 

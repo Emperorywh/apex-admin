@@ -179,7 +179,12 @@ def test_development_docs_enabled_by_default() -> None:
 @pytest.mark.g1
 @pytest.mark.api
 def test_openapi_does_not_leak_sensitive_info() -> None:
-    """OpenAPI 文档不暴露内部密钥、数据库信息（SPEC 9.6）。"""
+    """OpenAPI 文档不暴露内部密钥、数据库信息（SPEC 9.6）。
+
+    SPEC 9.6: "文档不暴露内部密钥、数据库信息和堆栈详情"。
+    password 作为请求字段名出现在 Schema 中是合法的（客户端需要知道字段名），
+    但 password_hash（哈希值字段）、密钥和数据库连接串不应出现。
+    """
 
     app = create_app()
     with TestClient(app) as client:
@@ -192,5 +197,5 @@ def test_openapi_does_not_leak_sensitive_info() -> None:
     # 不含密钥关键字
     assert "HMAC" not in body_text
     assert "secret" not in body_text.lower()
-    # 不含 password 关键字
-    assert "password" not in body_text.lower()
+    # 不含 password_hash（哈希值字段不应出现在任何 Schema 中）
+    assert "password_hash" not in body_text.lower()
