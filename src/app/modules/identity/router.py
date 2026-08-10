@@ -85,6 +85,10 @@ def get_user_use_case(request: Request) -> UserUseCase:
     from app.core.security.password import Argon2Hasher
     from app.infrastructure.db.uow import SqlAlchemyUnitOfWork
     from app.modules.audit import adapter as _audit_adapter
+    from app.modules.auth.handlers import (
+        RevokeSessionsOnPasswordReset,
+        RevokeSessionsOnUserDisabled,
+    )
 
     engine = request.app.state.db_engine
 
@@ -105,12 +109,20 @@ def get_user_use_case(request: Request) -> UserUseCase:
 
         return _audit_adapter.SqlAlchemyAuditRepository(session)
 
+    # SPEC 5.7: auth 模块的事务内事件处理器在禁用/重置密码 Use Case 的
+    # 事务内同步执行，吊销该用户全部会话（SPEC 12.3）。
+    # 处理器在当前 UoW 的 AsyncSession 上执行，与业务数据强一致。
+    auth_event_handlers = [
+        RevokeSessionsOnUserDisabled(),
+        RevokeSessionsOnPasswordReset(),
+    ]
+
     return UserUseCase(
         uow_factory=uow_factory,
         clock=SystemClock(),
         id_generator=UuidGenerator(),
         hasher=Argon2Hasher(),
-        event_handlers=[],  # auth 模块（TASK-013）注册处理器
+        event_handlers=auth_event_handlers,
         audit_factory=audit_factory,
     )
 

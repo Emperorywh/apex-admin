@@ -34,6 +34,7 @@ from app.modules.identity.errors import (
     USER_INVALID_OLD_PASSWORD,
     USER_NOT_FOUND,
 )
+from app.modules.identity.port import UserAuthPort
 from app.modules.identity.router import router as identity_router
 
 # ── 声明常量 ────────────────────────────────────────────────────────────────
@@ -74,10 +75,8 @@ MODULE_DEFINITION = ModuleDefinition(
     code=MODULE_CODE,
     api_tag=MODULE_API_TAG,
     # SPEC 5.5: 模块公开的 Application Port。
-    # identity 模块的 UserRepository Port 在模块内部使用，
-    # 未作为跨模块公开 Port 声明。后续跨模块协作（如 auth 模块
-    # 查询用户状态）通过事件解耦——本模块发布事件，auth 模块注册处理器。
-    application_ports=(),
+    # UserAuthPort 供 auth 模块跨模块查询用户认证数据（登录、认证依赖）。
+    application_ports=(UserAuthPort,),
     required_dependencies=("audit",),  # 审计写入依赖 audit 模块
     optional_dependencies=(),
     routers=(identity_router,),

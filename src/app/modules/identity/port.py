@@ -17,10 +17,11 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from datetime import datetime
     from uuid import UUID
 
     from app.core.api.pagination import SortField
-    from app.modules.identity.models import User, UserStatus
+    from app.modules.identity.models import User, UserAuthInfo, UserStatus
 
 
 class UserRepository(ABC):
@@ -112,4 +113,61 @@ class UserRepository(ABC):
 
         返回:
             删除成功返回 True；用户不存在返回 False。
+        """
+
+
+class UserAuthPort(ABC):
+    """用户认证信息 Port — 跨模块公开（SPEC 5.2 / 5.5 / 12.1 / 12.3）.
+
+    SPEC 5.5: "模块依赖只允许指向其他模块的公开 Application Port"。
+    auth 模块声明对 identity 的必需依赖，通过此 Port 查询用户认证相关数据，
+    不直接访问 identity 的数据表或 ORM 模型（SPEC 5.5: "禁止跨模块直接操作
+    对方的数据表、ORM 模型和内部函数"）。
+
+    SPEC 12.1: 登录前检查用户状态、密码验证、rehash 升级（同事务）。
+    SPEC 12.3: 认证依赖每请求校验用户启用状态。
+
+    此 Port 返回 ``UserAuthInfo`` 投影（最小字段集），不暴露完整 ``User`` 实体，
+    最小化跨模块数据耦合。
+    """
+
+    @abstractmethod
+    async def get_auth_info_by_username(self, username: str) -> UserAuthInfo | None:
+        """按用户名查询认证信息 — SPEC 12.1 登录用.
+
+        参数:
+            username: 用户名/登录账号。
+
+        返回:
+            认证信息投影；用户不存在返回 None。
+        """
+
+    @abstractmethod
+    async def get_status_by_id(self, user_id: UUID) -> UserStatus | None:
+        """按 ID 查询用户状态 — SPEC 12.3 认证依赖用.
+
+        参数:
+            user_id: 用户 ID。
+
+        返回:
+            用户状态；用户不存在返回 None。
+        """
+
+    @abstractmethod
+    async def update_login_state(
+        self,
+        user_id: UUID,
+        *,
+        last_login_at: datetime,
+        new_password_hash: str | None = None,
+    ) -> None:
+        """更新用户登录状态 — 同事务（SPEC 12.1）.
+
+        SPEC 12.1: "登录成功时使用 check_needs_rehash 判断并在同一事务中
+        升级旧参数哈希"。
+
+        参数:
+            user_id:           用户 ID。
+            last_login_at:     最近登录时间（UTC）。
+            new_password_hash: 新密码哈希（rehash 升级时提供，否则 None）。
         """

@@ -81,3 +81,29 @@ class User:
     updated_at: datetime
     created_by: str | None
     updated_by: str | None
+
+
+@dataclass(frozen=True)
+class UserAuthInfo:
+    """用户认证信息投影 — 供 auth 模块跨模块查询的最小数据集（SPEC 5.2 / 12.1）.
+
+    SPEC 5.2: 跨模块调用通过公开 Port。identity 模块向 auth 模块
+    暴露 ``UserAuthPort``，返回此投影对象而非完整 ``User`` 实体，
+    最小化跨模块数据暴露。
+
+    SPEC 12.1: 登录前检查用户状态；密码使用 Argon2id 验证。
+    SPEC 12.3: 认证依赖校验用户启用状态。
+
+    属性:
+        id:            用户 ID。
+        username:      用户名/登录账号。
+        display_name:  显示名称（用于登录日志记录）。
+        password_hash: Argon2id 密码哈希（PHC 格式）。
+        status:        用户状态（ACTIVE / DISABLED）。
+    """
+
+    id: UUID
+    username: str
+    display_name: str
+    password_hash: str
+    status: UserStatus

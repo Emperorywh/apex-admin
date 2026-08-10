@@ -21,6 +21,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from app.modules.audit.definition import MODULE_DEFINITION as AUDIT_MODULE
+from app.modules.auth.definition import MODULE_DEFINITION as AUTH_MODULE
 from app.modules.example.definition import MODULE_DEFINITION as EXAMPLE_MODULE
 from app.modules.identity.definition import MODULE_DEFINITION as IDENTITY_MODULE
 
@@ -37,10 +38,12 @@ if TYPE_CHECKING:
 #:   - example（最小示例模块，SPEC 30.2 / 34.1）
 #:   - audit（审计与登录日志模块，SPEC 18.1 / 18.2）
 #:   - identity（用户模块，SPEC 11.1 / 11.2 / 11.3）
+#:   - auth（认证模块，SPEC 12.1 / 12.3 / 12.4 / 18.1）
 MODULE_MANIFEST: list[ModuleDefinition] = [
     EXAMPLE_MODULE,
     AUDIT_MODULE,
     IDENTITY_MODULE,
+    AUTH_MODULE,
 ]
 
 #: 已启用模块的 Alembic 迁移版本目录列表.

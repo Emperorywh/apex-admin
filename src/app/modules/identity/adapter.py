@@ -13,18 +13,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
 from app.core.api.pagination import SortField, SortOrder
 from app.core.errors.exceptions import UniqueViolationError
 from app.infrastructure.db.exceptions import translate_db_exception
 from app.modules.identity.errors import UserAlreadyExistsError
-from app.modules.identity.models import User, UserStatus
+from app.modules.identity.models import User, UserAuthInfo, UserStatus
 from app.modules.identity.orm import UserORM
-from app.modules.identity.port import UserRepository
+from app.modules.identity.port import UserAuthPort, UserRepository
 
 if TYPE_CHECKING:
+    from datetime import datetime
     from uuid import UUID
 
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -203,3 +204,68 @@ def _to_orm(user: User) -> UserORM:
         created_by=user.created_by,
         updated_by=user.updated_by,
     )
+
+
+class SqlAlchemyUserAuthAdapter(UserAuthPort):
+    """SQLAlchemy 用户认证信息 Adapter — 实现 ``UserAuthPort`` Port.
+
+    SPEC 5.5: auth 模块通过此 Port 跨模块查询用户认证数据。
+    返回 ``UserAuthInfo`` 投影（最小字段集），不暴露完整 ``User`` 实体。
+
+    由 Composition Root 使用当前 UoW 的 AsyncSession 构造（SPEC 5.6）。
+    """
+
+    def __init__(self, session: AsyncSession) -> None:
+        """初始化 Adapter，绑定当前事务的 AsyncSession."""
+
+        self._session = session
+
+    async def get_auth_info_by_username(self, username: str) -> UserAuthInfo | None:
+        """按用户名查询认证信息投影 — SPEC 12.1 登录用."""
+
+        stmt = select(UserORM).where(UserORM.username == username)
+        result = await self._session.execute(stmt)
+        orm = result.scalar_one_or_none()
+        if orm is None:
+            return None
+        return UserAuthInfo(
+            id=orm.id,
+            username=orm.username,
+            display_name=orm.display_name,
+            password_hash=orm.password_hash,
+            status=UserStatus(orm.status),
+        )
+
+    async def get_status_by_id(self, user_id: UUID) -> UserStatus | None:
+        """按 ID 查询用户状态 — SPEC 12.3 认证依赖用."""
+
+        stmt = select(UserORM.status).where(UserORM.id == user_id)
+        result = await self._session.execute(stmt)
+        row = result.scalar_one_or_none()
+        return UserStatus(row) if row else None
+
+    async def update_login_state(
+        self,
+        user_id: UUID,
+        *,
+        last_login_at: datetime,
+        new_password_hash: str | None = None,
+    ) -> None:
+        """更新用户登录状态 — 同事务（SPEC 12.1）.
+
+        SPEC 12.1: "登录成功时使用 check_needs_rehash 判断并在同一事务中
+        升级旧参数哈希"。当 ``new_password_hash`` 非空时同时更新密码哈希
+        和密码更新时间。
+        """
+
+        values: dict[str, datetime | str] = {
+            "last_login_at": last_login_at,
+            "updated_at": last_login_at,
+        }
+        if new_password_hash is not None:
+            values["password_hash"] = new_password_hash
+            values["password_updated_at"] = last_login_at
+
+        stmt = update(UserORM).where(UserORM.id == user_id).values(**values)
+        await self._session.execute(stmt)
+        await self._session.flush()
