@@ -102,9 +102,9 @@ def test_application_errors_no_sqlalchemy_types() -> None:
     assert isinstance(exc, ApplicationError)
     assert isinstance(exc, Exception)
 
-    # 异常模块来源是应用层，不是 sqlalchemy
-    assert "app.application" in UniqueViolationError.__module__
-    assert "app.application" in DatabaseConnectionError.__module__
+    # 异常模块来源是应用核心层（app.core.errors），不是 sqlalchemy
+    assert "app.core.errors" in UniqueViolationError.__module__
+    assert "app.core.errors" in DatabaseConnectionError.__module__
 
 
 @pytest.mark.g1

@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
 
+from app.api.exception_handlers import register_exception_handlers
 from app.api.health import router as health_router
 from app.api.meta import router as meta_router
 from app.api.middleware import RequestContextMiddleware
@@ -121,6 +122,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     # 注册中间件 — Request ID 注入与请求日志（SPEC 9.5 / 24.1）
     app.add_middleware(RequestContextMiddleware)
+
+    # 注册异常处理器 — API 边界统一转换为 RFC 9457 problem+json（SPEC 9.3 / 10.1）
+    register_exception_handlers(app)
 
     # 挂载路由 — health 端点挂载在根路径（SPEC 6.2）
     app.include_router(health_router)

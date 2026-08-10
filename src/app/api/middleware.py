@@ -73,6 +73,11 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         # 设置 ContextVar — 仅用于日志关联（SPEC 5.8）
         token = request_id_var.set(request_id)
 
+        # 将 Request ID 存入 scope，供异常处理器在中间件无法回写
+        # 响应头时（如未处理异常经 ServerErrorMiddleware 处理）读取。
+        # request_id 是请求关联标识，非业务状态（SPEC 5.8）。
+        request.scope["request_id"] = request_id
+
         # 记录开始时间用于耗时计算（SPEC 24.1: 请求日志包含耗时）
         start = time.perf_counter()
         status_code = 500
