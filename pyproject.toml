@@ -1,0 +1,221 @@
+[project]
+name = "apex-admin"
+version = "0.1.0"
+description = "FastAPI 后台管理系统 API 基座"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+
+# ---------------------------------------------------------------------------
+# 运行依赖（SPEC 5.4 固定版本线）
+# 声明允许范围，uv.lock 锁定精确版本。
+# ---------------------------------------------------------------------------
+dependencies = [
+    # Web 框架，使用 Lifespan 管理应用资源
+    "fastapi>=0.139,<0.140",
+    # ASGI Server，由 fastapi run 启动
+    "uvicorn>=0.35,<0.36",
+    # 数据校验与配置
+    "pydantic>=2.13,<2.14",
+    "pydantic-settings>=2.14,<2.15",
+    # ORM — SQLAlchemy 2.0.x Async ORM，不使用 2.1 预发布版本
+    "sqlalchemy>=2.0,<2.1",
+    # PostgreSQL 驱动，SQLAlchemy URL 使用 postgresql+psycopg
+    "psycopg[binary]>=3.3,<3.4",
+    # 数据库迁移
+    "alembic>=1.18,<1.19",
+    # 密码哈希，算法固定为 Argon2id
+    "argon2-cffi>=25,<26",
+    # 结构化日志
+    "structlog>=25.4,<26",
+]
+
+[project.optional-dependencies]
+# ---------------------------------------------------------------------------
+# 模板分发依赖（SPEC 5.4 Copier 9.17.x）
+# ---------------------------------------------------------------------------
+template = [
+    "copier>=9.17,<9.18",
+]
+
+# ---------------------------------------------------------------------------
+# 开发与测试依赖分组（PEP 735 / SPEC 5.4）
+# uv sync 默认安装 dev 组；CI 使用 uv sync --frozen。
+# ---------------------------------------------------------------------------
+[dependency-groups]
+dev = [
+    "pytest>=9,<10",
+    "pytest-asyncio>=1.4,<1.5",
+    "httpx>=0.28,<0.29",
+    # Testcontainers PostgreSQL 18 — 独立测试数据库
+    "testcontainers[postgres]>=4.13,<5",
+    # 静态检查
+    "ruff>=0.15,<0.16",
+    "mypy>=2.3,<2.4",
+    # 架构检查
+    "import-linter>=2.5,<3",
+    # 依赖安全
+    "pip-audit>=2.7,<3",
+    # 覆盖率
+    "coverage>=7.10,<8",
+    # YAML 解析（CI 工作流验证）
+    "pyyaml>=6.0.2,<7",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/app"]
+
+# ===========================================================================
+# uv 配置
+# ===========================================================================
+[tool.uv]
+# CI 使用 uv sync --frozen，禁止在 CI 中临时解析未锁定依赖
+required-version = ">=0.11,<0.12"
+
+# ===========================================================================
+# Ruff 配置（SPEC 29.1）
+# ===========================================================================
+[tool.ruff]
+target-version = "py313"
+src = ["src"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # Pyflakes
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "TCH",  # flake8-type-checking
+]
+
+[tool.ruff.lint.isort]
+# 与项目分层保持一致：标准库 → 第三方 → 应用
+known-first-party = ["app"]
+
+[tool.ruff.format]
+# 保持与项目一致的双引号与尾随逗号
+quote-style = "double"
+
+# ===========================================================================
+# mypy 配置（SPEC 29.1 strict）
+# ===========================================================================
+[tool.mypy]
+python_version = "3.13"
+strict = true
+mypy_path = "src"
+packages = ["app"]
+
+# ===========================================================================
+# pytest 配置（SPEC 28）
+# ===========================================================================
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+# 注册门槛 marker 与类型 marker，禁止未注册的临时 marker
+markers = [
+    # 门槛标记 — 后一门槛必须包含前一门槛全部能力
+    "g1: G1 Core Ready 门槛",
+    "g2: G2 Security Ready 门槛",
+    "g3: G3 Admin Ready 门槛",
+    "g4: G4 Production Ready 门槛",
+    # 类型标记
+    "unit: 单元测试（不连接网络、数据库或真实文件存储）",
+    "integration: 数据库集成测试（Testcontainers PostgreSQL 18）",
+    "api: API 契约测试",
+    "security: 安全测试",
+    "deployment: 部署与恢复测试",
+]
+
+# ===========================================================================
+# coverage 配置
+# ===========================================================================
+[tool.coverage.run]
+source = ["src/app"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.coverage.json]
+output = ".generated/coverage.json"
+
+# ===========================================================================
+# import-linter 配置（SPEC 5.2 分层依赖与模块隔离）
+#
+# 架构分层：
+#   API → Application → Domain
+#   Infrastructure 仅实现 Application/Domain 定义的 Port
+#   Composition Root 可引用全部层
+# ===========================================================================
+[tool.importlinter]
+root_packages = ["app"]
+
+# 分层契约一：composition → api → application → domain
+# 确保 API 层不跳过 Application 直接依赖 Infrastructure，
+# Application 层不依赖外层，Domain 层不依赖任何外层。
+[[tool.importlinter.contracts]]
+name = "分层依赖：composition → api → application → domain"
+type = "layers"
+layers = [
+    "app.composition",
+    "app.api",
+    "app.application",
+    "app.domain",
+]
+
+# 分层契约二：composition → infrastructure → application → domain
+# Infrastructure 只实现内层 Port，不反向依赖 API 或 Composition。
+[[tool.importlinter.contracts]]
+name = "分层依赖：composition → infrastructure → application → domain"
+type = "layers"
+layers = [
+    "app.composition",
+    "app.infrastructure",
+    "app.application",
+    "app.domain",
+]
+
+# 禁止 API 层直接导入 Infrastructure（SPEC 5.2: 禁止路由层直接访问数据库）
+[[tool.importlinter.contracts]]
+name = "禁止 API 层直接依赖 Infrastructure 层"
+type = "forbidden"
+source_modules = [
+    "app.api",
+]
+forbidden_modules = [
+    "app.infrastructure",
+]
+
+# 禁止内层反向依赖外层
+[[tool.importlinter.contracts]]
+name = "禁止 Domain 反向依赖 Application/API/Infrastructure/Composition"
+type = "forbidden"
+source_modules = [
+    "app.domain",
+]
+forbidden_modules = [
+    "app.application",
+    "app.api",
+    "app.infrastructure",
+    "app.composition",
+]
+
+# 禁止 Application 反向依赖 API/Infrastructure/Composition
+[[tool.importlinter.contracts]]
+name = "禁止 Application 反向依赖 API/Infrastructure/Composition"
+type = "forbidden"
+source_modules = [
+    "app.application",
+]
+forbidden_modules = [
+    "app.api",
+    "app.infrastructure",
+    "app.composition",
+]

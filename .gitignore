@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+
+# 虚拟环境
+.venv/
+
+# 运行时产物
+.runtime/
+.generated/
+
+# 覆盖率产物
+.coverage
+htmlcov/
+coverage.xml
+
+# 环境变量（不提交真实密钥）
+.env
+
+# IDE
+.idea/
+.vscode/
+
+# 操作系统
+.DS_Store
+Thumbs.db

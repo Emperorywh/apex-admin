@@ -1,0 +1,70 @@
+# =============================================================================
+# Apex Admin CI 工作流（SPEC 29.1）
+# 执行：锁校验、冻结同步、Ruff、mypy strict、pytest、覆盖率、架构检查、pip-audit。
+# =============================================================================
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  quality:
+    name: 静态检查与测试
+    runs-on: ubuntu-latest
+    steps:
+      # 1. 检出代码
+      - uses: actions/checkout@v4
+
+      # 2. 安装 uv（SPEC 5.4 包管理）
+      - name: 安装 uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.x"
+          enable-cache: true
+
+      # 3. 固定 Python 版本
+      - name: 设置 Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      # 4. 锁校验 — 确保 uv.lock 与 pyproject.toml 一致（SPEC 29.3）
+      - name: uv lock --check
+        run: uv lock --check
+
+      # 5. 冻结同步 — 禁止在 CI 中临时解析未锁定依赖（SPEC 5.4）
+      - name: uv sync --frozen
+        run: uv sync --frozen
+
+      # 6. Ruff 静态检查（SPEC 29.1）
+      - name: Ruff check
+        run: uv run ruff check .
+
+      # 7. Ruff 格式检查（SPEC 29.1）
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+      # 8. mypy strict 类型检查（SPEC 29.1）
+      - name: mypy --strict
+        run: uv run mypy --strict src
+
+      # 9. import-linter 架构契约检查（SPEC 29.1 / 5.2）
+      - name: lint-imports
+        run: uv run lint-imports
+
+      # 10. pytest 测试（SPEC 28）
+      - name: pytest
+        run: uv run pytest -q
+
+      # 11. 覆盖率门槛校验（SPEC 28.1）
+      - name: coverage report
+        run: |
+          uv run coverage json -o .generated/coverage.json
+          uv run python scripts/check_coverage.py
+
+      # 12. 依赖安全扫描（SPEC 5.4 / 29.3）
+      - name: pip-audit
+        run: uv run pip-audit
