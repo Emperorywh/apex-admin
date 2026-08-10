@@ -41,7 +41,9 @@ cp .env.example .env
 
 ### 2.2 启动数据库
 
-本地开发使用任一 PostgreSQL 18 实例，例如 Docker：
+本地开发支持两种方式启动 PostgreSQL 18，按环境选择其一。
+
+#### 方式一：Docker（推荐，需要 Docker Desktop）
 
 ```bash
 docker run -d --name apex-pg \
@@ -51,6 +53,25 @@ docker run -d --name apex-pg \
   -p 5432:5432 \
   postgres:18
 ```
+
+#### 方式二：本地供应脚本（无 Docker 环境）
+
+对于无法安装 Docker 的 Windows 开发环境，使用内置供应脚本
+（ADR-0003）下载 EDB 官方免安装二进制：
+
+```bash
+# 幂等完成下载、初始化与启动（首次约需下载 ~358MB）
+uv run python scripts/dev_db.py ensure
+
+# 查看运行状态与连接串
+uv run python scripts/dev_db.py status
+
+# 停止服务
+uv run python scripts/dev_db.py stop
+```
+
+该方式使用端口 55432（避开 5432），仅监听 127.0.0.1，认证为 trust。
+二进制和数据目录位于 `.runtime/`，不进入版本控制。
 
 ### 2.3 执行迁移
 
@@ -162,7 +183,14 @@ def test_example():
 
 ### 5.5 集成测试前置条件
 
-集成测试使用 Testcontainers 启动 PostgreSQL 18 容器，需要本地 Docker 环境。
+集成测试通过三级供应链（ADR-0003）自动获取 PostgreSQL 18 实例：
+
+1. 环境变量 `APEX_TEST_DATABASE_URL` 指向已有实例时直接使用。
+2. Docker 可用时使用 Testcontainers 自动启动 PostgreSQL 18 容器。
+3. 无 Docker 时回退到本地供应脚本下载的免安装二进制（需先执行
+   `uv run python scripts/dev_db.py ensure`）。
+
+三级皆不可用时测试将以明确指引失败，不回退到 SQLite。
 
 ## 6. 静态检查
 
