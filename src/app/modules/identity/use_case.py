@@ -38,6 +38,11 @@ from uuid import UUID
 
 from app.core.api.pagination import SortField, total_pages
 from app.core.events.dispatcher import TransactionalEventDispatcher
+from app.core.security.authorization import (
+    SUPER_ADMIN_ROLE_CODE,
+    check_management_scope,
+    is_super_admin,
+)
 from app.core.security.password import Argon2Hasher, validate_password_length
 from app.modules.audit.diff import FieldWhitelist, generate_diff
 from app.modules.audit.models import AuditEntry
@@ -170,14 +175,12 @@ class UserUseCase:
         检查目标用户是否为活跃超管，且是否为最后一个。
         """
 
-        from app.core.security.authorization import SUPER_ADMIN_ROLE_CODE
         from app.modules.auth.errors import LastSuperAdminError
 
         rbac_port = self._create_user_rbac_port(session)
         user_auth = self._create_user_auth_port(session)
 
         role_codes = await rbac_port.get_role_codes_by_user(target_user_id)
-        from app.core.security.authorization import is_super_admin
 
         if not is_super_admin(role_codes):
             return
@@ -192,6 +195,59 @@ class UserUseCase:
             raise LastSuperAdminError(
                 "无法禁用或删除最后一个可用超级管理员",
             )
+
+    async def _verify_actor_authorization(
+        self,
+        session: AsyncSession,
+        actor_id: str | None,
+    ) -> tuple[frozenset[str], bool]:
+        """在当前 UoW 中重新读取操作者授权关系 — SPEC 13.3 二次校验.
+
+        返回:
+            (操作者有效权限集, 是否超管) 元组。
+            操作者 ID 为 None 或无法解析为 UUID 时返回空集（默认拒绝）。
+        """
+
+        if actor_id is None:
+            return frozenset(), False
+
+        try:
+            actor_uuid = UUID(actor_id)
+        except ValueError:
+            return frozenset(), False
+
+        rbac_port = self._create_user_rbac_port(session)
+        permissions = await rbac_port.get_effective_permission_codes(actor_uuid)
+        role_codes = await rbac_port.get_role_codes_by_user(actor_uuid)
+        return frozenset(permissions), is_super_admin(role_codes)
+
+    async def _check_management_scope_for_user(
+        self,
+        session: AsyncSession,
+        actor_id: str | None,
+        target_user_id: UUID,
+    ) -> None:
+        """管理范围校验 — SPEC 13.2.
+
+        SPEC 13.2: "只能对管理范围是自身范围子集的用户执行管理操作"。
+        在当前 UoW 中重新读取操作者和目标用户的有效权限集，
+        校验目标用户权限集是否为操作者权限集的子集。
+        超级管理员绕过此校验（SPEC 13.4）。
+        """
+
+        actor_permissions, actor_is_super = await self._verify_actor_authorization(
+            session,
+            actor_id,
+        )
+        rbac_port = self._create_user_rbac_port(session)
+        target_permissions = await rbac_port.get_effective_permission_codes(
+            target_user_id,
+        )
+        check_management_scope(
+            actor_permissions=actor_permissions,
+            target_permissions=frozenset(target_permissions),
+            actor_is_super_admin=actor_is_super,
+        )
 
     def _make_audit_entry(
         self,
@@ -377,6 +433,13 @@ class UserUseCase:
             if existing is None:
                 raise UserNotFoundError(str(user_id))
 
+            # SPEC 13.2: 管理范围校验——目标用户权限集须为操作者子集
+            await self._check_management_scope_for_user(
+                uow.session,
+                ctx.actor_id,
+                user_id,
+            )
+
             before_state = self._user_state(existing)
 
             updated = User(
@@ -435,6 +498,13 @@ class UserUseCase:
                 raise UserNotFoundError(str(user_id))
             if existing.status == UserStatus.ACTIVE:
                 raise UserAlreadyActiveError(str(user_id))
+
+            # SPEC 13.2: 管理范围校验——目标用户权限集须为操作者子集
+            await self._check_management_scope_for_user(
+                uow.session,
+                ctx.actor_id,
+                user_id,
+            )
 
             before_state = self._user_state(existing)
 
@@ -498,6 +568,13 @@ class UserUseCase:
                 raise UserNotFoundError(str(user_id))
             if existing.status == UserStatus.DISABLED:
                 raise UserAlreadyDisabledError(str(user_id))
+
+            # SPEC 13.2: 管理范围校验——目标用户权限集须为操作者子集
+            await self._check_management_scope_for_user(
+                uow.session,
+                ctx.actor_id,
+                user_id,
+            )
 
             # SPEC 13.4: 最后超管保护——禁用前检查
             await self._check_last_super_admin_protection(uow.session, user_id)
@@ -583,6 +660,13 @@ class UserUseCase:
             if existing is None:
                 raise UserNotFoundError(str(user_id))
 
+            # SPEC 13.2: 管理范围校验——目标用户权限集须为操作者子集
+            await self._check_management_scope_for_user(
+                uow.session,
+                ctx.actor_id,
+                user_id,
+            )
+
             now = self._clock.now()
             updated = User(
                 id=existing.id,
@@ -651,6 +735,13 @@ class UserUseCase:
             existing = await repo.get_by_id(user_id)
             if existing is None:
                 raise UserNotFoundError(str(user_id))
+
+            # SPEC 13.2: 管理范围校验——目标用户权限集须为操作者子集
+            await self._check_management_scope_for_user(
+                uow.session,
+                ctx.actor_id,
+                user_id,
+            )
 
             # SPEC 13.4: 最后超管保护——删除前检查
             await self._check_last_super_admin_protection(uow.session, user_id)

@@ -648,6 +648,169 @@ async def test_super_admin_bypasses_management_scope(
         await _cleanup_all(database_url)
 
 
+@pytest.mark.g2
+@pytest.mark.integration
+async def test_management_scope_blocks_assigning_out_of_scope_role(
+    database_url: str,
+) -> None:
+    """普通管理员授予超出自身范围的角色被拒绝 — SPEC 13.2.
+
+    普通管理员有 system:user:read 但没有 system:user:write。
+    尝试为用户分配包含 system:user:write 的角色时被拒绝。
+    """
+
+    await _apply_migrations(database_url)
+    await _cleanup_all(database_url)
+    try:
+        await _insert_permission(database_url, code="system:user:read")
+        await _insert_permission(database_url, code="system:user:write")
+
+        # 创建超管角色（内置）
+        await _insert_builtin_role(
+            database_url,
+            code="super_admin",
+            display_name="超级管理员",
+        )
+
+        # 创建普通管理员角色——只有 system:user:read
+        admin_role_id = await _insert_builtin_role(
+            database_url,
+            code="admin",
+            display_name="管理员",
+        )
+        read_perm_id = await _get_permission_id(database_url, "system:user:read")
+        await _insert_role_permission(
+            database_url,
+            role_id=admin_role_id,
+            permission_id=read_perm_id,
+        )
+
+        # 创建普通管理员用户
+        admin_user_id = await _insert_user(database_url, username="admin01")
+        await _insert_user_role(
+            database_url,
+            user_id=admin_user_id,
+            role_id=admin_role_id,
+        )
+
+        # 创建一个包含 system:user:write 的角色（超出管理员范围）
+        powerful_role_id = await _insert_builtin_role(
+            database_url,
+            code="powerful",
+            display_name="高权限角色",
+        )
+        write_perm_id = await _get_permission_id(database_url, "system:user:write")
+        await _insert_role_permission(
+            database_url,
+            role_id=powerful_role_id,
+            permission_id=write_perm_id,
+        )
+
+        # 创建一个目标用户（无角色，权限集为空——在管理员范围内）
+        target_user_id = await _insert_user(database_url, username="target01")
+
+        engine = create_db_engine(database_url)
+        try:
+            uc, ctx = _make_rbac_use_case(engine, str(admin_user_id))
+
+            from app.core.errors.exceptions import AuthorizationError
+            from app.modules.rbac.schemas import AssignUserRolesRequest
+
+            # 尝试分配超出范围的角色——应被拒绝
+            with pytest.raises(AuthorizationError):
+                await uc.assign_user_roles(
+                    ctx,
+                    target_user_id,
+                    AssignUserRolesRequest(role_codes=["powerful"]),
+                )
+        finally:
+            await engine.dispose()
+    finally:
+        await _cleanup_all(database_url)
+
+
+@pytest.mark.g2
+@pytest.mark.integration
+async def test_management_scope_blocks_managing_out_of_scope_user(
+    database_url: str,
+) -> None:
+    """普通管理员对管理范围非自身子集的用户执行管理操作被拒绝 — SPEC 13.2.
+
+    普通管理员有 system:user:read 但没有 system:user:write。
+    目标用户拥有 system:user:write（超出管理员范围），
+    管理员尝试禁用该用户时被拒绝。
+    """
+
+    await _apply_migrations(database_url)
+    await _cleanup_all(database_url)
+    try:
+        await _insert_permission(database_url, code="system:user:read")
+        await _insert_permission(database_url, code="system:user:write")
+
+        # 创建超管角色（内置）
+        await _insert_builtin_role(
+            database_url,
+            code="super_admin",
+            display_name="超级管理员",
+        )
+
+        # 创建普通管理员角色——只有 system:user:read
+        admin_role_id = await _insert_builtin_role(
+            database_url,
+            code="admin",
+            display_name="管理员",
+        )
+        read_perm_id = await _get_permission_id(database_url, "system:user:read")
+        await _insert_role_permission(
+            database_url,
+            role_id=admin_role_id,
+            permission_id=read_perm_id,
+        )
+
+        # 创建普通管理员用户
+        admin_user_id = await _insert_user(database_url, username="admin01")
+        await _insert_user_role(
+            database_url,
+            user_id=admin_user_id,
+            role_id=admin_role_id,
+        )
+
+        # 创建高权限角色——有 system:user:write
+        powerful_role_id = await _insert_builtin_role(
+            database_url,
+            code="powerful",
+            display_name="高权限角色",
+        )
+        write_perm_id = await _get_permission_id(database_url, "system:user:write")
+        await _insert_role_permission(
+            database_url,
+            role_id=powerful_role_id,
+            permission_id=write_perm_id,
+        )
+
+        # 创建目标用户——拥有超出管理员范围的权限
+        target_user_id = await _insert_user(database_url, username="target01")
+        await _insert_user_role(
+            database_url,
+            user_id=target_user_id,
+            role_id=powerful_role_id,
+        )
+
+        engine = create_db_engine(database_url)
+        try:
+            uc, ctx = _make_identity_use_case(engine, str(admin_user_id))
+
+            from app.core.errors.exceptions import AuthorizationError
+
+            # 管理员尝试禁用权限范围超出自身的用户——应被拒绝
+            with pytest.raises(AuthorizationError):
+                await uc.disable_user(ctx, target_user_id)
+        finally:
+            await engine.dispose()
+    finally:
+        await _cleanup_all(database_url)
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # AC-2: UoW 内二次校验——入口校验后权限被撤销的场景被拒绝
 # ═══════════════════════════════════════════════════════════════════════════════

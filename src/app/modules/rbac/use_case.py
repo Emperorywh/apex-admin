@@ -727,6 +727,17 @@ class RbacUseCase:
                 actor_is_super_admin=actor_is_super,
             )
 
+            # SPEC 13.2: 管理范围校验——目标用户既有有效权限集须为操作者子集
+            user_rbac_port = self._create_user_rbac_port(uow.session)
+            target_user_perms = await user_rbac_port.get_effective_permission_codes(
+                user_id
+            )
+            check_management_scope(
+                actor_permissions=actor_permissions,
+                target_permissions=frozenset(target_user_perms),
+                actor_is_super_admin=actor_is_super,
+            )
+
             # SPEC 13.4: 最后超管保护——移除超管角色时检查
             existing_assignments = await repo.list_user_roles(user_id)
             existing_role_ids = {a.role_id for a in existing_assignments}
@@ -808,6 +819,24 @@ class RbacUseCase:
         async with self._uow_factory() as uow:
             repo = self._create_repo(uow.session)
             audit = self._create_audit(uow.session)
+
+            # SPEC 13.3: UoW 内二次校验——重新读取操作者授权关系
+            actor_permissions, actor_is_super = (
+                await self._verify_actor_authorization(uow.session, ctx.actor_id)
+                if ctx.actor_id
+                else (frozenset(), True)
+            )
+
+            # SPEC 13.2: 管理范围校验——目标用户既有有效权限集须为操作者子集
+            user_rbac_port = self._create_user_rbac_port(uow.session)
+            target_user_perms = await user_rbac_port.get_effective_permission_codes(
+                user_id
+            )
+            check_management_scope(
+                actor_permissions=actor_permissions,
+                target_permissions=frozenset(target_user_perms),
+                actor_is_super_admin=actor_is_super,
+            )
 
             # SPEC 13.4: 最后超管保护——移除超管角色时检查
             role = await repo.get_role_by_id(role_id)
