@@ -45,6 +45,7 @@ template = [
 dev = [
     "pytest>=9,<10",
     "pytest-asyncio>=1.4,<1.5",
+    "pytest-cov>=7,<8",
     "httpx>=0.28,<0.29",
     # Testcontainers PostgreSQL 18 — 独立测试数据库
     "testcontainers[postgres]>=4.13,<5",

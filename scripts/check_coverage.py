@@ -33,19 +33,31 @@ def _parse_args() -> argparse.Namespace:
         description="校验 coverage JSON 报告的语句与分支覆盖率门槛。",
     )
     parser.add_argument(
-        "--coverage-file",
+        "coverage_file",
         type=Path,
+        nargs="?",
         default=Path(".generated/coverage.json"),
         help="coverage json 输出文件路径（默认 .generated/coverage.json）。",
     )
     parser.add_argument(
+        "--coverage-file",
+        dest="coverage_file_opt",
+        type=Path,
+        default=None,
+        help="coverage json 输出文件路径（覆盖位置参数）。",
+    )
+    parser.add_argument(
         "--statement-threshold",
+        "--statements",
+        dest="statement_threshold",
         type=float,
         default=85.0,
         help="语句覆盖率门槛百分比（默认 85）。",
     )
     parser.add_argument(
         "--branch-threshold",
+        "--branches",
+        dest="branch_threshold",
         type=float,
         default=80.0,
         help="分支覆盖率门槛百分比（默认 80）。",
@@ -77,8 +89,9 @@ def _extract_percentages(
 ) -> tuple[float, float]:
     """从 coverage JSON 中提取语句覆盖率和分支覆盖率百分比。
 
-    coverage 的 ``totals`` 字段同时包含 ``percent_covered``（综合语句覆盖率）
-    与 ``percent_covered_branches``（分支覆盖率）。当无分支数据时分支率回退为 0。
+    coverage 7.x 的 ``totals`` 字段使用 ``percent_covered``（综合覆盖率）
+    与 ``percent_branches_covered``（分支覆盖率）。旧版本使用
+    ``percent_covered_branches``。函数兼容两种键名。
 
     参数:
         coverage_data: coverage JSON 解析后的字典。
@@ -92,7 +105,11 @@ def _extract_percentages(
         raise ValueError("覆盖率 JSON 中缺少 'totals' 字段或格式不正确。")
 
     statement_pct = float(totals.get("percent_covered", 0.0))
-    branch_pct = float(totals.get("percent_covered_branches", 0.0))
+    # coverage 7.x 使用 percent_branches_covered，旧版本使用 percent_covered_branches
+    branch_raw = totals.get("percent_branches_covered")
+    if branch_raw is None:
+        branch_raw = totals.get("percent_covered_branches", 0.0)
+    branch_pct = float(branch_raw)
     return statement_pct, branch_pct
 
 
@@ -105,8 +122,10 @@ def main() -> int:
 
     args = _parse_args()
 
+    coverage_file = args.coverage_file_opt or args.coverage_file
+
     try:
-        coverage_data = _load_coverage(args.coverage_file)
+        coverage_data = _load_coverage(coverage_file)
     except (FileNotFoundError, json.JSONDecodeError, ValueError) as exc:
         print(f"错误: {exc}", file=sys.stderr)
         return 1

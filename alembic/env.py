@@ -53,23 +53,23 @@ config.set_main_option("sqlalchemy.url", _settings.DATABASE_URL)
 
 # ── 从模块注册表收集 version_locations（SPEC 8.2）─────────────────────────
 #
-# env.py 仅从模块注册表收集 version_locations，不硬编码路径。
-# 当前无业务模块，MODULE_VERSION_LOCATIONS 为空列表。
-# 默认 ``alembic/versions/`` 目录始终可用（Alembic 内置行为）。
+# alembic.ini 中已声明 version_locations（包含默认 versions 目录和全部
+# 已启用模块的迁移版本目录），使 alembic CLI 在加载 env.py 之前创建的
+# ScriptDirectory 即可发现所有模块迁移。
+#
+# env.py 以模块注册表为权威来源，补充 alembic.ini 中尚未声明的条目，
+# 确保两者一致。新增模块时同时更新 alembic.ini 与 Composition Root 清单。
 
 if MODULE_VERSION_LOCATIONS:
-    existing_locations = config.get_main_option("version_locations") or ""
-    # 始终包含默认 versions 目录，确保框架初始迁移与各模块迁移
-    # 共同组成全局单头 revision 图（SPEC 5.5 / 8.2）。
+    existing = config.get_main_option("version_locations") or ""
+    existing_set = set(existing.split())
     script_loc = config.get_main_option("script_location") or "alembic"
     default_versions = f"{script_loc}/versions"
     all_locations = [default_versions, *MODULE_VERSION_LOCATIONS]
-    combined = (
-        f"{existing_locations} {' '.join(all_locations)}".strip()
-        if existing_locations
-        else " ".join(all_locations)
-    )
-    config.set_main_option("version_locations", combined)
+    missing = [loc for loc in all_locations if loc not in existing_set]
+    if missing:
+        combined = f"{existing} {' '.join(missing)}".strip()
+        config.set_main_option("version_locations", combined)
 
 # ── target_metadata ────────────────────────────────────────────────────────
 #
