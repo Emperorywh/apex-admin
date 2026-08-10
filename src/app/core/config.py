@@ -86,6 +86,10 @@ class Settings(BaseSettings):
     # API 统一前缀（SPEC 9.1）
     API_PREFIX: str = "/api/v1"
 
+    # 是否开启 API 文档端点（SPEC 9.6: 生产环境可以关闭文档或限制访问）。
+    # 生产环境默认关闭，显式设置为 true 可开启。
+    ENABLE_API_DOCS: bool = True
+
     # ── 数据库配置 ────────────────────────────────────────────────────
     # SQLAlchemy 异步 URL，驱动固定 postgresql+psycopg（SPEC 5.4 / 8.1）。
     # 开发默认值指向 dev_db.py 供应的本地实例（端口 55432、用户 apex、

@@ -1,0 +1,116 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "apex-admin",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health/live": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health Live",
+        "description": "/health/live — 存活检查（SPEC 6.2）.\n\n只验证进程事件循环可响应，不检查数据库。\n数据库不可用时仍返回 HTTP 200。",
+        "operationId": "health_live_health_live_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Live Health Live Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health Ready",
+        "description": "/health/ready — 就绪检查（SPEC 6.2）.\n\n验证数据库连接和 Alembic revision 一致性。\n任一失败时返回 HTTP 503 和稳定错误码。\n恢复后无需重启进程即可重新就绪（SPEC 6.2）。",
+        "operationId": "health_ready_health_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/meta": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Get Meta",
+        "description": "返回应用元数据.\n\n显式公共端点（SPEC 23.5），不需要认证。\n从应用状态读取配置信息返回。",
+        "operationId": "get_meta_api_v1_meta_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetaResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "MetaResponse": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "environment": {
+            "type": "string",
+            "title": "Environment"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "version",
+          "environment"
+        ],
+        "title": "MetaResponse",
+        "description": "应用元数据响应模型.\n\n返回应用名称、版本和当前运行环境。\n不包含任何敏感配置信息（SPEC 6.2: 健康检查返回内容不泄露敏感配置）。"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "health",
+      "description": "健康检查端点 — 存活检查与就绪检查（SPEC 6.2）"
+    },
+    {
+      "name": "meta",
+      "description": "应用元数据端点 — 应用名称、版本与运行环境（SPEC 6.1）"
+    }
+  ]
+}

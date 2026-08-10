@@ -111,10 +111,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # 配置结构化日志（SPEC 24.1 / 24.3）
     configure_logging(settings)
 
+    # OpenAPI 文档参数 — SPEC 9.6: 按模块 tag 分组，生产可关闭文档
+    from app.core.api.openapi import build_openapi_kwargs
+
+    openapi_kwargs = build_openapi_kwargs(settings)
+
     app = FastAPI(
         title=settings.APP_NAME,
         version=settings.APP_VERSION,
         lifespan=lifespan,
+        **openapi_kwargs,
     )
 
     # 将配置存入应用状态，供端点和中间件读取
