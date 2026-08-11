@@ -144,6 +144,20 @@ def _create_parser() -> argparse.ArgumentParser:
         help="创建开发演示数据（仅限非生产环境）",
     )
 
+    # sysconfig 子命令 — SPEC 16.1 / 23.2
+    sysconfig_parser = subparsers.add_parser(
+        "sysconfig",
+        help="系统配置管理",
+    )
+    sysconfig_sub = sysconfig_parser.add_subparsers(
+        dest="sysconfig_command",
+        required=True,
+    )
+    sysconfig_sub.add_parser(
+        "re-encrypt",
+        help="敏感配置加密密钥轮换重加密（SPEC 23.2 双密钥短期切换）",
+    )
+
     return parser
 
 
@@ -780,6 +794,137 @@ def _cmd_dev_seed_demo() -> int:
         return 1
 
 
+# ── sysconfig re-encrypt — SPEC 23.2 ───────────────────────────────────────
+
+
+async def _run_sysconfig_re_encrypt(
+    database_url: str,
+    *,
+    current_key: str,
+    previous_key: str | None,
+) -> int:
+    """异步执行敏感配置密钥轮换重加密 — SPEC 23.2.
+
+    SPEC 23.2: "密钥轮换必须具有独立管理命令和双密钥短期切换步骤，
+    不得通过永久 fallback 兼容旧密钥"。
+
+    流程:
+      1. 构造加密服务（当前密钥 + 前一代密钥）。
+      2. 查询全部敏感配置项。
+      3. 对每个敏感配置项的密文执行 ``rotate``（旧密钥解密 → 当前密钥加密）。
+      4. 保存重加密后的密文。
+    """
+
+    from app.application.ports import SystemClock
+    from app.infrastructure.db.engine import create_db_engine
+    from app.infrastructure.db.uow import SqlAlchemyUnitOfWork
+    from app.modules.sysconfig.adapter import SqlAlchemyConfigRepository
+    from app.modules.sysconfig.crypto import ConfigEncryptionService
+    from app.modules.sysconfig.models import ConfigItem
+
+    encryption = ConfigEncryptionService(
+        current_key=current_key,
+        previous_key=previous_key,
+    )
+    clock = SystemClock()
+
+    engine = create_db_engine(database_url)
+    try:
+        uow = SqlAlchemyUnitOfWork(engine)
+        async with uow:
+            repo = SqlAlchemyConfigRepository(uow.session)
+            sensitive_items = await repo.list_sensitive_items()
+
+            if not sensitive_items:
+                print("无敏感配置项需要重加密")
+                await uow.commit()
+                return 0
+
+            rotated_count = 0
+            now = clock.now()
+            for item in sensitive_items:
+                new_ciphertext = encryption.rotate(item.stored_value)
+                updated = ConfigItem(
+                    id=item.id,
+                    group=item.group,
+                    key=item.key,
+                    value_type=item.value_type,
+                    stored_value=new_ciphertext,
+                    is_sensitive=item.is_sensitive,
+                    is_core_security=item.is_core_security,
+                    description=item.description,
+                    status=item.status,
+                    created_at=item.created_at,
+                    updated_at=now,
+                    created_by=item.created_by,
+                    updated_by="cli:sysconfig:re-encrypt",
+                )
+                await repo.save(updated)
+                rotated_count += 1
+
+            await uow.commit()
+
+        print(
+            f"密钥轮换重加密完成: {rotated_count} 个敏感配置项已使用新密钥重加密",
+        )
+        return 0
+    finally:
+        await engine.dispose()
+
+
+def _cmd_sysconfig_re_encrypt() -> int:
+    """执行 sysconfig re-encrypt 命令 — SPEC 23.2.
+
+    SPEC 23.2: "密钥轮换必须具有独立管理命令和双密钥短期切换步骤，
+    不得通过永久 fallback 兼容旧密钥"。
+
+    要求 ``SYSCONFIG_ENCRYPTION_KEY_PREVIOUS`` 已设置（前一代密钥），
+    用于解密旧密文。重加密后所有密文使用当前密钥。
+    """
+
+    try:
+        settings = Settings()
+    except Exception as exc:
+        print(f"配置加载失败: {exc}", file=sys.stderr)
+        return 1
+
+    # SPEC 23.2: 当前密钥和前一代密钥都必须由部署配置提供
+    assert settings.SYSCONFIG_ENCRYPTION_KEY is not None
+    current_key_raw = settings.SYSCONFIG_ENCRYPTION_KEY.get_secret_value()
+    previous_key_raw: str | None
+    if settings.SYSCONFIG_ENCRYPTION_KEY_PREVIOUS is not None:
+        previous_key_raw = settings.SYSCONFIG_ENCRYPTION_KEY_PREVIOUS.get_secret_value()
+    else:
+        previous_key_raw = None
+
+    if not current_key_raw:
+        print(
+            "SYSCONFIG_ENCRYPTION_KEY 未设置，无法执行重加密",
+            file=sys.stderr,
+        )
+        return 1
+
+    if not previous_key_raw:
+        print(
+            "SYSCONFIG_ENCRYPTION_KEY_PREVIOUS 未设置。"
+            "请先设置前一代密钥（SPEC 23.2 双密钥短期切换）",
+            file=sys.stderr,
+        )
+        return 1
+
+    try:
+        return asyncio.run(
+            _run_sysconfig_re_encrypt(
+                settings.DATABASE_URL,
+                current_key=current_key_raw,
+                previous_key=previous_key_raw,
+            ),
+        )
+    except Exception as exc:
+        print(f"密钥轮换重加密失败: {exc}", file=sys.stderr)
+        return 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI 主入口 — 解析参数并分发到子命令.
 
@@ -809,6 +954,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "dev" and args.dev_command == "seed-demo":
         return _cmd_dev_seed_demo()
+
+    if args.command == "sysconfig" and args.sysconfig_command == "re-encrypt":
+        return _cmd_sysconfig_re_encrypt()
 
     if args.command == "db":
         if args.db_command == "check":

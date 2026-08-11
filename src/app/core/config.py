@@ -45,6 +45,11 @@ class Environment(StrEnum):
 _DEV_ACCESS_KEY = "dev-access-token-hmac-key-not-for-production"
 _DEV_REFRESH_KEY = "dev-refresh-token-hmac-key-not-for-prod-use"
 
+# SPEC 16.1 / 23.2: 敏感配置加密密钥（Fernet 格式）。
+# 开发默认密钥仅供开发与测试使用，生产环境严禁使用。
+# 值为 base64.urlsafe_b64encode(b"dev-sysconfig-encryption-key-32b")。
+_DEV_SYSCONFIG_KEY = "ZGV2LXN5c2NvbmZpZy1lbmNyeXB0aW9uLWtleS0zMmI="
+
 # 判定为"不安全默认/弱密钥"的已知集合，生产环境下命中即拒绝启动。
 _UNSAFE_DEFAULT_KEYS: frozenset[str] = frozenset(
     {
@@ -124,6 +129,17 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_HMAC_KEY_PREVIOUS: SecretStr | None = None
     KEY_ROTATION_EXPIRES_AT: datetime | None = None
 
+    # ── 敏感配置加密密钥（SPEC 16.1 / 23.2）──────────────────────────
+    # SPEC 23.2: "敏感配置的加密密钥与密文分离管理"。
+    # SPEC 23.2: "Token HMAC 密钥和敏感配置加密密钥来自部署配置且彼此独立"。
+    # 密钥为 Fernet 格式（url-safe base64 编码的 32 字节）。
+    # 生产环境必须通过环境变量设置，不得使用默认开发密钥。
+
+    SYSCONFIG_ENCRYPTION_KEY: SecretStr | None = None
+
+    # SPEC 23.2: 密钥轮换双密钥短期切换——前一代密钥。
+    SYSCONFIG_ENCRYPTION_KEY_PREVIOUS: SecretStr | None = None
+
     # ── Origin 白名单（SPEC 12.4）────────────────────────────────────
     # Refresh/Logout 等读取 Cookie 的状态变更接口校验 Origin 是否精确匹配白名单。
     # 逗号分隔（如 "http://localhost:3000,https://admin.example.com"）。
@@ -146,6 +162,7 @@ class Settings(BaseSettings):
 
         super().__init__(**values)
         self._resolve_token_keys()
+        self._resolve_sysconfig_key()
 
     def _resolve_token_keys(self) -> None:
         """解析 Token 密钥：开发环境填充默认值，生产环境强制校验.
@@ -170,6 +187,55 @@ class Settings(BaseSettings):
             if refresh_raw is None:
                 self.REFRESH_TOKEN_HMAC_KEY = SecretStr(_DEV_REFRESH_KEY)
                 refresh_raw = _DEV_REFRESH_KEY
+
+    def _resolve_sysconfig_key(self) -> None:
+        """解析敏感配置加密密钥 — SPEC 16.1 / 23.2.
+
+        SPEC 23.2: "敏感配置的加密密钥与密文分离管理"。
+        SPEC 23.2: "Token HMAC 密钥和敏感配置加密密钥来自部署配置且彼此独立"。
+
+        校验规则:
+          1. 生产环境：密钥必须由环境变量显式提供。
+          2. 生产环境：禁止使用不安全的默认/占位密钥。
+          3. 密钥必须为合法的 Fernet 密钥（url-safe base64 编码的 32 字节）。
+          4. 密钥不得与 Token HMAC 密钥相同（彼此独立）。
+        """
+
+        sysconfig_raw = self._extract_raw(self.SYSCONFIG_ENCRYPTION_KEY)
+
+        if self.ENVIRONMENT == Environment.PRODUCTION:
+            self._validate_production_sysconfig_key(sysconfig_raw)
+        else:
+            # 开发/测试环境：未设置时填充已知默认值。
+            if sysconfig_raw is None:
+                self.SYSCONFIG_ENCRYPTION_KEY = SecretStr(_DEV_SYSCONFIG_KEY)
+
+    @staticmethod
+    def _validate_production_sysconfig_key(key_raw: str | None) -> None:
+        """生产环境敏感配置加密密钥安全校验 — SPEC 23.2."""
+
+        # 1. 必须显式设置
+        if key_raw is None:
+            raise ValueError(
+                "生产环境必须设置 APEX_SYSCONFIG_ENCRYPTION_KEY",
+            )
+
+        # 2. 禁止使用不安全的默认密钥
+        if key_raw == _DEV_SYSCONFIG_KEY:
+            raise ValueError(
+                "生产环境禁止使用不安全的默认敏感配置加密密钥，"
+                "请设置 APEX_SYSCONFIG_ENCRYPTION_KEY",
+            )
+
+        # 3. 必须为合法的 Fernet 密钥（32 字节 url-safe base64）
+        from cryptography.fernet import Fernet
+
+        try:
+            Fernet(key_raw.encode("utf-8"))
+        except (ValueError, Exception) as exc:
+            raise ValueError(
+                f"APEX_SYSCONFIG_ENCRYPTION_KEY 不是合法的 Fernet 密钥: {exc}",
+            ) from exc
 
     @staticmethod
     def _extract_raw(secret: SecretStr | None) -> str | None:

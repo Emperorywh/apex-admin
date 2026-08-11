@@ -25,6 +25,8 @@ dependencies = [
     "alembic>=1.18,<1.19",
     # 密码哈希，算法固定为 Argon2id
     "argon2-cffi>=25,<26",
+    # 敏感配置加密存储（SPEC 16.1 / 23.2: Fernet 对称加密）
+    "cryptography>=45,<46",
     # 结构化日志
     "structlog>=25.4,<26",
 ]

@@ -27,6 +27,7 @@ from app.modules.identity.definition import MODULE_DEFINITION as IDENTITY_MODULE
 from app.modules.menu.definition import MODULE_DEFINITION as MENU_MODULE
 from app.modules.org.definition import MODULE_DEFINITION as ORG_MODULE
 from app.modules.rbac.definition import MODULE_DEFINITION as RBAC_MODULE
+from app.modules.sysconfig.definition import MODULE_DEFINITION as SYSCONFIG_MODULE
 
 if TYPE_CHECKING:
     from app.core.modules.definition import ModuleDefinition
@@ -45,6 +46,7 @@ if TYPE_CHECKING:
 #:   - rbac（RBAC 角色与权限点模块，SPEC 13.1 / 13.2 / 25.2）
 #:   - org（组织模块——部门管理，SPEC 14.1）
 #:   - menu（菜单管理模块，SPEC 15.1 / 15.2）
+#:   - sysconfig（系统配置模块，SPEC 16.1 / 16.2）
 MODULE_MANIFEST: list[ModuleDefinition] = [
     EXAMPLE_MODULE,
     AUDIT_MODULE,
@@ -53,6 +55,7 @@ MODULE_MANIFEST: list[ModuleDefinition] = [
     RBAC_MODULE,
     ORG_MODULE,
     MENU_MODULE,
+    SYSCONFIG_MODULE,
 ]
 
 #: 已启用模块的 Alembic 迁移版本目录列表.
