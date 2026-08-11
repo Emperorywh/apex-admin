@@ -153,6 +153,7 @@ def test_production_valid_keys_succeed() -> None:
         ENVIRONMENT="production",
         ACCESS_TOKEN_HMAC_KEY="valid-access-key-" + "a" * 16,
         REFRESH_TOKEN_HMAC_KEY="valid-refresh-key-" + "b" * 16,
+        SYSCONFIG_ENCRYPTION_KEY="T44-h5wE4-HJ69EZjyDir3a_DNQFAT5DMW8De0tXijU=",
     )
     assert settings.ENVIRONMENT == Environment.PRODUCTION
 

@@ -1,7 +1,7 @@
 # =============================================================================
-# Apex Admin CI 工作流（SPEC 29.1 / 34.1 / 34.2）
+# Apex Admin CI 工作流（SPEC 29.1 / 34.1 / 34.2 / 34.3）
 # 执行：锁校验、冻结同步、Ruff、mypy strict、import-linter、modules validate、
-#       pytest g1+g2 套件、覆盖率门槛（G1 全量 85%/80%，安全模块 90%/90%）、pip-audit。
+#       pytest g1+g2+g3 套件、覆盖率门槛（G1 全量 85%/80%，安全模块 90%/90%）、pip-audit。
 # =============================================================================
 name: CI
 
@@ -82,10 +82,10 @@ jobs:
           uv run alembic -c alembic.ini upgrade head
           uv run alembic -c alembic.ini heads
 
-      # 12. pytest g1+g2 套件 + 覆盖率收集（SPEC 28 / 34.1 / 34.2）
-      - name: pytest (g1+g2) + coverage
+      # 12. pytest g1+g2+g3 套件 + 覆盖率收集（SPEC 28 / 34.1 / 34.2 / 34.3）
+      - name: pytest (g1+g2+g3) + coverage
         run: |
-          uv run pytest -q -m "g1 or g2" \
+          uv run pytest -q -m "g1 or g2 or g3" \
             --cov=src/app/modules --cov-branch \
             --cov-report=json:.generated/coverage.json
 

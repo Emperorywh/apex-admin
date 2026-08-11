@@ -825,3 +825,179 @@ class TestDeleteFlow:
 
         detail = asyncio.run(use_case.get_file(_ctx(), result["id"]))
         assert detail["status"] == "deleting"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 文件读取服务 — SPEC 19.4: 业务模块通过 FileReadPort 下载附件
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.g3
+@pytest.mark.integration
+class TestFileReadService:
+    """文件读取服务集成测试 — SPEC 19.4.
+
+    SPEC 19.4: "业务资源附件的下载必须先由业务模块校验资源访问权限，
+    再调用文件读取 Port"。
+    SqlAlchemyFileReadService.open_read_stream 覆盖四个分支:
+      文件不存在、文件非 READY、物理文件缺失、正常返回流。
+    """
+
+    def test_open_read_stream_file_not_found(
+        self,
+        migrated_database_url: str,
+        tmp_path: Path,
+    ) -> None:
+        """文件不存在时抛出 FileNotFoundError — SPEC 19.4."""
+
+        from app.infrastructure.db.engine import create_db_engine
+        from app.modules.file.adapter import SqlAlchemyFileReadService
+
+        engine = create_db_engine(migrated_database_url)
+        storage = LocalFileStorageAdapter(str(tmp_path / "storage"))
+
+        def uow_factory() -> SqlAlchemyUnitOfWork:
+            return SqlAlchemyUnitOfWork(engine)
+
+        read_service = SqlAlchemyFileReadService(uow_factory, storage)
+
+        with pytest.raises(FileNotFoundError):
+            asyncio.run(read_service.open_read_stream(uuid4()))
+
+        asyncio.run(engine.dispose())
+
+    def test_open_read_stream_not_ready(
+        self,
+        migrated_database_url: str,
+        tmp_path: Path,
+    ) -> None:
+        """文件非 READY 状态时抛出 FileNotReadyError — SPEC 19.3/19.4."""
+
+        from app.infrastructure.db.engine import create_db_engine
+        from app.modules.file.adapter import SqlAlchemyFileReadService
+
+        engine = create_db_engine(migrated_database_url)
+        storage = LocalFileStorageAdapter(str(tmp_path / "storage"))
+        use_case = _make_use_case(engine, str(tmp_path / "storage"))
+
+        # 上传文件（完成后状态为 READY）
+        result = asyncio.run(
+            use_case.upload_file(
+                _ctx(),
+                original_name="not-ready.txt",
+                content_type="text/plain",
+                source=_text_source(b"not ready"),
+            ),
+        )
+        file_id = result["id"]
+
+        # 手动将状态改回 PENDING，模拟非 READY
+        from sqlalchemy import text as sa_text
+
+        async def _set_pending() -> None:
+            async with engine.begin() as conn:
+                await conn.execute(
+                    sa_text(
+                        "UPDATE file_metadata SET status = 'pending' WHERE id = :fid",
+                    ),
+                    {"fid": str(file_id)},
+                )
+
+        asyncio.run(_set_pending())
+
+        def uow_factory() -> SqlAlchemyUnitOfWork:
+            return SqlAlchemyUnitOfWork(engine)
+
+        read_service = SqlAlchemyFileReadService(uow_factory, storage)
+
+        with pytest.raises(FileNotReadyError):
+            asyncio.run(read_service.open_read_stream(file_id))
+
+        asyncio.run(engine.dispose())
+
+    def test_open_read_stream_physical_missing(
+        self,
+        migrated_database_url: str,
+        tmp_path: Path,
+    ) -> None:
+        """READY 文件物理缺失时抛出 FileStorageError — SPEC 19.3/19.4.
+
+        SPEC 19.3: "READY 元数据缺少物理文件时标记为 FAILED 并产生高优先级
+        运维日志，不得返回空内容"。
+        """
+
+        from app.infrastructure.db.engine import create_db_engine
+        from app.modules.file.adapter import SqlAlchemyFileReadService
+        from app.modules.file.errors import FileStorageError
+
+        engine = create_db_engine(migrated_database_url)
+        storage_root = tmp_path / "storage"
+        use_case = _make_use_case(engine, str(storage_root))
+
+        # 上传文件
+        result = asyncio.run(
+            use_case.upload_file(
+                _ctx(),
+                original_name="ghost.txt",
+                content_type="text/plain",
+                source=_text_source(b"ghost"),
+            ),
+        )
+        file_id = result["id"]
+        storage_name = result["storage_name"]
+
+        # 删除物理文件，模拟物理缺失
+        final_file = storage_root / "files" / storage_name
+        if final_file.exists():
+            final_file.unlink()
+
+        def uow_factory() -> SqlAlchemyUnitOfWork:
+            return SqlAlchemyUnitOfWork(engine)
+
+        # 使用指向同一存储根目录的 storage（物理文件已删除）
+        read_storage = LocalFileStorageAdapter(str(storage_root))
+        read_service = SqlAlchemyFileReadService(uow_factory, read_storage)
+
+        with pytest.raises(FileStorageError):
+            asyncio.run(read_service.open_read_stream(file_id))
+
+        asyncio.run(engine.dispose())
+
+    def test_open_read_stream_success(
+        self,
+        migrated_database_url: str,
+        tmp_path: Path,
+    ) -> None:
+        """READY 文件正常返回读取流 — SPEC 19.4."""
+
+        from app.infrastructure.db.engine import create_db_engine
+        from app.modules.file.adapter import SqlAlchemyFileReadService
+
+        engine = create_db_engine(migrated_database_url)
+        use_case = _make_use_case(engine, str(tmp_path / "storage"))
+
+        content = b"read service success"
+        result = asyncio.run(
+            use_case.upload_file(
+                _ctx(),
+                original_name="read-ok.txt",
+                content_type="text/plain",
+                source=_text_source(content),
+            ),
+        )
+        file_id = result["id"]
+
+        def uow_factory() -> SqlAlchemyUnitOfWork:
+            return SqlAlchemyUnitOfWork(engine)
+
+        read_storage = LocalFileStorageAdapter(str(tmp_path / "storage"))
+        read_service = SqlAlchemyFileReadService(uow_factory, read_storage)
+
+        stream = asyncio.run(read_service.open_read_stream(file_id))
+        try:
+            data = stream.read()
+            assert data == content
+        finally:
+            stream.close()
+
+        asyncio.run(engine.dispose())

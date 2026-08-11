@@ -144,6 +144,18 @@ def test_cli_db_upgrade_no_business_data(
     if any(m.code == "menu" for m in get_module_manifest()):
         declared_tables.add("menu_menus")
         declared_tables.add("menu_role_menus")
+    # 系统配置模块的表名约定
+    if any(m.code == "sysconfig" for m in get_module_manifest()):
+        declared_tables.add("sysconfig_items")
+    # 数据字典模块的表名约定
+    if any(m.code == "dict" for m in get_module_manifest()):
+        declared_tables.add("dict_types")
+        declared_tables.add("dict_items")
+        declared_tables.add("dict_references")
+    # 文件模块的表名约定
+    if any(m.code == "file" for m in get_module_manifest()):
+        declared_tables.add("file_metadata")
+        declared_tables.add("file_references")
 
     unexpected = tables - declared_tables
     assert unexpected == set(), f"db upgrade 发现未声明的表: {unexpected}"

@@ -229,6 +229,7 @@ def test_configure_logging_prod_profile() -> None:
         ENVIRONMENT="production",
         ACCESS_TOKEN_HMAC_KEY="prod-access-key-" + "a" * 16,
         REFRESH_TOKEN_HMAC_KEY="prod-refresh-key-" + "b" * 16,
+        SYSCONFIG_ENCRYPTION_KEY="T44-h5wE4-HJ69EZjyDir3a_DNQFAT5DMW8De0tXijU=",
     )
     configure_logging(settings)
 
@@ -242,6 +243,7 @@ def test_prod_json_output_contains_required_fields() -> None:
         ENVIRONMENT="production",
         ACCESS_TOKEN_HMAC_KEY="prod-access-key-" + "a" * 16,
         REFRESH_TOKEN_HMAC_KEY="prod-refresh-key-" + "b" * 16,
+        SYSCONFIG_ENCRYPTION_KEY="T44-h5wE4-HJ69EZjyDir3a_DNQFAT5DMW8De0tXijU=",
     )
     configure_logging(settings)
 

@@ -135,6 +135,7 @@ def test_production_disables_docs() -> None:
         DATABASE_URL="postgresql+psycopg://apex@127.0.0.1:55432/postgres",
         ACCESS_TOKEN_HMAC_KEY="a" * 32,
         REFRESH_TOKEN_HMAC_KEY="b" * 32,
+        SYSCONFIG_ENCRYPTION_KEY="T44-h5wE4-HJ69EZjyDir3a_DNQFAT5DMW8De0tXijU=",
     )
     app = create_app(settings)
     with TestClient(app) as client:
@@ -154,6 +155,7 @@ def test_production_explicitly_enables_docs() -> None:
         DATABASE_URL="postgresql+psycopg://apex@127.0.0.1:55432/postgres",
         ACCESS_TOKEN_HMAC_KEY="a" * 32,
         REFRESH_TOKEN_HMAC_KEY="b" * 32,
+        SYSCONFIG_ENCRYPTION_KEY="T44-h5wE4-HJ69EZjyDir3a_DNQFAT5DMW8De0tXijU=",
     )
     app = create_app(settings)
     with TestClient(app) as client:

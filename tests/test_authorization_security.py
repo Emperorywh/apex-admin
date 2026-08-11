@@ -75,6 +75,13 @@ def test_all_management_routes_declare_permission() -> None:
         ("POST", "/api/v1/auth/logout"),
         ("POST", "/api/v1/auth/logout-others"),
         ("GET", "/api/v1/auth/sessions"),
+        # 菜单模块当前用户端点——SPEC 15.2: 仅需认证（按角色聚合可访问菜单）
+        ("GET", "/api/v1/me/menus"),
+        ("GET", "/api/v1/me/permissions"),
+        # 文件模块下载/删除——SPEC 19.4: 上传者或文件管理权限管理员可访问，
+        # 授权在 Use Case 内按资源归属判定，路由层仅需认证。
+        ("GET", "/api/v1/files/{file_id}/download"),
+        ("DELETE", "/api/v1/files/{file_id}"),
     }
 
     # ── 展开 _IncludedRouter 获取全部 APIRoute 实例 ──────────────────────
