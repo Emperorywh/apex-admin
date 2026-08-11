@@ -10,10 +10,31 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from uuid import UUID
 
 import pytest
 
+from app.modules.audit.models import (
+    AuditEntry,
+    ChangeDiff,
+    DiffField,
+    LoginLogEntry,
+)
+from app.modules.audit.query_adapter import (
+    _build_audit_filters,
+    _build_login_filters,
+    _orm_to_audit_entry,
+    _orm_to_login_entry,
+)
 from app.modules.audit.query_port import AuditLogFilters, LoginLogFilters
+from app.modules.audit.query_use_case import (
+    _audit_entry_to_csv_row,
+    _audit_entry_to_response,
+    _describe_audit_filters,
+    _describe_login_filters,
+    _login_entry_to_csv_row,
+    _login_entry_to_response,
+)
 from app.modules.audit.retention import (
     CleanupResult,
     RetentionConfig,
@@ -251,3 +272,437 @@ class TestCleanupReportFormat:
         assert "--apply" in report
         assert "42" in report
         assert "17" in report
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 补充覆盖：筛选描述与转换辅助函数 — SPEC 18.3
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.g3
+@pytest.mark.unit
+class TestDescribeAuditFilters:
+    """审计日志筛选条件摘要函数测试 — 覆盖所有分支."""
+
+    def test_no_filter(self) -> None:
+        """所有字段为 None 时返回 no_filter。"""
+
+        assert _describe_audit_filters(AuditLogFilters()) == "no_filter"
+
+    def test_all_fields_set(self) -> None:
+        """所有字段设置时摘要包含全部条件。"""
+
+        now = datetime(2026, 8, 12, tzinfo=UTC)
+        filters = AuditLogFilters(
+            actor_id="u1",
+            module="identity",
+            action="user.create",
+            resource_type="user",
+            resource_id="rid-1",
+            result="success",
+            start_time=now - timedelta(days=1),
+            end_time=now,
+        )
+        desc = _describe_audit_filters(filters)
+        assert "actor=u1" in desc
+        assert "module=identity" in desc
+        assert "action=user.create" in desc
+        assert "resource_type=user" in desc
+        assert "resource_id=rid-1" in desc
+        assert "result=success" in desc
+        assert "from=" in desc
+        assert "to=" in desc
+
+    def test_partial_fields(self) -> None:
+        """部分字段设置时摘要仅包含已设条件。"""
+
+        filters = AuditLogFilters(module="auth", result="failure")
+        desc = _describe_audit_filters(filters)
+        assert "module=auth" in desc
+        assert "result=failure" in desc
+        assert "actor=" not in desc
+
+
+@pytest.mark.g3
+@pytest.mark.unit
+class TestDescribeLoginFilters:
+    """登录日志筛选条件摘要函数测试 — 覆盖所有分支."""
+
+    def test_no_filter(self) -> None:
+        """所有字段为 None 时返回 no_filter。"""
+
+        assert _describe_login_filters(LoginLogFilters()) == "no_filter"
+
+    def test_all_fields_set(self) -> None:
+        """所有字段设置时摘要包含全部条件。"""
+
+        now = datetime(2026, 8, 12, tzinfo=UTC)
+        filters = LoginLogFilters(
+            user_id="u1",
+            username="admin",
+            ip_address="10.0.0.1",
+            result="success",
+            start_time=now - timedelta(days=1),
+            end_time=now,
+        )
+        desc = _describe_login_filters(filters)
+        assert "user=u1" in desc
+        assert "username=admin" in desc
+        assert "ip=10.0.0.1" in desc
+        assert "result=success" in desc
+        assert "from=" in desc
+        assert "to=" in desc
+
+    def test_partial_fields(self) -> None:
+        """部分字段设置时摘要仅包含已设条件。"""
+
+        filters = LoginLogFilters(username="admin", result="failure")
+        desc = _describe_login_filters(filters)
+        assert "username=admin" in desc
+        assert "result=failure" in desc
+        assert "ip=" not in desc
+
+
+@pytest.mark.g3
+@pytest.mark.unit
+class TestBuildAuditFiltersConditions:
+    """审计日志查询条件构建函数测试 — 覆盖所有 if 分支."""
+
+    def test_empty_filters_produces_no_conditions(self) -> None:
+        """所有字段为 None 时返回空条件列表。"""
+
+        conditions = _build_audit_filters(AuditLogFilters())
+        assert conditions == []
+
+    def test_all_fields_produce_conditions(self) -> None:
+        """所有字段设置时每个字段产生一个条件。"""
+
+        now = datetime(2026, 8, 12, tzinfo=UTC)
+        filters = AuditLogFilters(
+            actor_id="u1",
+            module="identity",
+            action="user.create",
+            resource_type="user",
+            resource_id="rid-1",
+            result="success",
+            start_time=now,
+            end_time=now,
+        )
+        conditions = _build_audit_filters(filters)
+        assert len(conditions) == 8
+
+    def test_partial_fields(self) -> None:
+        """部分字段设置时仅产生对应条件。"""
+
+        filters = AuditLogFilters(module="auth", result="failure")
+        conditions = _build_audit_filters(filters)
+        assert len(conditions) == 2
+
+
+@pytest.mark.g3
+@pytest.mark.unit
+class TestBuildLoginFiltersConditions:
+    """登录日志查询条件构建函数测试 — 覆盖所有 if 分支."""
+
+    def test_empty_filters_produces_no_conditions(self) -> None:
+        """所有字段为 None 时返回空条件列表。"""
+
+        conditions = _build_login_filters(LoginLogFilters())
+        assert conditions == []
+
+    def test_all_fields_produce_conditions(self) -> None:
+        """所有字段设置时每个字段产生一个条件。"""
+
+        now = datetime(2026, 8, 12, tzinfo=UTC)
+        filters = LoginLogFilters(
+            user_id="u1",
+            username="admin",
+            ip_address="10.0.0.1",
+            result="success",
+            start_time=now,
+            end_time=now,
+        )
+        conditions = _build_login_filters(filters)
+        assert len(conditions) == 6
+
+
+@pytest.mark.g3
+@pytest.mark.unit
+class TestOrmToAuditEntry:
+    """ORM 到领域实体转换函数测试 — 覆盖 diff 分支."""
+
+    def test_conversion_without_diff(self) -> None:
+        """diff 为 None 时正确转换。"""
+
+        from app.modules.audit.orm import AuditLogORM
+
+        orm = AuditLogORM(
+            id=UUID("12345678-1234-5678-1234-567812345678"),
+            actor_id=None,
+            actor_display_name="系统",
+            module="audit",
+            action="audit.log.export",
+            resource_type="audit_log",
+            resource_id=None,
+            resource_display_name=None,
+            result="success",
+            request_id=None,
+            diff=None,
+            occurred_at=datetime(2026, 8, 12, tzinfo=UTC),
+        )
+        entry = _orm_to_audit_entry(orm)
+        assert entry.diff is None
+        assert entry.actor_display_name == "系统"
+
+    def test_conversion_with_diff(self) -> None:
+        """diff 非 None 时正确转换为 ChangeDiff。"""
+
+        from app.modules.audit.orm import AuditLogORM
+
+        orm = AuditLogORM(
+            id=UUID("12345678-1234-5678-1234-567812345678"),
+            actor_id="u1",
+            actor_display_name="管理员",
+            module="identity",
+            action="user.update",
+            resource_type="user",
+            resource_id="rid-1",
+            resource_display_name="张三",
+            result="success",
+            request_id="req-1",
+            diff={"status": {"old": "active", "new": "disabled"}},
+            occurred_at=datetime(2026, 8, 12, tzinfo=UTC),
+        )
+        entry = _orm_to_audit_entry(orm)
+        assert entry.diff is not None
+        assert len(entry.diff.fields) == 1
+        assert entry.diff.fields[0].field_name == "status"
+        assert entry.diff.fields[0].old_value == "active"
+        assert entry.diff.fields[0].new_value == "disabled"
+
+    def test_conversion_with_non_dict_diff_value(self) -> None:
+        """diff 值非 dict 时 old/new_value 为 None（isinstance 分支）。"""
+
+        from app.modules.audit.orm import AuditLogORM
+
+        orm = AuditLogORM(
+            id=UUID("12345678-1234-5678-1234-567812345678"),
+            actor_id=None,
+            actor_display_name="系统",
+            module="test",
+            action="test",
+            resource_type="test",
+            resource_id=None,
+            resource_display_name=None,
+            result="success",
+            request_id=None,
+            diff={"bad_field": "not_a_dict"},
+            occurred_at=datetime(2026, 8, 12, tzinfo=UTC),
+        )
+        entry = _orm_to_audit_entry(orm)
+        assert entry.diff is not None
+        assert entry.diff.fields[0].old_value is None
+        assert entry.diff.fields[0].new_value is None
+
+
+@pytest.mark.g3
+@pytest.mark.unit
+class TestOrmToLoginEntry:
+    """登录日志 ORM 到领域实体转换测试."""
+
+    def test_conversion_all_fields(self) -> None:
+        """所有字段正确转换。"""
+
+        from app.modules.audit.orm import LoginLogORM
+
+        orm = LoginLogORM(
+            id=UUID("12345678-1234-5678-1234-567812345678"),
+            user_id="u1",
+            username="admin",
+            session_id="sess-1",
+            ip_address="10.0.0.1",
+            user_agent="Mozilla/5.0",
+            result="success",
+            failure_reason=None,
+            occurred_at=datetime(2026, 8, 12, tzinfo=UTC),
+        )
+        entry = _orm_to_login_entry(orm)
+        assert entry.username == "admin"
+        assert entry.ip_address == "10.0.0.1"
+
+
+@pytest.mark.g3
+@pytest.mark.unit
+class TestAuditEntryToCsvRow:
+    """审计日志 CSV 行转换测试 — 覆盖 None 值分支."""
+
+    def test_all_none_optional_fields(self) -> None:
+        """可选字段为 None 时 CSV 行使用空字符串。"""
+
+        entry = AuditEntry(
+            id=UUID("12345678-1234-5678-1234-567812345678"),
+            actor_id=None,
+            actor_display_name="系统",
+            module="audit",
+            action="audit.log.export",
+            resource_type="audit_log",
+            resource_id=None,
+            resource_display_name=None,
+            result="success",
+            request_id=None,
+            diff=None,
+            occurred_at=datetime(2026, 8, 12, tzinfo=UTC),
+        )
+        row = _audit_entry_to_csv_row(entry)
+        assert row[1] == ""  # actor_id
+        assert row[6] == ""  # resource_id
+        assert row[7] == ""  # resource_display_name
+        assert row[9] == ""  # request_id
+
+    def test_all_fields_set(self) -> None:
+        """所有字段设置时 CSV 行包含实际值。"""
+
+        entry = AuditEntry(
+            id=UUID("12345678-1234-5678-1234-567812345678"),
+            actor_id="u1",
+            actor_display_name="管理员",
+            module="identity",
+            action="user.create",
+            resource_type="user",
+            resource_id="rid-1",
+            resource_display_name="张三",
+            result="success",
+            request_id="req-1",
+            diff=None,
+            occurred_at=datetime(2026, 8, 12, tzinfo=UTC),
+        )
+        row = _audit_entry_to_csv_row(entry)
+        assert row[1] == "u1"
+        assert row[6] == "rid-1"
+        assert row[7] == "张三"
+        assert row[9] == "req-1"
+
+
+@pytest.mark.g3
+@pytest.mark.unit
+class TestLoginEntryToCsvRow:
+    """登录日志 CSV 行转换测试 — 覆盖 None 值分支."""
+
+    def test_all_none_optional_fields(self) -> None:
+        """可选字段为 None 时 CSV 行使用空字符串。"""
+
+        entry = LoginLogEntry(
+            id=UUID("12345678-1234-5678-1234-567812345678"),
+            user_id=None,
+            username="unknown",
+            session_id=None,
+            ip_address="10.0.0.1",
+            user_agent=None,
+            result="failure",
+            failure_reason=None,
+            occurred_at=datetime(2026, 8, 12, tzinfo=UTC),
+        )
+        row = _login_entry_to_csv_row(entry)
+        assert row[1] == ""  # user_id
+        assert row[3] == ""  # session_id
+        assert row[5] == ""  # user_agent
+        assert row[7] == ""  # failure_reason
+
+    def test_all_fields_set(self) -> None:
+        """所有字段设置时 CSV 行包含实际值。"""
+
+        entry = LoginLogEntry(
+            id=UUID("12345678-1234-5678-1234-567812345678"),
+            user_id="u1",
+            username="admin",
+            session_id="sess-1",
+            ip_address="10.0.0.1",
+            user_agent="Mozilla/5.0",
+            result="success",
+            failure_reason=None,
+            occurred_at=datetime(2026, 8, 12, tzinfo=UTC),
+        )
+        row = _login_entry_to_csv_row(entry)
+        assert row[1] == "u1"
+        assert row[3] == "sess-1"
+        assert row[5] == "Mozilla/5.0"
+
+
+@pytest.mark.g3
+@pytest.mark.unit
+class TestAuditEntryToResponse:
+    """审计日志响应字典转换测试 — 覆盖 diff 分支."""
+
+    def test_with_diff(self) -> None:
+        """diff 非 None 时响应包含 diff 字典。"""
+
+        entry = AuditEntry(
+            id=UUID("12345678-1234-5678-1234-567812345678"),
+            actor_id="u1",
+            actor_display_name="管理员",
+            module="identity",
+            action="user.update",
+            resource_type="user",
+            resource_id="rid-1",
+            resource_display_name="张三",
+            result="success",
+            request_id="req-1",
+            diff=ChangeDiff(
+                fields=(
+                    DiffField(
+                        field_name="status",
+                        old_value="active",
+                        new_value="disabled",
+                    ),
+                ),
+            ),
+            occurred_at=datetime(2026, 8, 12, tzinfo=UTC),
+        )
+        resp = _audit_entry_to_response(entry)
+        assert resp["diff"] is not None
+        assert "status" in resp["diff"]
+
+    def test_without_diff(self) -> None:
+        """diff 为 None 时响应 diff 字段为 None。"""
+
+        entry = AuditEntry(
+            id=UUID("12345678-1234-5678-1234-567812345678"),
+            actor_id=None,
+            actor_display_name="系统",
+            module="audit",
+            action="audit.log.export",
+            resource_type="audit_log",
+            resource_id=None,
+            resource_display_name=None,
+            result="success",
+            request_id=None,
+            diff=None,
+            occurred_at=datetime(2026, 8, 12, tzinfo=UTC),
+        )
+        resp = _audit_entry_to_response(entry)
+        assert resp["diff"] is None
+
+
+@pytest.mark.g3
+@pytest.mark.unit
+class TestLoginEntryToResponse:
+    """登录日志响应字典转换测试."""
+
+    def test_all_fields(self) -> None:
+        """所有字段正确转换为响应字典。"""
+
+        entry = LoginLogEntry(
+            id=UUID("12345678-1234-5678-1234-567812345678"),
+            user_id="u1",
+            username="admin",
+            session_id="sess-1",
+            ip_address="10.0.0.1",
+            user_agent="Mozilla/5.0",
+            result="success",
+            failure_reason=None,
+            occurred_at=datetime(2026, 8, 12, tzinfo=UTC),
+        )
+        resp = _login_entry_to_response(entry)
+        assert resp["username"] == "admin"
+        assert resp["ip_address"] == "10.0.0.1"
+        assert resp["failure_reason"] is None

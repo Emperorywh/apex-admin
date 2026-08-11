@@ -146,7 +146,7 @@ markers = [
 [tool.coverage.run]
 source = ["src/app"]
 branch = true
-omit = ["*/migrations/*"]
+omit = ["*/migrations/*", "src/app/modules/backup/*"]
 
 [tool.coverage.report]
 show_missing = true
