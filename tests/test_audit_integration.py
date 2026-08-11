@@ -45,7 +45,7 @@ async def _apply_migrations(database_url: str) -> None:
 
 
 async def _cleanup_tables(database_url: str) -> None:
-    """清理审计和登录日志表。"""
+    """清理审计、登录日志与测试使用的业务表。"""
 
     from app.infrastructure.db.engine import create_db_engine
 
@@ -54,6 +54,7 @@ async def _cleanup_tables(database_url: str) -> None:
         async with engine.begin() as conn:
             await conn.execute(text("DELETE FROM audit_logs"))
             await conn.execute(text("DELETE FROM login_logs"))
+            await conn.execute(text("DELETE FROM example_items"))
     finally:
         await engine.dispose()
 
