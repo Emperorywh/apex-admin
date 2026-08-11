@@ -233,6 +233,44 @@ def _create_parser() -> argparse.ArgumentParser:
         help="仅报告不一致，不修改数据与文件（默认行为）",
     )
 
+    # backup 子命令 — SPEC 27.1 / 27.2 / 27.3
+    backup_parser = subparsers.add_parser(
+        "backup",
+        help="备份与恢复管理",
+    )
+    backup_sub = backup_parser.add_subparsers(
+        dest="backup_command",
+        required=True,
+    )
+    backup_create_parser = backup_sub.add_parser(
+        "create",
+        help="创建备份集（pg_dump 全量 + READY 文件清单）",
+    )
+    backup_create_parser.add_argument(
+        "--output",
+        required=True,
+        help="备份输出目录",
+    )
+    backup_create_parser.add_argument(
+        "--storage-root",
+        default=None,
+        help="文件存储根目录（默认使用配置中的 FILE_STORAGE_ROOT）",
+    )
+    backup_verify_parser = backup_sub.add_parser(
+        "verify",
+        help="验证最新备份（隔离库恢复 + 检查 + 演练报告）",
+    )
+    backup_verify_parser.add_argument(
+        "--backup-dir",
+        required=True,
+        help="备份输出目录（自动查找最新备份集）",
+    )
+    backup_verify_parser.add_argument(
+        "--report",
+        default=None,
+        help="演练报告输出路径（JSON）",
+    )
+
     return parser
 
 
@@ -1212,6 +1250,114 @@ def _cmd_data_check() -> int:
         return 1
 
 
+# ── backup create — SPEC 27.1 / 27.2 ───────────────────────────────────────
+
+
+def _cmd_backup_create(args: argparse.Namespace) -> int:
+    """执行 backup create 命令 — SPEC 27.1 / 27.2.
+
+    创建一个完整备份集：pg_dump 逻辑全量 + READY 文件清单与哈希。
+    备份失败时退出码非 0 且日志可发现失败（SPEC 27.1: 备份失败可发现）。
+    """
+
+    from pathlib import Path
+
+    try:
+        settings = Settings()
+    except Exception as exc:
+        print(f"配置加载失败: {exc}", file=sys.stderr)
+        return 1
+
+    output_dir = Path(args.output)
+    storage_root = args.storage_root or settings.FILE_STORAGE_ROOT
+
+    try:
+        from app.modules.backup.service import create_backup
+
+        backup_set = asyncio.run(
+            create_backup(
+                database_url=settings.DATABASE_URL,
+                output_dir=output_dir,
+                storage_root=storage_root,
+                daily_retention=settings.BACKUP_DAILY_RETENTION,
+                weekly_retention=settings.BACKUP_WEEKLY_RETENTION,
+            ),
+        )
+    except Exception as exc:
+        print(f"备份创建失败: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"备份集已创建: {backup_set.backup_id}")
+    print(f"  数据库备份: {backup_set.database_dump_file}")
+    print(f"  文件数量: {backup_set.file_count}")
+    print(f"  总大小: {backup_set.total_size_bytes} 字节")
+    print(f"  清单哈希: {backup_set.manifest_sha256}")
+    return 0
+
+
+# ── backup verify — SPEC 27.3 ──────────────────────────────────────────────
+
+
+def _cmd_backup_verify(args: argparse.Namespace) -> int:
+    """执行 backup verify 命令 — SPEC 27.3.
+
+    将最新备份恢复到隔离数据库并通过迁移版本、数据完整性、
+    文件一致性检查，输出结构化演练报告。
+    """
+
+    from pathlib import Path
+
+    try:
+        settings = Settings()
+    except Exception as exc:
+        print(f"配置加载失败: {exc}", file=sys.stderr)
+        return 1
+
+    backup_dir = Path(args.backup_dir)
+    report_path = Path(args.report) if args.report else None
+
+    try:
+        from app.modules.backup.manifest import find_latest_backup
+        from app.modules.backup.service import verify_backup
+
+        # 查找最新备份集
+        latest_dir = find_latest_backup(backup_dir)
+
+        report = asyncio.run(
+            verify_backup(
+                backup_dir=latest_dir,
+                source_database_url=settings.DATABASE_URL,
+                report_path=report_path,
+            ),
+        )
+    except Exception as exc:
+        print(f"备份验证失败: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"演练报告 — 备份集: {report.backup_id}")
+    print(f"  起始时间: {report.started_at.isoformat()}")
+    print(f"  结束时间: {report.finished_at.isoformat()}")
+    rpo_h = report.actual_rpo_hours
+    rpo_t = report.rpo_target_hours
+    print(f"  实际 RPO: {rpo_h:.2f}h (目标 ≤ {rpo_t:.0f}h)")
+    rto_h = report.actual_rto_hours
+    rto_t = report.rto_target_hours
+    print(f"  实际 RTO: {rto_h:.2f}h (目标 ≤ {rto_t:.0f}h)")
+    mig = "通过" if report.migration_check.passed else "失败"
+    print(f"  迁移版本: {mig} — {report.migration_check.detail}")
+    integ = "通过" if report.integrity_check.passed else "失败"
+    print(f"  数据完整性: {integ} — {report.integrity_check.detail}")
+    file_c = "通过" if report.file_check.passed else "失败"
+    print(f"  文件一致性: {file_c} — {report.file_check.detail}")
+    print(f"  总体结果: {'通过' if report.overall_passed else '失败'}")
+    if report.failure_reason:
+        print(f"  失败原因: {report.failure_reason}")
+    if report_path:
+        print(f"  报告已写入: {report_path}")
+
+    return 0 if report.overall_passed else 1
+
+
 # ── audit cleanup — SPEC 18.4 / 25.3 ──────────────────────────────────────
 
 
@@ -1354,6 +1500,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "files" and args.files_command == "reconcile":
         return _cmd_files_reconcile(args)
+
+    if args.command == "backup":
+        if args.backup_command == "create":
+            return _cmd_backup_create(args)
+        if args.backup_command == "verify":
+            return _cmd_backup_verify(args)
 
     if args.command == "db":
         if args.db_command == "check":

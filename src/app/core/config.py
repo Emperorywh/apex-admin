@@ -227,6 +227,15 @@ class Settings(BaseSettings):
     # 慢查询阈值（毫秒）。超过时记录结构化慢查询日志（SPEC 24.2）。
     SLOW_QUERY_THRESHOLD_MS: int = 500
 
+    # ── 备份配置（SPEC 27.1 / 27.2）───────────────────────────────────
+    # SPEC 27.1: "备份文件至少保留最近 7 个日备份和最近 4 个周备份"。
+    BACKUP_DAILY_RETENTION: int = 7
+    BACKUP_WEEKLY_RETENTION: int = 4
+
+    # SPEC 27.1: "备份副本不得只保存在 PostgreSQL 数据卷或同一块物理磁盘中"。
+    # 备份副本目录，空字符串表示未配置（文档要求不与应用同盘）。
+    BACKUP_COPY_DIR: str = ""
+
     # ── 模型级校验 ────────────────────────────────────────────────────
 
     def __init__(self, **values: Any) -> None:
