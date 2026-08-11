@@ -24,6 +24,7 @@ from app.modules.audit.definition import MODULE_DEFINITION as AUDIT_MODULE
 from app.modules.auth.definition import MODULE_DEFINITION as AUTH_MODULE
 from app.modules.example.definition import MODULE_DEFINITION as EXAMPLE_MODULE
 from app.modules.identity.definition import MODULE_DEFINITION as IDENTITY_MODULE
+from app.modules.org.definition import MODULE_DEFINITION as ORG_MODULE
 from app.modules.rbac.definition import MODULE_DEFINITION as RBAC_MODULE
 
 if TYPE_CHECKING:
@@ -41,12 +42,14 @@ if TYPE_CHECKING:
 #:   - identity（用户模块，SPEC 11.1 / 11.2 / 11.3）
 #:   - auth（认证模块，SPEC 12.1 / 12.3 / 12.4 / 18.1）
 #:   - rbac（RBAC 角色与权限点模块，SPEC 13.1 / 13.2 / 25.2）
+#:   - org（组织模块——部门管理，SPEC 14.1）
 MODULE_MANIFEST: list[ModuleDefinition] = [
     EXAMPLE_MODULE,
     AUDIT_MODULE,
     IDENTITY_MODULE,
     AUTH_MODULE,
     RBAC_MODULE,
+    ORG_MODULE,
 ]
 
 #: 已启用模块的 Alembic 迁移版本目录列表.

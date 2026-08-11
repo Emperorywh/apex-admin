@@ -134,6 +134,9 @@ def test_cli_db_upgrade_no_business_data(
         declared_tables.add("rbac_permissions")
         declared_tables.add("rbac_role_permissions")
         declared_tables.add("rbac_user_roles")
+    # 组织模块的表名约定
+    if any(m.code == "org" for m in get_module_manifest()):
+        declared_tables.add("org_departments")
 
     unexpected = tables - declared_tables
     assert unexpected == set(), f"db upgrade 发现未声明的表: {unexpected}"
