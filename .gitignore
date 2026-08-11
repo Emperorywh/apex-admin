@@ -20,6 +20,9 @@ coverage.json
 # 环境变量（不提交真实密钥）
 .env
 
+# Copier 生成产物
+.copier-answers.yml
+
 # IDE
 .idea/
 .vscode/

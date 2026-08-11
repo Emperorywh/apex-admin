@@ -1,0 +1,76 @@
+# Copier 模板配置 — Apex Admin 基座项目初始化（SPEC 30.3）
+#
+# 使用方式:
+#   copier copy <本模板路径> <目标路径>
+#
+# 本模板将基座仓库的身份表面参数化：
+#   - 项目名称（project_slug，用于 pyproject.toml name、Docker 镜像名）
+#   - Python 包名（package_name，默认 app，导入名）
+#   - URN 命名空间（urn_namespace，用于 RFC 9457 problem type URI）
+#   - 配置前缀（config_prefix，用于环境变量前缀）
+#   - EXT 扩展开关（ext_enabled，机制预留，默认关闭）
+#
+# 生成后 _copier_postprocess.py 负责全量身份替换与 uv.lock 协同。
+
+# ── Copier 行为配置 ──────────────────────────────────────────────────────
+
+# 只有 .jinja 后缀的文件才做 Jinja2 渲染；其余文件原样复制，
+# 由 _copier_postprocess.py 统一处理身份替换。
+_templates_suffix: ".jinja"
+_answers_file: ".copier-answers.yml"
+
+# 运行时与模板工具文件，不进入生成项目。
+_exclude:
+  - ".git"
+  - ".venv"
+  - ".mypy_cache"
+  - ".ruff_cache"
+  - ".pytest_cache"
+  - ".import_linter_cache"
+  - ".coverage"
+  - "coverage.json"
+  - ".runtime"
+  - ".apex-coding-agent"
+  - ".generated"
+  - "scripts/verify_generated.py"
+  - "api/SPEC.md"
+  - "copier.yml"
+
+# 生成后任务：执行身份替换并写入 .copier-answers.yml。
+# Copier 在 task 执行后才写入 .copier-answers.yml，且在部分环境下（如
+# Git Bash on Windows）控制台交互受限导致写入失败。因此答案和模板来源
+# 通过 Jinja2 渲染的命令行参数传入，由脚本自行写入 answers 文件。
+_tasks:
+  - 'python _copier_postprocess.py "{{ project_name }}" "{{ project_slug }}" "{{ package_name }}" "{{ urn_namespace }}" "{{ config_prefix }}" "{{ _commit }}" "{{ _src_path }}" "{{ ext_enabled }}"'
+
+# ── 问题定义 ─────────────────────────────────────────────────────────────
+
+project_name:
+  type: str
+  help: "项目显示名称（用于文档、日志、OpenAPI 标题）"
+  default: "My Backend"
+
+project_slug:
+  type: str
+  help: "项目标识符（kebab-case，用于 pyproject.toml name、Docker 镜像名、compose 服务标识）"
+  default: "my-backend"
+
+package_name:
+  type: str
+  help: "Python 包名（导入名，如 'app' 或 'my_backend'；默认 app 为中性名）"
+  default: "app"
+
+urn_namespace:
+  type: str
+  help: "URN 命名空间（用于 RFC 9457 problem type URI，如 urn:my-backend）"
+  default: "urn:my-backend"
+
+config_prefix:
+  type: str
+  help: "环境变量前缀（大写下划线，以下划线结尾，如 APP_）"
+  default: "APP_"
+
+ext_enabled:
+  type: bool
+  help: "是否启用 EXT 扩展模块（机制预留，当前无可用模块）"
+  default: false
