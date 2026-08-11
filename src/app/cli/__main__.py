@@ -144,6 +144,34 @@ def _create_parser() -> argparse.ArgumentParser:
         help="创建开发演示数据（仅限非生产环境）",
     )
 
+    # admin 子命令 — SPEC 25.3
+    admin_parser = subparsers.add_parser(
+        "admin",
+        help="后台管理命令",
+    )
+    admin_sub = admin_parser.add_subparsers(
+        dest="admin_command",
+        required=True,
+    )
+    admin_sub.add_parser(
+        "sync-seeds",
+        help="幂等同步基础菜单和字典种子（SPEC 25.3）",
+    )
+
+    # data 子命令 — SPEC 25.3
+    data_parser = subparsers.add_parser(
+        "data",
+        help="数据检查",
+    )
+    data_sub = data_parser.add_subparsers(
+        dest="data_command",
+        required=True,
+    )
+    data_sub.add_parser(
+        "check",
+        help="检查角色权限关系、菜单与部门循环、失效或孤立关联数据（SPEC 25.3）",
+    )
+
     # sysconfig 子命令 — SPEC 16.1 / 23.2
     sysconfig_parser = subparsers.add_parser(
         "sysconfig",
@@ -1069,6 +1097,121 @@ def _cmd_files_reconcile(args: argparse.Namespace) -> int:
         return 1
 
 
+# ── admin sync-seeds — SPEC 25.3 ──────────────────────────────────────────
+
+
+async def _run_admin_sync_seeds(database_url: str) -> int:
+    """异步执行 admin sync-seeds — 幂等同步基础菜单和字典种子.
+
+    SPEC 25.3: ``uv run python -m app.cli admin sync-seeds`` 幂等同步基础菜单和字典。
+    SPEC 8.5: 初始化器使用稳定自然键执行幂等 upsert，可重复执行。
+    """
+
+    from app.composition.modules import get_module_manifest
+    from app.core.initialization.framework import InitializationRunner
+    from app.infrastructure.db.engine import create_db_engine
+    from app.infrastructure.db.uow import SqlAlchemyUnitOfWork
+
+    manifest = get_module_manifest()
+    initializers: list[object] = []
+    for module in manifest:
+        initializers.extend(module.initializers)
+
+    if not initializers:
+        print("无已注册的种子初始化器")
+        return 0
+
+    runner = InitializationRunner(initializers)  # type: ignore[arg-type]
+
+    engine = create_db_engine(database_url)
+    try:
+        uow = SqlAlchemyUnitOfWork(engine)
+        async with uow:
+            await runner.run(uow.session)
+            await uow.commit()
+
+        codes = [i.code for i in runner.initializers]
+        print("种子同步完成:")
+        print(f"  执行初始化器 ({len(codes)}):")
+        for code in codes:
+            print(f"    - {code}")
+        print("  全部种子幂等 upsert 已完成")
+        return 0
+    finally:
+        await engine.dispose()
+
+
+def _cmd_admin_sync_seeds() -> int:
+    """执行 admin sync-seeds 命令 — SPEC 25.3.
+
+    SPEC 25.3: 幂等同步基础菜单和字典种子。
+    SPEC 8.5: 初始化过程可重复执行且不会创建重复数据。
+    """
+
+    try:
+        settings = Settings()
+    except Exception as exc:
+        print(f"配置加载失败: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        return asyncio.run(_run_admin_sync_seeds(settings.DATABASE_URL))
+    except Exception as exc:
+        print(f"种子同步失败: {exc}", file=sys.stderr)
+        return 1
+
+
+# ── data check — SPEC 25.3 ────────────────────────────────────────────────
+
+
+async def _run_data_check(database_url: str) -> int:
+    """异步执行 data check — 检查数据完整性.
+
+    SPEC 25.3: ``uv run python -m app.cli data check`` 检查角色权限关系、
+    菜单和部门循环、失效或孤立关联数据。
+
+    健康库退出码 0；发现问题退出码非 0 并报告具体位置。
+    """
+
+    from app.core.data_check import format_data_check_report, run_data_check
+    from app.infrastructure.db.engine import create_db_engine
+    from app.infrastructure.db.uow import SqlAlchemyUnitOfWork
+
+    engine = create_db_engine(database_url)
+    try:
+        uow = SqlAlchemyUnitOfWork(engine)
+        async with uow:
+            result = await run_data_check(uow.session)
+
+        print(format_data_check_report(result))
+
+        if result.healthy:
+            return 0
+        return 1
+    finally:
+        await engine.dispose()
+
+
+def _cmd_data_check() -> int:
+    """执行 data check 命令 — SPEC 25.3.
+
+    SPEC 25.3: 检查角色权限关系、菜单与部门循环、失效或孤立关联数据。
+    健康库退出码 0；发现问题退出码非 0。
+    """
+
+    try:
+        settings = Settings()
+    except Exception as exc:
+        print(f"配置加载失败: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        return asyncio.run(_run_data_check(settings.DATABASE_URL))
+    except Exception as exc:
+        print(f"数据检查失败: {exc}", file=sys.stderr)
+        return 1
+
+
 # ── audit cleanup — SPEC 18.4 / 25.3 ──────────────────────────────────────
 
 
@@ -1196,6 +1339,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "dev" and args.dev_command == "seed-demo":
         return _cmd_dev_seed_demo()
+
+    if args.command == "admin" and args.admin_command == "sync-seeds":
+        return _cmd_admin_sync_seeds()
+
+    if args.command == "data" and args.data_command == "check":
+        return _cmd_data_check()
 
     if args.command == "sysconfig" and args.sysconfig_command == "re-encrypt":
         return _cmd_sysconfig_re_encrypt()

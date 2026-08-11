@@ -18,7 +18,7 @@ SPEC 23.5: 菜单可见性不承担授权。
 
 from __future__ import annotations
 
-from app.core.modules.definition import ModuleDefinition
+from app.core.modules.definition import ManagementCommand, ModuleDefinition
 from app.modules.menu.errors import (
     MENU_ALREADY_ACTIVE,
     MENU_ALREADY_DISABLED,
@@ -28,6 +28,7 @@ from app.modules.menu.errors import (
     MENU_INVALID_TYPE,
     MENU_NOT_FOUND,
 )
+from app.modules.menu.initializers import MenuSeedInitializer
 from app.modules.menu.router import router as menu_router
 
 # ── 声明常量 ────────────────────────────────────────────────────────────────
@@ -91,8 +92,13 @@ MODULE_DEFINITION = ModuleDefinition(
         AUDIT_ROLE_REMOVE_MENU,
     ),
     protected_resource_types=("menu", "role_menu"),
-    initializers=(),
-    management_commands=(),
+    initializers=(MenuSeedInitializer(),),
+    management_commands=(
+        ManagementCommand(
+            name="admin sync-seeds",
+            description="幂等同步基础菜单和字典种子",
+        ),
+    ),
     event_handlers=(),
     event_codes=(),
     alembic_version_dir=ALEMBIC_VERSION_DIR,

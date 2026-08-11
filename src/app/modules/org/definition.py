@@ -19,7 +19,7 @@ SPEC 14.3: 用户组织关系（主部门 + 离职/禁用事件处理）。
 
 from __future__ import annotations
 
-from app.core.modules.definition import ModuleDefinition
+from app.core.modules.definition import ManagementCommand, ModuleDefinition
 from app.modules.org.errors import (
     ORG_DEPT_ALREADY_ACTIVE,
     ORG_DEPT_ALREADY_DISABLED,
@@ -137,7 +137,12 @@ MODULE_DEFINITION = ModuleDefinition(
     ),
     protected_resource_types=("department", "post", "user_org"),
     initializers=(),
-    management_commands=(),
+    management_commands=(
+        ManagementCommand(
+            name="data check",
+            description="检查角色权限关系、菜单与部门循环、失效或孤立关联数据",
+        ),
+    ),
     event_handlers=(ClearUserOrgRelationsOnDisabled(),),
     event_codes=(),
     alembic_version_dir=ALEMBIC_VERSION_DIR,

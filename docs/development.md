@@ -141,12 +141,49 @@ uv run alembic heads
 | `uv run python -m app.cli auth create-admin --username <用户名>` | 安全创建首个管理员（密码经标准输入传入） | 运维交互输入 |
 | `uv run python -m app.cli auth sync-permissions` | 幂等同步各模块声明的权限点到权限目录 | 各模块 ModuleDefinition 声明 |
 | `uv run python -m app.cli auth rotate-token-keys` | 生成 Token HMAC 密钥轮换配置 | CSPRNG 随机生成 |
+| `uv run python -m app.cli admin sync-seeds` | 幂等同步基础菜单和字典种子（SPEC 25.3） | 各模块种子初始化器声明 |
 
 生产环境部署流程：
 1. `db upgrade` — 执行迁移
 2. `auth sync-permissions` — 同步权限点目录
-3. `auth create-admin` — 创建首个管理员
-4. （可选）`auth rotate-token-keys` — 轮换 Token 密钥
+3. `admin sync-seeds` — 同步基础菜单与字典种子
+4. `auth create-admin` — 创建首个管理员
+5. （可选）`auth rotate-token-keys` — 轮换 Token 密钥
+
+#### 后台管理命令（SPEC 25.3）
+
+| 命令 | 用途 | 说明 |
+| --- | --- | --- |
+| `uv run python -m app.cli admin sync-seeds` | 幂等同步基础菜单和字典种子 | 连续执行不产生重复编码 |
+| `uv run python -m app.cli data check` | 检查数据完整性 | 健康库退出码 0；发现问题退出码非 0 |
+| `uv run python -m app.cli files reconcile --dry-run` | 只报告文件状态和物理文件不一致 | 默认行为 |
+| `uv run python -m app.cli files reconcile --apply` | 按确定性规则恢复或标记文件 | 记录审计日志 |
+| `uv run python -m app.cli audit cleanup --dry-run` | 只报告将清理的日志 | 默认行为 |
+| `uv run python -m app.cli audit cleanup --apply` | 执行日志保留清理 | 记录执行结果 |
+
+#### 修复类命令 dry-run 约定（SPEC 25.3）
+
+SPEC 25.3: "所有修复命令默认 dry-run；实际修改必须使用显式 `--apply`
+并记录审计或运维日志"。
+
+此约定统一适用于全部修复类命令:
+
+- **默认 dry-run**: 不带 `--apply` 标志时，命令只报告将执行的操作，
+  不修改任何数据。
+- **显式 `--apply`**: 只有显式传入 `--apply` 时才执行实际修改。
+- **审计/运维日志**: `--apply` 执行修改后，操作结果写入审计日志
+  （如 `audit cleanup --apply` 记录清理结果）或运维日志
+  （如 `files reconcile --apply` 记录恢复结果）。
+
+当前遵循此约定的修复类命令:
+
+| 命令 | 默认行为 | `--apply` 行为 | 日志 |
+| --- | --- | --- | --- |
+| `files reconcile` | 报告不一致 | 执行恢复/标记 | 审计日志（file.reconcile） |
+| `audit cleanup` | 报告将清理的日志 | 执行删除 | 记录执行结果 |
+
+> 注: `admin sync-seeds` 和 `auth sync-permissions` 是同步命令而非修复命令，
+> 其正常操作即为幂等 upsert（新增和更新），不适用 dry-run 约定。
 
 #### 开发演示数据命令
 
