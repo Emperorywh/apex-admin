@@ -69,7 +69,7 @@ _GATE_MARKERS: dict[str, str] = {
     "g1": "g1",
     "g2": "g2",
     "g3": "g3",
-    "g123": '"g1 or g2 or g3"',
+    "g123": "g1 or g2 or g3",
 }
 
 

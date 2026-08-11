@@ -222,6 +222,8 @@ def _build_replacements(answers: dict[str, str]) -> list[tuple[str, str]]:
 
     # ── 6. Cookie 名 ─────────────────────────────────────────────────
     rules.append(("__Host-apex_refresh", f"__Host-{pu}_refresh"))
+    # OpenAPI 快照中 cookie 参数标题（FastAPI 从 cookie 名自动生成）
+    rules.append(("Apex Refresh", f"{project_name} Refresh"))
 
     # ── 7. 权限标记属性 ──────────────────────────────────────────────
     rules.append(("__apex_permission__", f"__{pu}_permission__"))
