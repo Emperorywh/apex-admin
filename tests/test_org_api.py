@@ -56,6 +56,9 @@ async def _cleanup_tables(database_url: str) -> None:
     engine = create_db_engine(database_url)
     try:
         async with engine.begin() as conn:
+            await conn.execute(text("DELETE FROM org_user_posts"))
+            await conn.execute(text("DELETE FROM org_user_departments"))
+            await conn.execute(text("DELETE FROM org_posts"))
             await conn.execute(text("DELETE FROM org_departments"))
             await conn.execute(text("DELETE FROM audit_logs"))
             await conn.execute(text("DELETE FROM users"))

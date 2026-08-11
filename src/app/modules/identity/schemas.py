@@ -185,11 +185,15 @@ class SelfChangePasswordRequest(StrictBaseModel):
 
 
 class UserResponse(BaseModel):
-    """用户响应模型 — SPEC 9.3 / 11.2.
+    """用户响应模型 — SPEC 9.3 / 11.1 / 11.2.
 
     SPEC 9.3: "普通成功响应直接返回资源 Schema，不使用成功信封"。
     SPEC 9.3: "敏感字段不得进入响应模型"。
     密码哈希不出现在响应中（SPEC 23.2: "禁止记录和回显密码"）。
+
+    SPEC 11.1: "通过 G3 后同时返回部门和岗位关系"。
+    department 和 posts 由 org 模块公开 Port 聚合返回（SPEC 14.3）。
+    G2 阶段（org 模块未接入时）department 为 None、posts 为空列表。
 
     JSON 字段使用 snake_case，时间为带时区 ISO 8601 字符串。
     响应模型不使用 ``extra="forbid"``（响应可能有扩展字段），
@@ -208,3 +212,5 @@ class UserResponse(BaseModel):
     password_updated_at: datetime | None
     created_at: datetime
     updated_at: datetime
+    department: dict[str, object] | None = None
+    posts: list[dict[str, object]] = []

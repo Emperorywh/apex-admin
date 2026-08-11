@@ -1,4 +1,4 @@
-"""组织模块 Router — API 层（SPEC 5.2 / 9.1 / 9.2 / 9.3 / 14.1）.
+"""组织模块 Router — API 层（SPEC 5.2 / 9.1 / 9.2 / 9.3 / 14.1 / 14.2 / 14.3）.
 
 SPEC 5.2: "禁止路由层直接访问数据库"。
 SPEC 5.6: "Router 只能获得 Use Case，不得获得 AsyncSession、Repository
@@ -17,6 +17,22 @@ Router 通过 FastAPI 依赖注入获得 ``OrgUseCase``。
     PUT    /departments/{department_id}/hierarchy 调整层级与排序
     PUT    /departments/{department_id}/leader 设置部门负责人
     DELETE /departments/{department_id}        删除部门
+
+  岗位管理 — ``/posts`` 前缀:
+    POST   /posts                              创建岗位
+    GET    /posts                              查询岗位列表
+    GET    /posts/{post_id}                    查询岗位详情
+    PUT    /posts/{post_id}                    更新岗位
+    POST   /posts/{post_id}/enable             启用岗位
+    POST   /posts/{post_id}/disable            禁用岗位
+    DELETE /posts/{post_id}                    删除岗位
+
+  用户组织关系 — ``/users`` 前缀:
+    PUT    /users/{user_id}/department         设置用户主部门
+    DELETE /users/{user_id}/department         移除用户主部门
+    POST   /users/{user_id}/posts              为用户分配岗位
+    DELETE /users/{user_id}/posts/{post_id}    移除用户岗位
+    GET    /users/{user_id}/org-info           查询用户组织关系
 """
 
 from __future__ import annotations
@@ -29,6 +45,8 @@ from fastapi import APIRouter, Depends, Path, Query, Request, Response, status
 from app.application.context import UseCaseContext
 from app.modules.auth.permission import require_permission
 from app.modules.org.schemas import (
+    AssignUserDepartmentRequest,
+    AssignUserPostRequest,
     DepartmentCreateRequest,
     DepartmentDetailResponse,
     DepartmentHierarchyRequest,
@@ -36,6 +54,10 @@ from app.modules.org.schemas import (
     DepartmentResponse,
     DepartmentTreeResponse,
     DepartmentUpdateRequest,
+    PostCreateRequest,
+    PostDetailResponse,
+    PostResponse,
+    PostUpdateRequest,
 )
 from app.modules.org.use_case import OrgUseCase
 
@@ -84,6 +106,8 @@ UseCaseDep = Annotated[OrgUseCase, Depends(get_org_use_case)]
 # SPEC 23.5: 管理端通过权限依赖保护。
 DeptReadCtx = Annotated[UseCaseContext, Depends(require_permission("org:dept:read"))]
 DeptWriteCtx = Annotated[UseCaseContext, Depends(require_permission("org:dept:write"))]
+PostReadCtx = Annotated[UseCaseContext, Depends(require_permission("org:post:read"))]
+PostWriteCtx = Annotated[UseCaseContext, Depends(require_permission("org:post:write"))]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -292,3 +316,263 @@ async def delete_department(
 
     await use_case.delete_department(ctx, department_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 岗位管理 — /posts 前缀
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.post(
+    "/posts",
+    response_model=PostResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="创建岗位",
+    operation_id="create_post",
+)
+async def create_post(
+    response: Response,
+    request_body: PostCreateRequest,
+    ctx: PostWriteCtx,
+    use_case: UseCaseDep,
+) -> PostResponse:
+    """创建岗位 — HTTP 201 + Location（SPEC 9.3 / 14.2）.
+
+    SPEC 14.2: "岗位不直接替代角色和权限"。
+    岗位编码冲突返回 409（``ORG.POST_ALREADY_EXISTS``）。
+    """
+
+    result = await use_case.create_post(ctx, request_body)
+    response.headers["Location"] = f"/api/v1/posts/{result['id']}"
+    return PostResponse.model_validate(result)
+
+
+@router.get(
+    "/posts",
+    response_model=list[PostResponse],
+    summary="查询岗位列表",
+    operation_id="list_posts",
+)
+async def list_posts(
+    ctx: PostReadCtx,
+    use_case: UseCaseDep,
+    include_disabled: Annotated[
+        bool,
+        Query(description="是否包含禁用状态的岗位（默认 true）"),
+    ] = True,
+) -> list[PostResponse]:
+    """查询岗位列表 — SPEC 14.2."""
+
+    result = await use_case.list_posts(
+        ctx,
+        include_disabled=include_disabled,
+    )
+    items: list[dict[str, object]] = result["items"]  # type: ignore[assignment]
+    return [PostResponse.model_validate(item) for item in items]
+
+
+@router.get(
+    "/posts/{post_id}",
+    response_model=PostDetailResponse,
+    summary="查询岗位详情",
+    operation_id="get_post_detail",
+)
+async def get_post_detail(
+    ctx: PostReadCtx,
+    use_case: UseCaseDep,
+    post_id: Annotated[UUID, Path(description="岗位 ID")],
+) -> PostDetailResponse:
+    """查询岗位详情 — SPEC 14.2.
+
+    不存在返回 404（``ORG.POST_NOT_FOUND``）。
+    """
+
+    result = await use_case.get_post_detail(ctx, post_id)
+    return PostDetailResponse.model_validate(result)
+
+
+@router.put(
+    "/posts/{post_id}",
+    response_model=PostResponse,
+    summary="更新岗位",
+    operation_id="update_post",
+)
+async def update_post(
+    request_body: PostUpdateRequest,
+    ctx: PostWriteCtx,
+    use_case: UseCaseDep,
+    post_id: Annotated[UUID, Path(description="岗位 ID")],
+) -> PostResponse:
+    """更新岗位基本信息 — SPEC 14.2."""
+
+    result = await use_case.update_post(ctx, post_id, request_body)
+    return PostResponse.model_validate(result)
+
+
+@router.post(
+    "/posts/{post_id}/enable",
+    response_model=PostResponse,
+    summary="启用岗位",
+    operation_id="enable_post",
+)
+async def enable_post(
+    ctx: PostWriteCtx,
+    use_case: UseCaseDep,
+    post_id: Annotated[UUID, Path(description="岗位 ID")],
+) -> PostResponse:
+    """启用岗位 — SPEC 14.2."""
+
+    result = await use_case.enable_post(ctx, post_id)
+    return PostResponse.model_validate(result)
+
+
+@router.post(
+    "/posts/{post_id}/disable",
+    response_model=PostResponse,
+    summary="禁用岗位",
+    operation_id="disable_post",
+)
+async def disable_post(
+    ctx: PostWriteCtx,
+    use_case: UseCaseDep,
+    post_id: Annotated[UUID, Path(description="岗位 ID")],
+) -> PostResponse:
+    """禁用岗位 — SPEC 14.2."""
+
+    result = await use_case.disable_post(ctx, post_id)
+    return PostResponse.model_validate(result)
+
+
+@router.delete(
+    "/posts/{post_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="删除岗位",
+    operation_id="delete_post",
+)
+async def delete_post(
+    ctx: PostWriteCtx,
+    use_case: UseCaseDep,
+    post_id: Annotated[UUID, Path(description="岗位 ID")],
+) -> Response:
+    """删除岗位 — SPEC 14.2.
+
+    存在用户关联返回 409（``ORG.POST_HAS_USERS``）。
+    """
+
+    await use_case.delete_post(ctx, post_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 用户组织关系 — /users/{user_id} 前缀
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.put(
+    "/users/{user_id}/department",
+    summary="设置用户主部门",
+    operation_id="assign_user_department",
+)
+async def assign_user_department(
+    request_body: AssignUserDepartmentRequest,
+    ctx: PostWriteCtx,
+    use_case: UseCaseDep,
+    user_id: Annotated[UUID, Path(description="用户 ID")],
+) -> dict[str, object]:
+    """设置用户主部门 — SPEC 14.3.
+
+    SPEC 14.3: "用户具有明确的主部门"。
+    基座默认仅主部门。用户已有主部门时返回 409
+    （``ORG.USER_ALREADY_HAS_DEPARTMENT``）。
+    部门不存在返回 404（``ORG.DEPT_NOT_FOUND``）。
+    部门已禁用返回 409（``ORG.DEPT_DISABLED``）。
+    """
+
+    return await use_case.assign_user_department(
+        ctx,
+        user_id,
+        request_body.department_id,
+    )
+
+
+@router.delete(
+    "/users/{user_id}/department",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="移除用户主部门",
+    operation_id="remove_user_department",
+)
+async def remove_user_department(
+    ctx: PostWriteCtx,
+    use_case: UseCaseDep,
+    user_id: Annotated[UUID, Path(description="用户 ID")],
+) -> Response:
+    """移除用户主部门 — SPEC 14.3.
+
+    关系不存在返回 409（``ORG.USER_DEPT_NOT_FOUND``）。
+    """
+
+    await use_case.remove_user_department(ctx, user_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/users/{user_id}/posts",
+    summary="为用户分配岗位",
+    operation_id="assign_user_post",
+)
+async def assign_user_post(
+    request_body: AssignUserPostRequest,
+    ctx: PostWriteCtx,
+    use_case: UseCaseDep,
+    user_id: Annotated[UUID, Path(description="用户 ID")],
+) -> dict[str, object]:
+    """为用户分配岗位 — SPEC 14.2.
+
+    SPEC 14.2: "为用户分配岗位"。
+    分配幂等——已存在时返回成功（无操作）。
+    岗位不存在返回 404（``ORG.POST_NOT_FOUND``）。
+    岗位已禁用返回 409（``ORG.POST_DISABLED``）。
+    """
+
+    return await use_case.assign_user_post(
+        ctx,
+        user_id,
+        request_body.post_id,
+    )
+
+
+@router.delete(
+    "/users/{user_id}/posts/{post_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="移除用户岗位",
+    operation_id="remove_user_post",
+)
+async def remove_user_post(
+    ctx: PostWriteCtx,
+    use_case: UseCaseDep,
+    user_id: Annotated[UUID, Path(description="用户 ID")],
+    post_id: Annotated[UUID, Path(description="岗位 ID")],
+) -> Response:
+    """移除用户岗位 — SPEC 14.2.
+
+    SPEC 14.2: "移除用户岗位"。
+    关系不存在返回 409（``ORG.USER_POST_NOT_FOUND``）。
+    """
+
+    await use_case.remove_user_post(ctx, user_id, post_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/users/{user_id}/org-info",
+    summary="查询用户组织关系",
+    operation_id="get_user_org_info",
+)
+async def get_user_org_info(
+    ctx: PostReadCtx,
+    use_case: UseCaseDep,
+    user_id: Annotated[UUID, Path(description="用户 ID")],
+) -> dict[str, object]:
+    """查询用户组织关系（部门 + 岗位）— SPEC 14.3 / 11.1."""
+
+    return await use_case.get_user_org_info(ctx, user_id)

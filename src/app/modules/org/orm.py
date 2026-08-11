@@ -1,4 +1,4 @@
-"""组织模块 ORM 模型 — SPEC 8.3 / 14.1.
+"""组织模块 ORM 模型 — SPEC 8.3 / 14.1 / 14.2 / 14.3.
 
 SPEC 8.3 数据建模规范:
   - 每张业务表具有明确主键。
@@ -10,8 +10,17 @@ SPEC 14.1 部门管理:
   - 部门为树形实体，通过 ``parent_id`` 自引用实现父子层级。
   - ``leader_id`` 引用用户 ID（跨模块不建数据库外键，SPEC 5.5）。
 
-SPEC 5.5: ``leader_id`` 不做外键约束，引用 identity 模块的 ``users`` 表，
-通过应用层 Port 校验用户存在性。``parent_id`` 为同模块自引用外键。
+SPEC 14.2 岗位管理:
+  - 岗位具有编码、名称、状态（启用/禁用）。
+  - 岗位不直接替代角色和权限。
+
+SPEC 14.3 用户组织关系:
+  - 用户具有明确的主部门（``org_user_departments``，``is_primary=True``）。
+  - 基座默认仅主部门，兼职部门由业务配置决定（本基座不提前实现）。
+  - ``user_id`` 引用 identity 模块用户 ID（跨模块不建数据库外键，SPEC 5.5）。
+
+SPEC 5.5: ``leader_id``、``user_id`` 不做外键约束，引用 identity 模块的
+``users`` 表，通过应用层 Port 校验用户存在性。``parent_id`` 为同模块自引用外键。
 
 ORM 模型继承自全局 ``Base``，Alembic 通过 ``Base.metadata`` 收集表结构
 （SPEC 8.2）。ORM 模型只在 Infrastructure 层使用，不泄漏到 Application
@@ -75,4 +84,106 @@ class DepartmentORM(Base):
         Index("ix_org_departments_code_unique", code, unique=True),
         Index("ix_org_departments_parent", parent_id),
         Index("ix_org_departments_status", status),
+    )
+
+
+class PostORM(Base):
+    """岗位 ORM 模型 — 映射 ``org_posts`` 表（SPEC 14.2）.
+
+    SPEC 8.3:
+      - 主键 ``id`` 为 UUID。
+      - ``code`` 具有唯一约束，保证岗位编码全局唯一。
+      - 时间字段使用 ``DateTime(timezone=True)``（PostgreSQL ``timestamptz``）。
+
+    SPEC 14.2: "岗位不直接替代角色和权限"——岗位仅为组织管理维度，
+    与 RBAC 角色/权限完全独立。
+    """
+
+    __tablename__ = "org_posts"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(String(100), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    created_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    updated_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    __table_args__ = (
+        Index("ix_org_posts_code_unique", code, unique=True),
+        Index("ix_org_posts_status", status),
+    )
+
+
+class UserDepartmentORM(Base):
+    """用户-部门关系 ORM 模型 — 映射 ``org_user_departments`` 表（SPEC 14.3）.
+
+    SPEC 14.3:
+      - "用户具有明确的主部门"。
+      - 基座默认仅主部门（``is_primary=True``），兼职部门由业务配置决定。
+
+    SPEC 5.5: ``user_id`` 跨模块引用 identity 模块用户 ID，不做数据库外键约束。
+    ``department_id`` 为同模块自引用外键（org_departments）。
+    """
+
+    __tablename__ = "org_user_departments"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(nullable=False)
+    department_id: Mapped[UUID] = mapped_column(
+        ForeignKey("org_departments.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    is_primary: Mapped[bool] = mapped_column(nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    created_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    __table_args__ = (
+        Index("ix_org_user_depts_user_unique", user_id, unique=True),
+        Index("ix_org_user_depts_dept", department_id),
+    )
+
+
+class UserPostORM(Base):
+    """用户-岗位关系 ORM 模型 — 映射 ``org_user_posts`` 表（SPEC 14.2 / 14.3）.
+
+    SPEC 14.2: "为用户分配岗位"、"移除用户岗位"。
+    SPEC 14.3: 用户组织关系包含岗位关系。
+
+    SPEC 5.5: ``user_id`` 跨模块引用 identity 模块用户 ID，不做数据库外键约束。
+    ``post_id`` 为同模块自引用外键（org_posts）。
+
+    唯一约束 ``(user_id, post_id)`` 保证分配幂等且防重复。
+    """
+
+    __tablename__ = "org_user_posts"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(nullable=False)
+    post_id: Mapped[UUID] = mapped_column(
+        ForeignKey("org_posts.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    created_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    __table_args__ = (
+        Index("ix_org_user_posts_unique", user_id, post_id, unique=True),
+        Index("ix_org_user_posts_user", user_id),
+        Index("ix_org_user_posts_post", post_id),
     )

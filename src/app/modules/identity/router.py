@@ -90,6 +90,8 @@ def get_user_use_case(request: Request) -> UserUseCase:
         RevokeSessionsOnPasswordReset,
         RevokeSessionsOnUserDisabled,
     )
+    from app.modules.org.adapter import SqlAlchemyOrgRepository
+    from app.modules.org.handlers import ClearUserOrgRelationsOnDisabled
 
     engine = request.app.state.db_engine
 
@@ -124,12 +126,20 @@ def get_user_use_case(request: Request) -> UserUseCase:
 
         return SqlAlchemyUserAuthAdapter(session)
 
+    def org_port_factory(session):  # type: ignore[no-untyped-def]
+        """从 session 构造组织关系 Port — SPEC 11.1 / 14.3 跨模块聚合."""
+
+        return SqlAlchemyOrgRepository(session)
+
     # SPEC 5.7: auth 模块的事务内事件处理器在禁用/重置密码 Use Case 的
     # 事务内同步执行，吊销该用户全部会话（SPEC 12.3）。
+    # org 模块的事务内事件处理器在禁用 Use Case 的事务内同步执行，
+    # 清除用户全部组织关系（SPEC 14.3）。
     # 处理器在当前 UoW 的 AsyncSession 上执行，与业务数据强一致。
     auth_event_handlers = [
         RevokeSessionsOnUserDisabled(),
         RevokeSessionsOnPasswordReset(),
+        ClearUserOrgRelationsOnDisabled(),
     ]
 
     return UserUseCase(
@@ -141,6 +151,7 @@ def get_user_use_case(request: Request) -> UserUseCase:
         audit_factory=audit_factory,
         user_rbac_port_factory=user_rbac_port_factory,
         user_auth_port_factory=user_auth_port_factory,
+        org_port_factory=org_port_factory,
     )
 
 

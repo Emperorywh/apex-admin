@@ -77,6 +77,7 @@ if TYPE_CHECKING:
     from app.modules.audit.models import ChangeDiff
     from app.modules.audit.port import AuditPort
     from app.modules.identity.port import UserAuthPort, UserRepository
+    from app.modules.org.port import UserOrgPort
     from app.modules.rbac.port import UserRbacPort
 
 # ── 用户审计字段白名单 — SPEC 18.2 ──────────────────────────────────────────
@@ -128,8 +129,15 @@ class UserUseCase:
         audit_factory: Callable[[AsyncSession], AuditPort],
         user_rbac_port_factory: Callable[[AsyncSession], UserRbacPort],
         user_auth_port_factory: Callable[[AsyncSession], UserAuthPort],
+        org_port_factory: Callable[[AsyncSession], UserOrgPort] | None = None,
     ) -> None:
-        """初始化 Use Case，注入所有依赖."""
+        """初始化 Use Case，注入所有依赖.
+
+        参数:
+            org_port_factory: 组织关系 Port 工厂（可选，SPEC 11.1/14.3）。
+                提供时用户详情聚合返回部门与岗位关系；
+                未提供时（G2 阶段）用户详情不含组织关系。
+        """
 
         self._uow_factory = uow_factory
         self._clock = clock
@@ -139,6 +147,7 @@ class UserUseCase:
         self._audit_factory = audit_factory
         self._user_rbac_port_factory = user_rbac_port_factory
         self._user_auth_port_factory = user_auth_port_factory
+        self._org_port_factory = org_port_factory
 
     def _create_repo(self, session: AsyncSession) -> UserRepository:
         """从 session 构造用户 Repository Adapter — SPEC 5.6."""
@@ -373,14 +382,44 @@ class UserUseCase:
         ctx: UseCaseContext,
         user_id: UUID,
     ) -> UserResponse:
-        """查询单个用户详情 — 读操作（无需显式事务控制）."""
+        """查询单个用户详情 — 读操作（无需显式事务控制）.
+
+        SPEC 11.1: "查看用户关联的角色；通过 G3 后同时返回部门和岗位关系"。
+        当 org_port_factory 已注入时（G3 阶段），聚合返回用户的
+        部门与岗位关系。跨模块通过 org 的公开 Port（UserOrgPort）
+        聚合，不直接访问 org 的 ORM 模型（SPEC 5.5）。
+        """
 
         async with self._uow_factory() as uow:
             repo = self._create_repo(uow.session)
             user = await repo.get_by_id(user_id)
             if user is None:
                 raise UserNotFoundError(str(user_id))
-            return _to_response(user)
+
+            # SPEC 11.1 / 14.3: 通过 org 模块公开 Port 聚合部门岗位关系。
+            department: dict[str, object] | None = None
+            posts: list[dict[str, object]] = []
+            if self._org_port_factory is not None:
+                org_port = self._org_port_factory(uow.session)
+                dept_info = await org_port.get_user_department(user_id)
+                if dept_info is not None:
+                    department = {
+                        "department_id": dept_info.department_id,
+                        "department_code": dept_info.department_code,
+                        "department_name": dept_info.department_name,
+                        "is_primary": dept_info.is_primary,
+                    }
+                post_infos = await org_port.list_user_posts(user_id)
+                posts = [
+                    {
+                        "post_id": p.post_id,
+                        "post_code": p.post_code,
+                        "post_name": p.post_name,
+                    }
+                    for p in post_infos
+                ]
+
+            return _to_response(user, department=department, posts=posts)
 
     async def list_users(
         self,
@@ -904,11 +943,19 @@ class UserUseCase:
             await uow.commit()
 
 
-def _to_response(user: User) -> UserResponse:
+def _to_response(
+    user: User,
+    *,
+    department: dict[str, object] | None = None,
+    posts: list[dict[str, object]] | None = None,
+) -> UserResponse:
     """领域实体 → 响应 Schema 转换 — SPEC 5.2 职责分离.
 
     SPEC 9.3: "敏感字段不得进入响应模型"。
     ``password_hash`` 不包含在响应中（SPEC 23.2: "禁止记录和回显密码"）。
+
+    SPEC 11.1: "通过 G3 后同时返回部门和岗位关系"。
+    department 和 posts 为 org 模块公开 Port 返回的投影（可选）。
     """
 
     return UserResponse(
@@ -922,4 +969,6 @@ def _to_response(user: User) -> UserResponse:
         password_updated_at=user.password_updated_at,
         created_at=user.created_at,
         updated_at=user.updated_at,
+        department=department,
+        posts=posts or [],
     )

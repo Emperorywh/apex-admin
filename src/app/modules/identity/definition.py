@@ -78,7 +78,7 @@ MODULE_DEFINITION = ModuleDefinition(
     # UserAuthPort 供 auth 模块跨模块查询用户认证数据（登录、认证依赖）。
     application_ports=(UserAuthPort,),
     required_dependencies=("audit",),  # 审计写入依赖 audit 模块
-    optional_dependencies=(),
+    optional_dependencies=(),  # org Port 由组合根注入（非模块级依赖，SPEC 5.2）
     routers=(identity_router,),
     permission_codes=(
         PERMISSION_USER_READ,
