@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING
 
 from app.modules.audit.definition import MODULE_DEFINITION as AUDIT_MODULE
 from app.modules.auth.definition import MODULE_DEFINITION as AUTH_MODULE
+from app.modules.dict.definition import MODULE_DEFINITION as DICT_MODULE
 from app.modules.example.definition import MODULE_DEFINITION as EXAMPLE_MODULE
 from app.modules.identity.definition import MODULE_DEFINITION as IDENTITY_MODULE
 from app.modules.menu.definition import MODULE_DEFINITION as MENU_MODULE
@@ -47,6 +48,7 @@ if TYPE_CHECKING:
 #:   - org（组织模块——部门管理，SPEC 14.1）
 #:   - menu（菜单管理模块，SPEC 15.1 / 15.2）
 #:   - sysconfig（系统配置模块，SPEC 16.1 / 16.2）
+#:   - dict（数据字典模块，SPEC 17.1 / 17.2）
 MODULE_MANIFEST: list[ModuleDefinition] = [
     EXAMPLE_MODULE,
     AUDIT_MODULE,
@@ -56,6 +58,7 @@ MODULE_MANIFEST: list[ModuleDefinition] = [
     ORG_MODULE,
     MENU_MODULE,
     SYSCONFIG_MODULE,
+    DICT_MODULE,
 ]
 
 #: 已启用模块的 Alembic 迁移版本目录列表.

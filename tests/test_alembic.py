@@ -102,7 +102,7 @@ async def test_alembic_upgrade_head_on_empty_db(
                 )
                 row = result.fetchone()
                 assert row is not None
-                assert row[0] == "0010_menu_tables"
+                assert row[0] == "0012_dict_tables"
 
                 # 验证示例模块表已创建
                 table_result = await conn.execute(
@@ -136,7 +136,7 @@ async def test_alembic_single_head() -> None:
     heads = script_dir.get_heads()
 
     assert len(heads) == 1, f"Expected exactly one head, got {heads}"
-    assert heads[0] == "0010_menu_tables"
+    assert heads[0] == "0012_dict_tables"
 
 
 @pytest.mark.g1
@@ -167,10 +167,12 @@ def test_head_revision_includes_example_module() -> None:
     组织迁移 0008_org_departments 的 down_revision 指向 0007_rbac_tables，
     组织迁移 0009_org_posts 的 down_revision 指向 0008_org_departments，
     菜单迁移 0010_menu_tables 的 down_revision 指向 0009_org_posts，
+    系统配置迁移 0011_sysconfig_tables 的 down_revision 指向 0010_menu_tables，
+    字典迁移 0012_dict_tables 的 down_revision 指向 0011_sysconfig_tables，
     组成全局单头 revision 图。
     """
 
     from app.composition.modules import MODULE_VERSION_LOCATIONS
 
     head = get_head_revision(MODULE_VERSION_LOCATIONS)
-    assert head == "0010_menu_tables"
+    assert head == "0012_dict_tables"
