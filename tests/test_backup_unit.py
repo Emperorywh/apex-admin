@@ -543,23 +543,23 @@ class TestParseDbUrl:
     def test_standard_url(self) -> None:
         """标准 URL 正确解析。"""
 
-        params = _parse_db_url("postgresql+psycopg://apex@127.0.0.1:55432/postgres")
+        params = _parse_db_url("postgresql+psycopg://testuser@127.0.0.1:55432/postgres")
         assert params["host"] == "127.0.0.1"
         assert params["port"] == 55432
-        assert params["user"] == "apex"
+        assert params["user"] == "testuser"
         assert params["dbname"] == "postgres"
 
     def test_url_with_password(self) -> None:
         """带密码的 URL 正确解析。"""
 
         params = _parse_db_url(
-            "postgresql+psycopg://apex:secret@10.0.0.1:5432/apexdb",
+            "postgresql+psycopg://testuser:secret@10.0.0.1:5432/testdb",
         )
         assert params["host"] == "10.0.0.1"
         assert params["port"] == 5432
-        assert params["user"] == "apex"
+        assert params["user"] == "testuser"
         assert params["password"] == "secret"
-        assert params["dbname"] == "apexdb"
+        assert params["dbname"] == "testdb"
 
 
 # ═══════════════════════════════════════════════════════════════════════════

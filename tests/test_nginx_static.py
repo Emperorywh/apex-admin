@@ -28,7 +28,24 @@ import yaml
 pytestmark = pytest.mark.unit
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
-_NGINX_CONF = _PROJECT_ROOT / "deploy" / "nginx" / "apex.conf"
+
+
+def _find_nginx_conf() -> Path:
+    """查找 Nginx 配置文件 — SPEC 26.3: deploy/nginx/ 下唯一 .conf。
+
+    模板项目中为 apex.conf，Copier 生成项目按 project_slug 重命名。
+    通过 glob 动态发现，使测试与项目身份无关。
+    """
+
+    nginx_dir = _PROJECT_ROOT / "deploy" / "nginx"
+    conf_files = list(nginx_dir.glob("*.conf"))
+    assert len(conf_files) == 1, (
+        f"deploy/nginx/ 应有且仅有一个 .conf 文件，找到 {len(conf_files)} 个"
+    )
+    return conf_files[0]
+
+
+_NGINX_CONF = _find_nginx_conf()
 _LINT_SCRIPT = _PROJECT_ROOT / "scripts" / "lint_nginx.py"
 _COMPOSE_YAML = _PROJECT_ROOT / "deploy" / "compose.yaml"
 _NGINX_DOC = _PROJECT_ROOT / "docs" / "nginx-proxy-config.md"
@@ -55,7 +72,7 @@ class TestNginxConfigExists:
     def test_config_file_exists(self) -> None:
         """配置文件存在。"""
 
-        assert _NGINX_CONF.is_file(), "deploy/nginx/apex.conf 不存在"
+        assert _NGINX_CONF.is_file(), f"{_NGINX_CONF} 不存在"
 
     @pytest.mark.g4
     @pytest.mark.deployment
