@@ -140,6 +140,7 @@ markers = [
 [tool.coverage.run]
 source = ["src/app"]
 branch = true
+omit = ["*/migrations/*"]
 
 [tool.coverage.report]
 show_missing = true

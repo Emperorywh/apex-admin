@@ -1,7 +1,7 @@
 # =============================================================================
-# Apex Admin CI 工作流（SPEC 29.1 / 34.1）
+# Apex Admin CI 工作流（SPEC 29.1 / 34.1 / 34.2）
 # 执行：锁校验、冻结同步、Ruff、mypy strict、import-linter、modules validate、
-#       pytest g1 套件、覆盖率门槛、pip-audit。
+#       pytest g1+g2 套件、覆盖率门槛（G1 全量 85%/80%，安全模块 90%/90%）、pip-audit。
 # =============================================================================
 name: CI
 
@@ -17,6 +17,22 @@ jobs:
   quality:
     name: 静态检查与测试
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: apex
+          POSTGRES_PASSWORD: apex_test
+          POSTGRES_DB: apex_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U apex"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      APEX_TEST_DATABASE_URL: postgresql+psycopg://apex:apex_test@localhost:5432/apex_test
     steps:
       # 1. 检出代码
       - uses: actions/checkout@v4
@@ -60,17 +76,31 @@ jobs:
       - name: modules validate
         run: uv run python -m app.cli modules validate
 
-      # 11. pytest g1 套件 + 覆盖率收集（SPEC 28 / 28.1 / 34.1）
-      - name: pytest (g1) + coverage
+      # 11. 空库迁移校验 — SPEC 28.2 / 34.1
+      - name: alembic upgrade head
         run: |
-          uv run pytest -q -m g1 \
-            --cov=src --cov-branch \
+          uv run alembic -c alembic.ini upgrade head
+          uv run alembic -c alembic.ini heads
+
+      # 12. pytest g1+g2 套件 + 覆盖率收集（SPEC 28 / 34.1 / 34.2）
+      - name: pytest (g1+g2) + coverage
+        run: |
+          uv run pytest -q -m "g1 or g2" \
+            --cov=src/app/modules --cov-branch \
             --cov-report=json:.generated/coverage.json
 
-      # 12. 覆盖率门槛校验（SPEC 28.1: 语句 ≥85%，分支 ≥80%）
-      - name: coverage gate
+      # 13. 覆盖率门槛校验 — G1 全量（SPEC 28.1: 语句 ≥85%，分支 ≥80%）
+      - name: coverage gate (G1 overall)
         run: uv run python scripts/check_coverage.py --statements 85 --branches 80 .generated/coverage.json
 
-      # 13. 依赖安全扫描（SPEC 5.4 / 29.3）
+      # 14. 覆盖率门槛校验 — 安全模块（SPEC 28.3 / 34.2: 语句 ≥90%，分支 ≥90%）
+      - name: coverage gate (security modules 90%)
+        run: |
+          uv run python scripts/check_coverage.py \
+            --statements 90 --branches 90 \
+            --include "src/app/modules/identity/*,src/app/modules/auth/*,src/app/modules/rbac/*,src/app/modules/audit/*" \
+            .generated/coverage.json
+
+      # 15. 依赖安全扫描（SPEC 5.4 / 29.3）
       - name: pip-audit
         run: uv run pip-audit

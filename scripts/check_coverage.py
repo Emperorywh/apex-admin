@@ -16,11 +16,18 @@
     uv run python scripts/check_coverage.py \\
         --statement-threshold 90 \\
         --branch-threshold 90
+
+    # 限定文件范围（逗号分隔的 glob 模式，路径分隔符自动归一化）
+    uv run python scripts/check_coverage.py \\
+        --statements 90 --branches 90 \\
+        --include "src/app/modules/identity/*,src/app/modules/auth/*" \\
+        coverage.json
 """
 
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import sys
 from pathlib import Path
@@ -62,6 +69,16 @@ def _parse_args() -> argparse.Namespace:
         default=80.0,
         help="分支覆盖率门槛百分比（默认 80）。",
     )
+    parser.add_argument(
+        "--include",
+        dest="include_patterns",
+        type=str,
+        default=None,
+        help=(
+            "逗号分隔的 glob 模式，仅统计匹配文件的聚合覆盖率。"
+            "路径分隔符自动归一化（正反斜杠均可匹配）。"
+        ),
+    )
     return parser.parse_args()
 
 
@@ -84,10 +101,23 @@ def _load_coverage(coverage_file: Path) -> dict[str, object]:
     return json.loads(coverage_file.read_text(encoding="utf-8"))
 
 
+def _normalize_path(path: str) -> str:
+    """将路径中的反斜杠归一化为正斜杠，便于跨平台 glob 匹配。"""
+
+    return path.replace("\\", "/")
+
+
+def _matches_any(path: str, patterns: list[str]) -> bool:
+    """检查路径是否匹配任一 glob 模式（路径分隔符已归一化）。"""
+
+    normalized = _normalize_path(path)
+    return any(fnmatch.fnmatch(normalized, pat) for pat in patterns)
+
+
 def _extract_percentages(
     coverage_data: dict[str, object],
 ) -> tuple[float, float]:
-    """从 coverage JSON 中提取语句覆盖率和分支覆盖率百分比。
+    """从 coverage JSON 的全局 totals 中提取语句与分支覆盖率百分比。
 
     coverage 7.x 的 ``totals`` 字段使用 ``percent_covered``（综合覆盖率）
     与 ``percent_branches_covered``（分支覆盖率）。旧版本使用
@@ -113,6 +143,58 @@ def _extract_percentages(
     return statement_pct, branch_pct
 
 
+def _extract_percentages_for_files(
+    coverage_data: dict[str, object],
+    include_patterns: list[str],
+) -> tuple[float, float]:
+    """对匹配 ``--include`` 模式的文件计算聚合覆盖率百分比。
+
+    遍历 ``files`` 字典，按 glob 模式筛选文件，累加语句与分支的
+    已覆盖数与总数，计算聚合百分比。路径分隔符自动归一化。
+
+    参数:
+        coverage_data: coverage JSON 解析后的字典。
+        include_patterns: 归一化后的 glob 模式列表。
+
+    返回:
+        (语句覆盖率, 分支覆盖率) 二元组。
+    """
+
+    files = coverage_data.get("files")
+    if not isinstance(files, dict) or not files:
+        raise ValueError("覆盖率 JSON 中缺少 'files' 字段或为空。")
+
+    total_statements = 0
+    covered_statements = 0
+    total_branches = 0
+    covered_branches = 0
+
+    for fpath, fdata in files.items():
+        if not _matches_any(fpath, include_patterns):
+            continue
+        if not isinstance(fdata, dict):
+            continue
+        summary = fdata.get("summary")
+        if not isinstance(summary, dict):
+            continue
+        total_statements += int(summary.get("num_statements", 0))
+        covered_statements += int(summary.get("covered_lines", 0))
+        total_branches += int(summary.get("num_branches", 0))
+        covered_branches += int(summary.get("covered_branches", 0))
+
+    if total_statements == 0:
+        statement_pct = 100.0
+    else:
+        statement_pct = covered_statements / total_statements * 100.0
+
+    if total_branches == 0:
+        branch_pct = 100.0
+    else:
+        branch_pct = covered_branches / total_branches * 100.0
+
+    return statement_pct, branch_pct
+
+
 def main() -> int:
     """脚本主入口：校验覆盖率门槛。
 
@@ -130,7 +212,19 @@ def main() -> int:
         print(f"错误: {exc}", file=sys.stderr)
         return 1
 
-    statement_pct, branch_pct = _extract_percentages(coverage_data)
+    # 如果指定了 --include，仅统计匹配文件的聚合覆盖率
+    if args.include_patterns:
+        patterns = [
+            _normalize_path(p.strip())
+            for p in args.include_patterns.split(",")
+            if p.strip()
+        ]
+        statement_pct, branch_pct = _extract_percentages_for_files(
+            coverage_data,
+            patterns,
+        )
+    else:
+        statement_pct, branch_pct = _extract_percentages(coverage_data)
 
     ok = True
     if statement_pct < args.statement_threshold:
