@@ -151,6 +151,18 @@ class Settings(BaseSettings):
 
     LOG_LEVEL: str = "INFO"
 
+    # ── 审计日志保留期限（SPEC 18.4）──────────────────────────────────
+    # SPEC 18.4: "定义审计日志保留期限"。
+    # SPEC 18.4: "安全事件的保留策略独立于普通访问日志"。
+    # 三种保留期限独立配置:
+    #   - 审计日志（audit_logs 表）
+    #   - 登录日志（login_logs 表）
+    #   - 安全事件（structlog 渠道，轮转由 TASK-029/031 负责）
+
+    AUDIT_LOG_RETENTION_DAYS: int = 180
+    LOGIN_LOG_RETENTION_DAYS: int = 90
+    SECURITY_EVENT_RETENTION_DAYS: int = 365
+
     # ── 模型级校验 ────────────────────────────────────────────────────
 
     def __init__(self, **values: Any) -> None:

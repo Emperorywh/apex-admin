@@ -158,6 +158,26 @@ def _create_parser() -> argparse.ArgumentParser:
         help="敏感配置加密密钥轮换重加密（SPEC 23.2 双密钥短期切换）",
     )
 
+    # audit 子命令 — SPEC 18.4 / 25.3
+    audit_parser = subparsers.add_parser(
+        "audit",
+        help="审计日志管理",
+    )
+    audit_sub = audit_parser.add_subparsers(
+        dest="audit_command",
+        required=True,
+    )
+    audit_cleanup_parser = audit_sub.add_parser(
+        "cleanup",
+        help="审计日志保留清理（默认 dry-run）",
+    )
+    audit_cleanup_parser.add_argument(
+        "--apply",
+        action="store_true",
+        default=False,
+        help="实际执行删除（默认 dry-run 只报告）",
+    )
+
     return parser
 
 
@@ -925,6 +945,104 @@ def _cmd_sysconfig_re_encrypt() -> int:
         return 1
 
 
+# ── audit cleanup — SPEC 18.4 / 25.3 ──────────────────────────────────────
+
+
+async def _run_audit_cleanup(
+    database_url: str,
+    *,
+    audit_retention_days: int,
+    login_retention_days: int,
+    security_retention_days: int,
+    apply: bool,
+) -> int:
+    """异步执行审计日志保留清理 — SPEC 18.4 / 25.3.
+
+    SPEC 25.3: 所有修复命令默认 dry-run；实际修改必须使用显式 ``--apply``
+    并记录审计或运维日志。
+
+    SPEC 18.4:
+      - 定义审计日志保留期限。
+      - 提供受控的归档或清理命令。
+      - 清理操作记录执行结果。
+      - 安全事件的保留策略独立于普通访问日志。
+    """
+
+    from app.application.ports import SystemClock
+    from app.infrastructure.db.engine import create_db_engine
+    from app.infrastructure.db.uow import SqlAlchemyUnitOfWork
+    from app.modules.audit.retention import (
+        CleanupResult,
+        RetentionConfig,
+        execute_cleanup,
+        format_cleanup_report,
+    )
+
+    config = RetentionConfig(
+        audit_log_retention_days=audit_retention_days,
+        login_log_retention_days=login_retention_days,
+        security_event_retention_days=security_retention_days,
+    )
+    clock = SystemClock()
+
+    engine = create_db_engine(database_url)
+    try:
+        uow = SqlAlchemyUnitOfWork(engine)
+        async with uow:
+            result: CleanupResult = await execute_cleanup(
+                config=config,
+                clock=clock,
+                apply=apply,
+                uow=uow,
+            )
+
+            if apply:
+                await uow.commit()
+
+        print(format_cleanup_report(result))
+
+        if not apply:
+            print(
+                "使用 --apply 执行实际删除（SPEC 25.3: 显式 --apply 才修改数据）",
+            )
+        else:
+            print("清理操作已完成并提交")
+
+        return 0
+    finally:
+        await engine.dispose()
+
+
+def _cmd_audit_cleanup(args: argparse.Namespace) -> int:
+    """执行 audit cleanup 命令 — SPEC 18.4 / 25.3.
+
+    SPEC 25.3: 所有修复命令默认 dry-run；实际修改必须使用显式 ``--apply``。
+    SPEC 18.4: 清理操作记录执行结果。
+    """
+
+    apply = getattr(args, "apply", False)
+
+    try:
+        settings = Settings()
+    except Exception as exc:
+        print(f"配置加载失败: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        return asyncio.run(
+            _run_audit_cleanup(
+                settings.DATABASE_URL,
+                audit_retention_days=settings.AUDIT_LOG_RETENTION_DAYS,
+                login_retention_days=settings.LOGIN_LOG_RETENTION_DAYS,
+                security_retention_days=settings.SECURITY_EVENT_RETENTION_DAYS,
+                apply=apply,
+            ),
+        )
+    except Exception as exc:
+        print(f"审计日志清理失败: {exc}", file=sys.stderr)
+        return 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI 主入口 — 解析参数并分发到子命令.
 
@@ -957,6 +1075,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "sysconfig" and args.sysconfig_command == "re-encrypt":
         return _cmd_sysconfig_re_encrypt()
+
+    if args.command == "audit" and args.audit_command == "cleanup":
+        return _cmd_audit_cleanup(args)
 
     if args.command == "db":
         if args.db_command == "check":

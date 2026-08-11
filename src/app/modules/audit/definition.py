@@ -6,17 +6,20 @@ SPEC 5.5: "每个业务模块必须在模块根目录公开唯一的 ``ModuleDef
 审计模块提供:
   - 操作审计表（``audit_logs``）与登录日志表（``login_logs``）。
   - ``AuditPort``（同事务提交）、``LoginLogPort``、``SecurityLogPort``。
+  - 审计查询面: ``AuditQueryPort``、``LoginLogQueryPort``、``AuditRetentionPort``。
   - 变更差异字段白名单机制、显示名快照、审计不可变约束。
+  - 审计查询与导出 API（SPEC 18.3）。
+  - 日志保留治理命令（SPEC 18.4 / 25.3）。
 
-本任务只建模块与 Port，业务接线由后续任务完成。模块无 Router、
-权限点、错误码、审计动作和初始化器（审计模块是基础设施提供者，
-具体审计动作由消费模块声明）。
+导入此模块时自动注册错误码到框架注册表（通过 ``errors.py``）。
 """
 
 from __future__ import annotations
 
-from app.core.modules.definition import ModuleDefinition
+from app.core.modules.definition import ManagementCommand, ModuleDefinition
+from app.modules.audit.errors import AUDIT_LOG_NOT_FOUND, AUDIT_LOGIN_LOG_NOT_FOUND
 from app.modules.audit.port import AuditPort, LoginLogPort, SecurityLogPort
+from app.modules.audit.router import router as audit_router  # noqa: E402
 
 # ── 声明常量 ────────────────────────────────────────────────────────────────
 
@@ -31,6 +34,15 @@ MODULE_API_TAG = "audit"
 #: 测试和 CLI 均在项目根目录运行。
 ALEMBIC_VERSION_DIR = "src/app/modules/audit/migrations"
 
+#: 权限点 — SPEC 5.5 / 23.5: 所有管理接口具有权限点。
+PERMISSION_AUDIT_LOG_READ = "audit:log:read"
+PERMISSION_AUDIT_LOG_EXPORT = "audit:log:export"
+
+#: 审计动作 — SPEC 18.2: 记录操作模块和动作。
+#: 导出操作本身的审计动作（SPEC 18.3: 导出行为写入新的审计事件）。
+AUDIT_LOG_EXPORT = "audit.log.export"
+AUDIT_LOGIN_LOG_EXPORT = "audit.login_log.export"
+
 
 # ── ModuleDefinition 实例 ──────────────────────────────────────────────────
 
@@ -43,13 +55,27 @@ MODULE_DEFINITION = ModuleDefinition(
     application_ports=(AuditPort, LoginLogPort, SecurityLogPort),
     required_dependencies=(),
     optional_dependencies=(),
-    routers=(),  # 审计查询 API 由 TASK-024 实现。
-    permission_codes=(),  # 审计查询权限由 TASK-024 声明。
-    error_codes=(),
-    audit_actions=(),  # 具体审计动作由消费模块（user/auth 等）声明。
+    routers=(audit_router,),
+    permission_codes=(
+        PERMISSION_AUDIT_LOG_READ,
+        PERMISSION_AUDIT_LOG_EXPORT,
+    ),
+    error_codes=(
+        AUDIT_LOG_NOT_FOUND,
+        AUDIT_LOGIN_LOG_NOT_FOUND,
+    ),
+    audit_actions=(
+        AUDIT_LOG_EXPORT,
+        AUDIT_LOGIN_LOG_EXPORT,
+    ),
     protected_resource_types=(),
     initializers=(),  # 审计表由迁移创建，无需种子数据。
-    management_commands=(),  # 保留与清理命令由 TASK-024 实现。
+    management_commands=(
+        ManagementCommand(
+            name="audit cleanup",
+            description="审计日志保留清理（默认 dry-run，--apply 执行删除）",
+        ),
+    ),
     event_handlers=(),
     event_codes=(),
     alembic_version_dir=ALEMBIC_VERSION_DIR,
