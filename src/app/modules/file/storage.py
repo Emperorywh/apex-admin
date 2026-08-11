@@ -192,6 +192,49 @@ class LocalFileStorageAdapter(FileStoragePort):
         with contextlib.suppress(FileNotFoundError, OSError):
             os.unlink(path)
 
+    def compute_sha256(self, path: str) -> str:
+        """计算文件 SHA-256 摘要 — reconcile 一致性校验用（SPEC 19.3）。"""
+
+        if os.path.islink(path):
+            raise FileStorageError(
+                f"拒绝跟随符号链接: {path}",
+            )
+        sha256 = hashlib.sha256()
+        try:
+            with open(path, "rb") as f:
+                while True:
+                    chunk = f.read(_CHUNK_SIZE)
+                    if not chunk:
+                        break
+                    sha256.update(chunk)
+        except OSError as exc:
+            raise FileStorageError(
+                f"文件读取失败（SHA-256）: {path} — {exc}",
+            ) from exc
+        return sha256.hexdigest()
+
+    def list_temp_dir(self) -> list[str]:
+        """列出临时目录中的全部文件名 — 受控清理用（SPEC 19.3）。
+
+        返回文件名列表（不含路径），用于后续计算完整路径和判断过期。
+        """
+
+        names: list[str] = []
+        for entry in self._temp_dir.iterdir():
+            if entry.is_file() and not entry.is_symlink():
+                names.append(entry.name)
+        return names
+
+    def get_mtime(self, path: str) -> float:
+        """获取文件修改时间（epoch 秒）— 判断临时文件是否过期用。"""
+
+        try:
+            return os.path.getmtime(path)
+        except OSError as exc:
+            raise FileStorageError(
+                f"获取文件修改时间失败: {path} — {exc}",
+            ) from exc
+
     def read_head_bytes(self, path: str) -> bytes:
         """读取文件头部字节用于 magic bytes 校验."""
 

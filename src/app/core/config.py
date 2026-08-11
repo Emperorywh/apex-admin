@@ -180,6 +180,15 @@ class Settings(BaseSettings):
     # SPEC 19.3: "DELETING 文件的物理删除至少延迟 7 天"。
     FILE_DELETION_DELAY_DAYS: int = 7
 
+    # SPEC 19.3: "PENDING 不存在最终文件且超过 1 小时时，一致性命令标记为 FAILED"。
+    FILE_PENDING_TIMEOUT_HOURS: int = 1
+
+    # SPEC 19.3: "临时目录中超过 24 小时且没有活动上传的文件必须清理"。
+    FILE_TEMP_MAX_AGE_HOURS: int = 24
+
+    # SPEC 19.4: "未被引用的正式文件按保留期清理，保留期不短于 7 天"。
+    FILE_UNREFERENCED_RETENTION_DAYS: int = 7
+
     # ── 模型级校验 ────────────────────────────────────────────────────
 
     def __init__(self, **values: Any) -> None:

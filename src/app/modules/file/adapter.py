@@ -22,6 +22,7 @@ from app.modules.file.port import FileReferencePort, FileRepository
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from datetime import datetime
     from typing import BinaryIO
     from uuid import UUID
 
@@ -116,6 +117,43 @@ class SqlAlchemyFileRepository(FileRepository):
         total = count_result.scalar() or 0
 
         return files, total
+
+    async def list_by_status(self, status: FileStatus) -> list[FileMetadata]:
+        """查询指定状态的全部文件元数据 — reconcile 用."""
+
+        stmt = (
+            select(FileMetadataORM)
+            .where(FileMetadataORM.status == status.value)
+            .order_by(FileMetadataORM.created_at.asc())
+        )
+        result = await self._session.execute(stmt)
+        return [_orm_to_metadata(orm) for orm in result.scalars().all()]
+
+    async def list_unreferenced_ready(
+        self,
+        before: datetime,
+    ) -> list[FileMetadata]:
+        """查询无业务引用且创建时间早于指定截止时间的 READY 文件 — 受控清理用.
+
+        SPEC 19.4: "未被引用的正式文件由受控清理命令按保留期清理"。
+        使用 LEFT JOIN 过滤无引用的 READY 文件。
+        """
+
+        stmt = (
+            select(FileMetadataORM)
+            .outerjoin(
+                FileReferenceORM,
+                FileReferenceORM.file_id == FileMetadataORM.id,
+            )
+            .where(
+                FileMetadataORM.status == FileStatus.READY.value,
+                FileMetadataORM.created_at < before,
+                FileReferenceORM.id.is_(None),
+            )
+            .order_by(FileMetadataORM.created_at.asc())
+        )
+        result = await self._session.execute(stmt)
+        return [_orm_to_metadata(orm) for orm in result.scalars().all()]
 
 
 class SqlAlchemyFileReferenceAdapter(FileReferencePort):

@@ -24,9 +24,10 @@ from typing import TYPE_CHECKING, BinaryIO
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
+    from datetime import datetime
     from uuid import UUID
 
-    from app.modules.file.models import FileMetadata
+    from app.modules.file.models import FileMetadata, FileStatus
 
 
 class FileRepository(ABC):
@@ -66,6 +67,24 @@ class FileRepository(ABC):
         limit: int = 100,
     ) -> tuple[list[FileMetadata], int]:
         """查询指定上传者的文件列表（分页）."""
+
+    @abstractmethod
+    async def list_by_status(self, status: FileStatus) -> list[FileMetadata]:
+        """查询指定状态的全部文件元数据 — reconcile 用.
+
+        SPEC 19.3: 一致性命令需要扫描各状态的文件执行恢复或标记。
+        """
+
+    @abstractmethod
+    async def list_unreferenced_ready(
+        self,
+        before: datetime,
+    ) -> list[FileMetadata]:
+        """查询无业务引用且创建时间早于指定截止时间的 READY 文件 — 受控清理用.
+
+        SPEC 19.4: "未被引用的正式文件由受控清理命令按保留期清理"。
+        返回 READY 状态、无 file_references 记录且 created_at < before 的文件。
+        """
 
 
 class FileReferencePort(ABC):
@@ -242,3 +261,21 @@ class FileStoragePort(ABC):
     @abstractmethod
     def cleanup_temp(self, path: str) -> None:
         """清理临时文件 — 尽力删除，不抛出异常."""
+
+    @abstractmethod
+    def compute_sha256(self, path: str) -> str:
+        """计算文件 SHA-256 摘要 — reconcile 一致性校验用.
+
+        SPEC 19.3: "PENDING 存在最终文件且哈希一致时，一致性命令将其推进为 READY"。
+        """
+
+    @abstractmethod
+    def list_temp_dir(self) -> list[str]:
+        """列出临时目录中的全部文件名 — 受控清理用.
+
+        SPEC 19.3: "临时目录中超过 24 小时且没有活动上传的文件必须清理"。
+        """
+
+    @abstractmethod
+    def get_mtime(self, path: str) -> float:
+        """获取文件修改时间（epoch 秒）— 判断临时文件是否过期用."""

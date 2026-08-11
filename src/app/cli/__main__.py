@@ -178,6 +178,33 @@ def _create_parser() -> argparse.ArgumentParser:
         help="实际执行删除（默认 dry-run 只报告）",
     )
 
+    # files 子命令 — SPEC 25.3
+    files_parser = subparsers.add_parser(
+        "files",
+        help="文件管理",
+    )
+    files_sub = files_parser.add_subparsers(
+        dest="files_command",
+        required=True,
+    )
+    reconcile_parser = files_sub.add_parser(
+        "reconcile",
+        help="文件一致性恢复与受控清理（默认 dry-run）",
+    )
+    reconcile_mode = reconcile_parser.add_mutually_exclusive_group()
+    reconcile_mode.add_argument(
+        "--apply",
+        action="store_true",
+        default=False,
+        help="实际执行恢复或标记（默认 dry-run 只报告）",
+    )
+    reconcile_mode.add_argument(
+        "--dry-run",
+        action="store_true",
+        default=False,
+        help="仅报告不一致，不修改数据与文件（默认行为）",
+    )
+
     return parser
 
 
@@ -945,6 +972,103 @@ def _cmd_sysconfig_re_encrypt() -> int:
         return 1
 
 
+# ── files reconcile — SPEC 19.3 / 25.3 ─────────────────────────────────────
+
+
+async def _run_files_reconcile(
+    database_url: str,
+    *,
+    storage_root: str,
+    pending_timeout_hours: int,
+    temp_max_age_hours: int,
+    deletion_delay_days: int,
+    unreferenced_retention_days: int,
+    apply: bool,
+) -> int:
+    """异步执行 files reconcile — SPEC 19.3 / 19.4 / 25.3.
+
+    SPEC 25.3: 所有修复命令默认 dry-run；实际修改必须使用显式 ``--apply``
+    并记录审计或运维日志。
+    """
+
+    from app.application.ports import SystemClock
+    from app.infrastructure.db.engine import create_db_engine
+    from app.infrastructure.db.uow import SqlAlchemyUnitOfWork
+    from app.modules.file.reconcile import (
+        ReconcileConfig,
+        execute_reconcile,
+        format_reconcile_report,
+    )
+    from app.modules.file.storage import LocalFileStorageAdapter
+
+    config = ReconcileConfig(
+        pending_timeout_hours=pending_timeout_hours,
+        temp_max_age_hours=temp_max_age_hours,
+        deletion_delay_days=deletion_delay_days,
+        unreferenced_retention_days=unreferenced_retention_days,
+    )
+    clock = SystemClock()
+    storage = LocalFileStorageAdapter(storage_root)
+
+    engine = create_db_engine(database_url)
+    try:
+        uow = SqlAlchemyUnitOfWork(engine)
+        async with uow:
+            result = await execute_reconcile(
+                config=config,
+                clock=clock,
+                apply=apply,
+                uow=uow,
+                storage=storage,
+            )
+            if apply:
+                await uow.commit()
+
+        print(format_reconcile_report(result))
+
+        if not apply:
+            print(
+                "使用 --apply 执行实际修改（SPEC 25.3: 显式 --apply 才修改数据）",
+            )
+        else:
+            print("一致性恢复已完成并提交")
+
+        return 0
+    finally:
+        await engine.dispose()
+
+
+def _cmd_files_reconcile(args: argparse.Namespace) -> int:
+    """执行 files reconcile 命令 — SPEC 19.3 / 25.3.
+
+    SPEC 25.3: 默认 dry-run，仅报告不一致；``--apply`` 执行修改。
+    """
+
+    apply = getattr(args, "apply", False)
+
+    try:
+        settings = Settings()
+    except Exception as exc:
+        print(f"配置加载失败: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        return asyncio.run(
+            _run_files_reconcile(
+                settings.DATABASE_URL,
+                storage_root=settings.FILE_STORAGE_ROOT,
+                pending_timeout_hours=settings.FILE_PENDING_TIMEOUT_HOURS,
+                temp_max_age_hours=settings.FILE_TEMP_MAX_AGE_HOURS,
+                deletion_delay_days=settings.FILE_DELETION_DELAY_DAYS,
+                unreferenced_retention_days=settings.FILE_UNREFERENCED_RETENTION_DAYS,
+                apply=apply,
+            ),
+        )
+    except Exception as exc:
+        print(f"文件一致性恢复失败: {exc}", file=sys.stderr)
+        return 1
+
+
 # ── audit cleanup — SPEC 18.4 / 25.3 ──────────────────────────────────────
 
 
@@ -1078,6 +1202,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "audit" and args.audit_command == "cleanup":
         return _cmd_audit_cleanup(args)
+
+    if args.command == "files" and args.files_command == "reconcile":
+        return _cmd_files_reconcile(args)
 
     if args.command == "db":
         if args.db_command == "check":

@@ -50,6 +50,7 @@ PERMISSION_FILE_WRITE = "file:manage:write"
 #: 审计动作 — SPEC 18.2 / 19.2: 记录操作模块和动作。
 AUDIT_FILE_UPLOAD = "file.upload"
 AUDIT_FILE_DELETE = "file.delete"
+AUDIT_FILE_RECONCILE = "file.reconcile"
 
 #: Alembic 迁移版本目录（相对于项目根 / CWD）。
 ALEMBIC_VERSION_DIR = "src/app/modules/file/migrations"
@@ -87,6 +88,7 @@ MODULE_DEFINITION = ModuleDefinition(
     audit_actions=(
         AUDIT_FILE_UPLOAD,
         AUDIT_FILE_DELETE,
+        AUDIT_FILE_RECONCILE,
     ),
     protected_resource_types=("file",),
     initializers=(),
