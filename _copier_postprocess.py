@@ -419,6 +419,8 @@ def main() -> None:
     # 写入 .copier-answers.yml
     _write_answers_file(answers)
 
+    # 删除自身 — SPEC 30.3: 生成后产物 _copier_postprocess.py 不应残留
+    Path(__file__).unlink(missing_ok=True)
     print("[postprocess] 身份替换完成")
 
 

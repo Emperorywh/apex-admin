@@ -47,7 +47,7 @@ SPEC 版本：9de44cc2b96c129ee0adeb0be142242a4052a4653a00dc94d44564aa47a58637
 | `uv sync --frozen` | verify_generated.py --gate g123 在生成项目中执行 uv sync --frozen 退出码 0 | ✅ 本地通过 |
 | 数据库迁移 | 生成项目中 alembic upgrade head 成功，alembic heads 输出恰好一个 head | ✅ 本地通过 |
 | G1-G3 测试 | 生成项目中 `pytest -m "g1 or g2 or g3"` 全部通过 | ✅ 本地通过 |
-| 标识残留检查 | 生成项目中无 `apex-admin` / `APEX_` / `urn:apex` 残留 | ✅ 本地通过 |
+| 标识残留检查 | 生成项目中无原基座项目标识残留（项目名/配置前缀/URN 命名空间） | ✅ 本地通过 |
 | G4 本地子集在生成项目中通过 | `verify_generated.py --gate g4` 执行 `(g1 or g2 or g3) or (g4 and not integration)` | ✅ 本地通过 |
 
 ---
