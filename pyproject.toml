@@ -31,6 +31,8 @@ dependencies = [
     "structlog>=25.4,<26",
     # Multipart 文件上传支持（SPEC 19.2: 文件上传）
     "python-multipart>=0.0.20,<0.1",
+    # Prometheus 运行指标采集（SPEC 24.2）
+    "prometheus-client>=0.21,<0.22",
 ]
 
 [project.optional-dependencies]

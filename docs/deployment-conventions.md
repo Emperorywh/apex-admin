@@ -112,3 +112,46 @@ APEX_ALLOWED_ORIGINS=https://admin.example.com,https://www.example.com
 
 上传接口的文件大小和数量在应用层进一步限制（`APEX_FILE_MAX_SIZE_BYTES`、
 `APEX_FILE_MAX_UPLOAD_COUNT`），HTTP 层的请求体限制是第一道防线。
+
+## 7. /metrics 端点暴露边界
+
+> SPEC 24.2: "指标接口受到访问限制"
+
+**约定：** `/metrics` 端点通过部署配置令牌保护，且 **不经 Nginx 对外暴露**。
+仅允许内网（Docker Compose 隔离网络）的 Prometheus 实例通过令牌抓取。
+
+### 访问控制
+
+- `/metrics` 要求 `Authorization: Bearer <token>` 头，令牌值必须与
+  `APEX_METRICS_TOKEN` 精确匹配。
+- 无有效令牌时返回 HTTP 403。
+- 生产环境 **必须** 设置 `APEX_METRICS_TOKEN`（未设置时启动失败）。
+
+### Nginx 配置约定
+
+Nginx 反向代理 **不得** 将 `/metrics` 路径代理到 API 容器。
+Prometheus 抓取应直接访问 API 容器的内网地址（如 `http://api:8000/metrics`），
+绕过 Nginx。
+
+示例 Nginx 配置（显式排除 `/metrics`）：
+
+```nginx
+location /metrics {
+    return 404;
+}
+```
+
+### Docker Compose 网络约定
+
+- API 容器仅通过 Docker Compose 内部网络暴露 `/metrics`，
+  不映射到宿主机公网端口。
+- Prometheus 容器加入同一 Compose 网络，直连 API 容器抓取。
+
+### 配置
+
+| 配置项 | 说明 | 默认值 |
+| --- | --- | --- |
+| `APEX_METRICS_TOKEN` | /metrics 访问令牌（Bearer Token） | 生产环境必须设置 |
+| `APEX_SLOW_REQUEST_THRESHOLD_MS` | 慢请求阈值（毫秒），超限记录结构化日志 | 2000 |
+| `APEX_SLOW_QUERY_THRESHOLD_MS` | 慢查询阈值（毫秒），超限记录结构化日志 | 500 |
+

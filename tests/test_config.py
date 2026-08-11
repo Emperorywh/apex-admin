@@ -155,6 +155,7 @@ def test_production_valid_keys_succeed() -> None:
         REFRESH_TOKEN_HMAC_KEY="valid-refresh-key-" + "b" * 16,
         SYSCONFIG_ENCRYPTION_KEY="T44-h5wE4-HJ69EZjyDir3a_DNQFAT5DMW8De0tXijU=",
         TRUSTED_HOSTS="admin.example.com",
+        METRICS_TOKEN="prod-metrics-secret-token",
     )
     assert settings.ENVIRONMENT == Environment.PRODUCTION
 

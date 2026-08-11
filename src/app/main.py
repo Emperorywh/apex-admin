@@ -26,6 +26,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from app.api.exception_handlers import register_exception_handlers
 from app.api.health import router as health_router
 from app.api.meta import router as meta_router
+from app.api.metrics import router as metrics_router
 from app.api.middleware import RequestContextMiddleware
 from app.api.security import (
     RequestBodySizeMiddleware,
@@ -34,6 +35,7 @@ from app.api.security import (
 )
 from app.core.config import Settings
 from app.core.logging import configure_logging
+from app.core.metrics.middleware import MetricsMiddleware
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -64,6 +66,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     # 初始化数据库引擎与连接池（SPEC 6.1 / 8.1）
     from app.composition.modules import MODULE_VERSION_LOCATIONS
+    from app.core.metrics.db_events import register_db_metrics
     from app.infrastructure.db.engine import create_db_engine
     from app.infrastructure.db.health import DbHealthChecker
     from app.infrastructure.db.migrations import get_head_revision
@@ -74,6 +77,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         max_overflow=settings.DB_MAX_OVERFLOW,
     )
     app.state.db_engine = engine
+
+    # 注册数据库指标事件监听器（SPEC 24.2: 连接池状态与慢查询识别）
+    register_db_metrics(
+        engine,
+        slow_query_threshold_ms=settings.SLOW_QUERY_THRESHOLD_MS,
+    )
 
     # 创建健康检查器 — 比较数据库 revision 与应用 head（SPEC 6.2）
     try:
@@ -149,6 +158,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # 内层: Request ID 注入与请求日志（SPEC 9.5 / 24.1）
     app.add_middleware(RequestContextMiddleware)
 
+    # 请求指标采集（SPEC 24.2: 请求数量/错误/耗时/慢接口识别）
+    app.add_middleware(
+        MetricsMiddleware,
+        slow_request_threshold_ms=settings.SLOW_REQUEST_THRESHOLD_MS,
+    )
+
     # 可信代理头处理 — 仅信任配置来源的 X-Forwarded-*（SPEC 23.1 / 26.3）
     app.add_middleware(
         TrustedProxyMiddleware,
@@ -188,6 +203,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     # 挂载路由 — health 端点挂载在根路径（SPEC 6.2）
     app.include_router(health_router)
+
+    # /metrics 端点挂载在根路径（SPEC 24.2: 令牌保护，Nginx 不代理）
+    app.include_router(metrics_router)
 
     # meta 端点使用 API 前缀（SPEC 9.1）
     app.include_router(meta_router, prefix=settings.API_PREFIX)

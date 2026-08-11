@@ -202,6 +202,7 @@ class TestProductionStartupValidation:
             "SYSCONFIG_ENCRYPTION_KEY": "T44-h5wE4-HJ69EZjyDir3a_DNQFAT5DMW8De0tXijU=",
             "TRUSTED_HOSTS": "admin.example.com",
             "ALLOWED_ORIGINS": "https://admin.example.com",
+            "METRICS_TOKEN": "prod-metrics-secret-token",
         }
 
     def test_cors_wildcard_fails_in_production(self) -> None:
@@ -445,6 +446,7 @@ class TestProductionLogProfile:
             REFRESH_TOKEN_HMAC_KEY="prod-refresh-key-" + "b" * 16,
             SYSCONFIG_ENCRYPTION_KEY="T44-h5wE4-HJ69EZjyDir3a_DNQFAT5DMW8De0tXijU=",
             TRUSTED_HOSTS="admin.example.com",
+            METRICS_TOKEN="prod-metrics-secret-token",
         )
 
     def test_prod_output_is_single_line_json(self) -> None:

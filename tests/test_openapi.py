@@ -136,6 +136,8 @@ def test_production_disables_docs() -> None:
         ACCESS_TOKEN_HMAC_KEY="a" * 32,
         REFRESH_TOKEN_HMAC_KEY="b" * 32,
         SYSCONFIG_ENCRYPTION_KEY="T44-h5wE4-HJ69EZjyDir3a_DNQFAT5DMW8De0tXijU=",
+        TRUSTED_HOSTS="testserver,admin.example.com",
+        METRICS_TOKEN="prod-metrics-secret-token",
     )
     app = create_app(settings)
     with TestClient(app) as client:
@@ -156,6 +158,8 @@ def test_production_explicitly_enables_docs() -> None:
         ACCESS_TOKEN_HMAC_KEY="a" * 32,
         REFRESH_TOKEN_HMAC_KEY="b" * 32,
         SYSCONFIG_ENCRYPTION_KEY="T44-h5wE4-HJ69EZjyDir3a_DNQFAT5DMW8De0tXijU=",
+        TRUSTED_HOSTS="testserver,admin.example.com",
+        METRICS_TOKEN="prod-metrics-secret-token",
     )
     app = create_app(settings)
     with TestClient(app) as client:

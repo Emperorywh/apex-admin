@@ -213,6 +213,20 @@ class Settings(BaseSettings):
     # 空字符串表示不信任任何代理头（开发/测试默认）。
     TRUSTED_PROXIES: str = ""
 
+    # ── 运行指标配置（SPEC 24.2）──────────────────────────────────────
+    # SPEC 24.2: "指标接口受到访问限制"。
+    # /metrics 端点通过部署配置令牌保护，Nginx 不代理该路径，
+    # compose 内仅内网可达。生产环境必须设置 METRICS_TOKEN。
+
+    # /metrics 端点访问令牌（Bearer Token）。None 表示开发/测试默认令牌。
+    METRICS_TOKEN: SecretStr | None = None
+
+    # 慢请求阈值（毫秒）。超过时记录结构化慢请求日志（SPEC 24.2）。
+    SLOW_REQUEST_THRESHOLD_MS: int = 2000
+
+    # 慢查询阈值（毫秒）。超过时记录结构化慢查询日志（SPEC 24.2）。
+    SLOW_QUERY_THRESHOLD_MS: int = 500
+
     # ── 模型级校验 ────────────────────────────────────────────────────
 
     def __init__(self, **values: Any) -> None:
@@ -226,6 +240,7 @@ class Settings(BaseSettings):
         self._resolve_token_keys()
         self._resolve_sysconfig_key()
         self._validate_production_http_security()
+        self._resolve_metrics_token()
 
     def _resolve_token_keys(self) -> None:
         """解析 Token 密钥：开发环境填充默认值，生产环境强制校验.
@@ -308,6 +323,24 @@ class Settings(BaseSettings):
             raise ValueError(
                 "生产环境禁止使用通配 Host '*'，请设置明确的 APEX_TRUSTED_HOSTS",
             )
+
+    def _resolve_metrics_token(self) -> None:
+        """解析 /metrics 端点访问令牌 — SPEC 24.2.
+
+        生产环境必须显式设置 METRICS_TOKEN。
+        开发/测试环境未设置时填充默认值。
+        """
+
+        metrics_raw = self._extract_raw(self.METRICS_TOKEN)
+
+        if self.ENVIRONMENT == Environment.PRODUCTION:
+            if metrics_raw is None:
+                raise ValueError(
+                    "生产环境必须设置 APEX_METRICS_TOKEN 以保护 /metrics 端点",
+                )
+        else:
+            if metrics_raw is None:
+                self.METRICS_TOKEN = SecretStr("dev-metrics-token")
 
     @staticmethod
     def _validate_production_sysconfig_key(key_raw: str | None) -> None:
