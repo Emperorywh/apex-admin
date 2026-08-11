@@ -24,6 +24,9 @@ from pathlib import Path
 import pytest
 import yaml
 
+# 全部测试为静态文件分析（不依赖 nginx 或 Docker），可本地执行
+pytestmark = pytest.mark.unit
+
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _NGINX_CONF = _PROJECT_ROOT / "deploy" / "nginx" / "apex.conf"
 _LINT_SCRIPT = _PROJECT_ROOT / "scripts" / "lint_nginx.py"

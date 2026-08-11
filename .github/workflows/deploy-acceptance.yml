@@ -1,0 +1,342 @@
+# =============================================================================
+# Apex Admin Docker 部署验收工作流（SPEC 34.4 / 28.6 / 30.3）
+#
+# 在 GitHub Actions 中执行全部 Docker 依赖验收条目:
+#   1. Copier 模板生成实例（SPEC 30.3: 工作流运行于生成实例）
+#   2. docker compose config --quiet（SPEC 34.4 / 28.6）
+#   3. 应用镜像构建（SPEC 34.4 / 26.2）
+#   4. 容器内 nginx -t（SPEC 34.4 / 26.3 / 28.6）
+#   5. 非 root 用户与无开发密钥检查（SPEC 34.4 / 26.2 / 28.6）
+#   6. 全栈启动: ≥2 API Worker + PostgreSQL + Nginx + 一次性 migrate（SPEC 34.4）
+#   7. 双 API Worker 一致性: 会话吊销/权限变更/文件访问跨 Worker（SPEC 5.3 / 34.4 / 28.6）
+#   8. HTTPS/代理头/Host/CORS/登录与刷新限流集成测试（SPEC 23.1 / 23.4 / 26.3 / 34.4）
+#   9. 发布门禁: 未迁移不就绪→停机切换→就绪（SPEC 26.1 / 34.4 / 28.6）
+#  10. 优雅关闭: 不接受新请求，进行中请求完成，连接释放（SPEC 6.1 / 26.1 / 34.4）
+#  11. 备份恢复演练与 RPO/RTO 报告（SPEC 27.1 / 27.2 / 34.4）
+#  12. 私有文件禁止绕过授权下载（SPEC 19.2 / 26.3 / 34.4）
+#
+# 本机无 Docker，容器类验证仅在此工作流执行。
+# =============================================================================
+
+name: Deploy Acceptance (G4)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.13"
+  PROJECT_SLUG: "my-backend"
+
+jobs:
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # Job 1: 生成 Copier 模板实例（SPEC 30.3 / 34.4）
+  # ═══════════════════════════════════════════════════════════════════════
+  generate:
+    name: 生成模板项目
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.x"
+          enable-cache: true
+
+      - name: 设置 Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: 安装 Copier
+        run: uv pip install copier
+
+      - name: 生成 Copier 模板项目
+        run: |
+          uv run copier copy --defaults --vcs-ref HEAD --trust . /tmp/generated
+
+      - name: 上传生成项目
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-project
+          path: /tmp/generated
+          retention-days: 1
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # Job 2: 本地 g4 测试子集（不依赖 Docker，SPEC 34.4: uv run pytest -m g4）
+  # ═══════════════════════════════════════════════════════════════════════
+  g4-local:
+    name: 本地 g4 测试子集
+    needs: generate
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: my_backend
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: my_backend
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U my_backend"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      APP_TEST_DATABASE_URL: postgresql+psycopg://my_backend:test_password@localhost:5432/my_backend
+    steps:
+      - name: 下载生成项目
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-project
+          path: /tmp/generated
+
+      - name: 安装 uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.x"
+          enable-cache: true
+
+      - name: 设置 Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: uv sync --frozen
+        working-directory: /tmp/generated
+        run: uv sync --frozen
+
+      - name: alembic upgrade head
+        working-directory: /tmp/generated
+        run: |
+          uv run alembic -c alembic.ini upgrade head
+
+      # SPEC 34.4: 本地可执行的 g4 子集（不依赖 Docker）
+      - name: pytest g4 local subset
+        working-directory: /tmp/generated
+        run: uv run pytest -q -m "g4 and (unit or api)"
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # Job 3: compose 配置校验（SPEC 34.4 / 28.6: docker compose config --quiet）
+  # ═══════════════════════════════════════════════════════════════════════
+  compose-validate:
+    name: Compose 配置校验
+    needs: generate
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载生成项目
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-project
+          path: /tmp/generated
+
+      - name: 生成测试环境变量文件
+        working-directory: /tmp/generated
+        run: |
+          cat > deploy/.env.test <<'EOF'
+          POSTGRES_PASSWORD=test-strong-password-12345
+          APP_ACCESS_TOKEN_HMAC_KEY=aabbccdd11223344aabbccdd11223344
+          APP_REFRESH_TOKEN_HMAC_KEY=eeff001122334455eeff001122334455
+          APP_SYSCONFIG_ENCRYPTION_KEY=dGVzdC1mZXJuZXQta2V5LTMyLWJ5dGVzLXh4eHg=
+          APP_ALLOWED_ORIGINS=https://localhost
+          APP_TRUSTED_HOSTS=localhost
+          APP_TRUSTED_PROXIES=nginx
+          APP_METRICS_TOKEN=test-metrics-token
+          APP_VERSION=0.1.0
+          GIT_SHA=ci-test
+          NGINX_HTTP_PORT=80
+          NGINX_HTTPS_PORT=443
+          EOF
+
+      # SPEC 28.6 / 34.4: docker compose config --quiet 返回 0
+      - name: docker compose config --quiet
+        working-directory: /tmp/generated/deploy
+        run: docker compose --env-file .env.test config --quiet
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # Job 4: 镜像构建与容器检查（SPEC 34.4 / 26.2 / 28.6）
+  # ═══════════════════════════════════════════════════════════════════════
+  image-checks:
+    name: 镜像构建与容器检查
+    needs: compose-validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载生成项目
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-project
+          path: /tmp/generated
+
+      # SPEC 34.4 / 26.2: 应用镜像构建返回 0
+      - name: 构建应用镜像
+        working-directory: /tmp/generated
+        run: |
+          docker build \
+            --build-arg APP_VERSION=0.1.0 \
+            --build-arg GIT_SHA=ci-test \
+            -t my-backend:0.1.0 \
+            .
+
+      # SPEC 34.4 / 26.3 / 28.6: 容器内 nginx -t 返回 0
+      - name: 容器内 nginx -t
+        run: |
+          docker run --rm \
+            -v /tmp/generated/deploy/nginx:/etc/nginx/conf.d:ro \
+            nginx:stable \
+            nginx -t
+
+      # SPEC 34.4 / 26.2 / 28.6: API 容器以非 root 用户运行
+      - name: 非 root 用户检查
+        run: |
+          USER=$(docker run --rm my-backend:0.1.0 id -u)
+          echo "容器用户 UID: $USER"
+          if [ "$USER" = "0" ]; then
+            echo "[FAIL] 容器以 root 运行"
+            exit 1
+          fi
+          echo "[OK] 容器以非 root 用户运行"
+
+      # SPEC 34.4 / 26.2 / 28.6: 容器内不存在开发密钥和测试数据
+      - name: 无开发密钥检查
+        run: |
+          echo "检查镜像中不存在 .env / 密钥文件 / 测试数据..."
+          # .env 文件不应存在
+          if docker run --rm my-backend:0.1.0 test -f /app/.env; then
+            echo "[FAIL] 镜像包含 .env 文件"
+            exit 1
+          fi
+          # .pem 密钥文件不应存在
+          if docker run --rm my-backend:0.1.0 find /app -name "*.pem" -o -name "*.key" | head -1; then
+            echo "[FAIL] 镜像包含密钥文件"
+            exit 1
+          fi
+          # tests/ 目录不应存在
+          if docker run --rm my-backend:0.1.0 test -d /app/tests; then
+            echo "[FAIL] 镜像包含测试目录"
+            exit 1
+          fi
+          echo "[OK] 镜像不含开发密钥和测试数据"
+
+      # SPEC 34.4 / 26.1: 保存镜像供后续 Job 使用
+      - name: 保存镜像
+        run: docker save my-backend:0.1.0 -o /tmp/image.tar
+
+      - name: 上传镜像
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp/image.tar
+          retention-days: 1
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # Job 5: 全栈集成测试（SPEC 34.4 / 28.6 全部 Docker 依赖条目）
+  # ═══════════════════════════════════════════════════════════════════════
+  stack-integration:
+    name: 全栈集成测试
+    needs: image-checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: 下载生成项目
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-project
+          path: /tmp/generated
+
+      - name: 下载镜像
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp
+
+      - name: 加载镜像
+        run: docker load -i /tmp/image.tar
+
+      - name: 生成自签名 TLS 证书
+        working-directory: /tmp/generated/deploy
+        run: |
+          mkdir -p certs
+          openssl req -x509 -newkey rsa:2048 -nodes \
+            -keyout certs/privkey.pem \
+            -out certs/fullchain.pem \
+            -days 1 \
+            -subj "/CN=localhost"
+
+      - name: 生成测试环境变量文件
+        working-directory: /tmp/generated/deploy
+        run: |
+          cat > .env.test <<'EOF'
+          POSTGRES_PASSWORD=test-strong-password-12345
+          APP_ACCESS_TOKEN_HMAC_KEY=aabbccdd11223344aabbccdd11223344
+          APP_REFRESH_TOKEN_HMAC_KEY=eeff001122334455eeff001122334455
+          APP_SYSCONFIG_ENCRYPTION_KEY=dGVzdC1mZXJuZXQta2V5LTMyLWJ5dGVzLXh4eHg=
+          APP_ALLOWED_ORIGINS=https://localhost
+          APP_TRUSTED_HOSTS=localhost
+          APP_TRUSTED_PROXIES=nginx
+          APP_METRICS_TOKEN=test-metrics-token
+          APP_VERSION=0.1.0
+          GIT_SHA=ci-test
+          NGINX_HTTP_PORT=80
+          NGINX_HTTPS_PORT=443
+          EOF
+
+      # SPEC 34.4 / 26.1: 启动全栈（≥2 API Worker + PostgreSQL + Nginx + migrate）
+      - name: 启动 Compose 全栈
+        working-directory: /tmp/generated/deploy
+        run: docker compose --env-file .env.test up -d --wait
+
+      # SPEC 34.4 / 26.1: 验证容器达到预期终态或健康状态
+      - name: 验证容器健康状态
+        working-directory: /tmp/generated/deploy
+        run: |
+          echo "容器状态:"
+          docker compose ps
+
+          # 验证 API Worker 数量 ≥ 2
+          WORKER_COUNT=$(docker compose ps --format json api 2>/dev/null | grep -c "running" || true)
+          # compose replicas=2 生成 api-1 和 api-2
+          TOTAL_API=$(docker compose ps -a --format '{{.Name}}' | grep -c "api" || true)
+          echo "API 容器数量: $TOTAL_API"
+          if [ "$TOTAL_API" -lt 2 ]; then
+            echo "[FAIL] API Worker 数量 < 2"
+            exit 1
+          fi
+          echo "[OK] API Worker 数量 ≥ 2"
+
+      # SPEC 34.4 / 26.1: 创建管理员用户供集成测试使用
+      - name: 创建管理员用户
+        working-directory: /tmp/generated/deploy
+        run: |
+          # 等待 API 就绪
+          for i in $(seq 1 30); do
+            CODE=$(docker compose exec -T api python -c \
+              "import urllib.request; resp=urllib.request.urlopen('http://localhost:8000/health/ready'); print(resp.status)" 2>/dev/null || echo "fail")
+            if [ "$CODE" = "200" ]; then
+              break
+            fi
+            sleep 2
+          done
+
+          # 创建管理员用户（密码通过标准输入传入，SPEC 17.2）
+          echo 'Admin123!Password' | docker compose exec -T api \
+            python -m app.cli auth create-admin \
+            --username admin \
+            --email admin@example.com \
+            --password-stdin || true
+
+      # SPEC 34.4 / 28.6: 运行全部集成测试
+      - name: 运行部署验收集成测试
+        working-directory: /tmp/generated
+        run: |
+          python scripts/deploy_acceptance.py \
+            --host localhost \
+            --https-port 443 \
+            --admin-user admin \
+            --admin-password 'Admin123!Password'
+
+      # SPEC 34.4: 始终清理 — 停止并移除容器、网络、卷
+      - name: 清理 Compose 全栈
+        if: always()
+        working-directory: /tmp/generated/deploy
+        run: docker compose --env-file .env.test down -v --remove-orphans

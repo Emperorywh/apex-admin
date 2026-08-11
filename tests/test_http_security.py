@@ -65,6 +65,7 @@ def _make_test_app(**overrides: str) -> FastAPI:
 
 @pytest.mark.g4
 @pytest.mark.security
+@pytest.mark.unit
 class TestSecurityHeaders:
     """SPEC 23.1: 设置必要的安全响应头。"""
 
@@ -112,6 +113,7 @@ class TestSecurityHeaders:
 
 @pytest.mark.g4
 @pytest.mark.security
+@pytest.mark.unit
 class TestTrustedHost:
     """SPEC 23.1: 配置可信 Host。"""
 
@@ -147,6 +149,7 @@ class TestTrustedHost:
 
 @pytest.mark.g4
 @pytest.mark.security
+@pytest.mark.unit
 class TestCORSWhitelist:
     """SPEC 23.1: CORS 使用明确来源白名单。"""
 
@@ -253,6 +256,7 @@ class TestProductionStartupValidation:
 
 @pytest.mark.g4
 @pytest.mark.security
+@pytest.mark.unit
 class TestRequestBodySizeLimit:
     """SPEC 23.1: 限制请求体大小，上传接口适用更严格限制。"""
 
@@ -334,6 +338,7 @@ class TestRequestBodySizeLimit:
 
 @pytest.mark.g4
 @pytest.mark.security
+@pytest.mark.unit
 class TestTrustedProxyHeaders:
     """SPEC 23.1 / 26.3: 可信代理头仅在接受配置来源时被采信。"""
 

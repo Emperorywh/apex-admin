@@ -27,6 +27,9 @@ if TYPE_CHECKING:
 
 # ── 路径常量 ───────────────────────────────────────────────────────────────
 
+# 全部测试为静态文件分析（不依赖 Docker 或外部服务），可本地执行
+pytestmark = pytest.mark.unit
+
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _DOCKERFILE = _PROJECT_ROOT / "Dockerfile"
 _DOCKERIGNORE = _PROJECT_ROOT / ".dockerignore"

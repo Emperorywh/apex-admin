@@ -22,6 +22,7 @@ _COMPOSE_YAML = _PROJECT_ROOT / "deploy" / "compose.yaml"
 
 @pytest.mark.g4
 @pytest.mark.deployment
+@pytest.mark.unit
 class TestBackupRecoveryDocs:
     """SPEC 27.3: 恢复文档含三步骤。"""
 
@@ -86,6 +87,7 @@ class TestBackupRecoveryDocs:
 
 @pytest.mark.g4
 @pytest.mark.deployment
+@pytest.mark.unit
 class TestBackupSchedulingDocs:
     """SPEC 27.1: 每日备份与每月恢复演练的宿主机 cron/任务计划接入。"""
 
@@ -137,6 +139,7 @@ class TestBackupSchedulingDocs:
 
 @pytest.mark.g4
 @pytest.mark.deployment
+@pytest.mark.unit
 class TestBackupConfigFields:
     """SPEC 27.1: 备份配置字段。"""
 
@@ -182,6 +185,7 @@ class TestBackupConfigFields:
 
 @pytest.mark.g4
 @pytest.mark.deployment
+@pytest.mark.unit
 class TestComposeBackupVolume:
     """SPEC 27.1: compose.yaml 备份卷存在。"""
 
