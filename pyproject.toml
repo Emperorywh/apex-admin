@@ -29,6 +29,8 @@ dependencies = [
     "cryptography>=45,<46",
     # 结构化日志
     "structlog>=25.4,<26",
+    # Multipart 文件上传支持（SPEC 19.2: 文件上传）
+    "python-multipart>=0.0.20,<0.1",
 ]
 
 [project.optional-dependencies]

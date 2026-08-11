@@ -329,6 +329,796 @@
         }
       }
     },
+    "/api/v1/audit/logs": {
+      "get": {
+        "tags": [
+          "audit"
+        ],
+        "summary": "分页查询审计日志",
+        "description": "分页查询审计日志 — SPEC 18.3.\n\n支持按操作者/模块/动作/资源/结果/时间范围筛选（SPEC 18.3）。\n审计查询本身受到权限控制（SPEC 18.3）。",
+        "operationId": "list_audit_logs",
+        "parameters": [
+          {
+            "name": "actor_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "操作者标识筛选",
+              "title": "Actor Id"
+            },
+            "description": "操作者标识筛选"
+          },
+          {
+            "name": "module",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "操作模块筛选",
+              "title": "Module"
+            },
+            "description": "操作模块筛选"
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "审计动作筛选",
+              "title": "Action"
+            },
+            "description": "审计动作筛选"
+          },
+          {
+            "name": "resource_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "资源类型筛选",
+              "title": "Resource Type"
+            },
+            "description": "资源类型筛选"
+          },
+          {
+            "name": "resource_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "资源标识筛选",
+              "title": "Resource Id"
+            },
+            "description": "资源标识筛选"
+          },
+          {
+            "name": "result",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "操作结果筛选",
+              "title": "Result"
+            },
+            "description": "操作结果筛选"
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "发生时间下界（含），ISO 8601",
+              "title": "Start Time"
+            },
+            "description": "发生时间下界（含），ISO 8601"
+          },
+          {
+            "name": "end_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "发生时间上界（含），ISO 8601",
+              "title": "End Time"
+            },
+            "description": "发生时间上界（含），ISO 8601"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "页码，从 1 开始",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "页码，从 1 开始"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "每页数量，范围 1-100",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "每页数量，范围 1-100"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogPageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit/logs/export": {
+      "get": {
+        "tags": [
+          "audit"
+        ],
+        "summary": "导出审计日志（流式 CSV）",
+        "description": "流式导出审计日志为 CSV — SPEC 18.3.\n\nSPEC 18.3: 审计日志导出由审计模块以流式文件下载自行实现，\n不依赖 22.1 的通用导出扩展；导出属于受控操作并记录新的审计事件。",
+        "operationId": "export_audit_logs",
+        "parameters": [
+          {
+            "name": "actor_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "操作者标识筛选",
+              "title": "Actor Id"
+            },
+            "description": "操作者标识筛选"
+          },
+          {
+            "name": "module",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "操作模块筛选",
+              "title": "Module"
+            },
+            "description": "操作模块筛选"
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "审计动作筛选",
+              "title": "Action"
+            },
+            "description": "审计动作筛选"
+          },
+          {
+            "name": "resource_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "资源类型筛选",
+              "title": "Resource Type"
+            },
+            "description": "资源类型筛选"
+          },
+          {
+            "name": "resource_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "资源标识筛选",
+              "title": "Resource Id"
+            },
+            "description": "资源标识筛选"
+          },
+          {
+            "name": "result",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "操作结果筛选",
+              "title": "Result"
+            },
+            "description": "操作结果筛选"
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "发生时间下界（含），ISO 8601",
+              "title": "Start Time"
+            },
+            "description": "发生时间下界（含），ISO 8601"
+          },
+          {
+            "name": "end_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "发生时间上界（含），ISO 8601",
+              "title": "End Time"
+            },
+            "description": "发生时间上界（含），ISO 8601"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit/logs/{log_id}": {
+      "get": {
+        "tags": [
+          "audit"
+        ],
+        "summary": "查询审计日志详情",
+        "description": "查询单条审计日志详情 — SPEC 18.3.",
+        "operationId": "get_audit_log",
+        "parameters": [
+          {
+            "name": "log_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "审计日志 ID",
+              "title": "Log Id"
+            },
+            "description": "审计日志 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit/login-logs": {
+      "get": {
+        "tags": [
+          "audit"
+        ],
+        "summary": "分页查询登录日志",
+        "description": "分页查询登录日志 — SPEC 18.1 / 18.3.\n\n支持按用户/IP/结果/时间范围筛选（SPEC 18.1）。",
+        "operationId": "list_login_logs",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "用户标识筛选",
+              "title": "User Id"
+            },
+            "description": "用户标识筛选"
+          },
+          {
+            "name": "username",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "登录账号筛选",
+              "title": "Username"
+            },
+            "description": "登录账号筛选"
+          },
+          {
+            "name": "ip_address",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "客户端 IP 筛选",
+              "title": "Ip Address"
+            },
+            "description": "客户端 IP 筛选"
+          },
+          {
+            "name": "result",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "登录结果筛选",
+              "title": "Result"
+            },
+            "description": "登录结果筛选"
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "发生时间下界（含），ISO 8601",
+              "title": "Start Time"
+            },
+            "description": "发生时间下界（含），ISO 8601"
+          },
+          {
+            "name": "end_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "发生时间上界（含），ISO 8601",
+              "title": "End Time"
+            },
+            "description": "发生时间上界（含），ISO 8601"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "页码，从 1 开始",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "页码，从 1 开始"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "每页数量，范围 1-100",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "每页数量，范围 1-100"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginLogPageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit/login-logs/export": {
+      "get": {
+        "tags": [
+          "audit"
+        ],
+        "summary": "导出登录日志（流式 CSV）",
+        "description": "流式导出登录日志为 CSV — SPEC 18.3.",
+        "operationId": "export_login_logs",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "用户标识筛选",
+              "title": "User Id"
+            },
+            "description": "用户标识筛选"
+          },
+          {
+            "name": "username",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "登录账号筛选",
+              "title": "Username"
+            },
+            "description": "登录账号筛选"
+          },
+          {
+            "name": "ip_address",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "客户端 IP 筛选",
+              "title": "Ip Address"
+            },
+            "description": "客户端 IP 筛选"
+          },
+          {
+            "name": "result",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "登录结果筛选",
+              "title": "Result"
+            },
+            "description": "登录结果筛选"
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "发生时间下界（含），ISO 8601",
+              "title": "Start Time"
+            },
+            "description": "发生时间下界（含），ISO 8601"
+          },
+          {
+            "name": "end_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "发生时间上界（含），ISO 8601",
+              "title": "End Time"
+            },
+            "description": "发生时间上界（含），ISO 8601"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit/login-logs/{log_id}": {
+      "get": {
+        "tags": [
+          "audit"
+        ],
+        "summary": "查询登录日志详情",
+        "description": "查询单条登录日志详情 — SPEC 18.3.",
+        "operationId": "get_login_log",
+        "parameters": [
+          {
+            "name": "log_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "登录日志 ID",
+              "title": "Log Id"
+            },
+            "description": "登录日志 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginLogResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/users/me": {
       "get": {
         "tags": [
@@ -1696,6 +2486,2889 @@
           }
         }
       }
+    },
+    "/api/v1/departments": {
+      "post": {
+        "tags": [
+          "org"
+        ],
+        "summary": "创建部门",
+        "description": "创建部门 — HTTP 201 + Location（SPEC 9.3 / 14.1）.\n\n部门编码冲突返回 409（``ORG.DEPT_ALREADY_EXISTS``）。\n父部门不存在或已禁用返回 400（``ORG.DEPT_INVALID_PARENT``）。",
+        "operationId": "create_department",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DepartmentCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepartmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/departments/tree": {
+      "get": {
+        "tags": [
+          "org"
+        ],
+        "summary": "查询部门树",
+        "description": "查询部门树 — SPEC 14.1.\n\n返回完整的部门树结构。默认包含禁用部门（管理员需要看到完整结构）。\n当 ``include_disabled=false`` 时，禁用部门被排除。\n\nSPEC 14.1: \"部门禁用后树查询可见性符合文档规则\"。",
+        "operationId": "get_department_tree",
+        "parameters": [
+          {
+            "name": "include_disabled",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "是否包含禁用状态的部门（默认 true）",
+              "default": true,
+              "title": "Include Disabled"
+            },
+            "description": "是否包含禁用状态的部门（默认 true）"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DepartmentTreeResponse"
+                  },
+                  "title": "Response Get Department Tree"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/departments/{department_id}": {
+      "get": {
+        "tags": [
+          "org"
+        ],
+        "summary": "查询部门详情",
+        "description": "查询部门详情（含子部门数量）— SPEC 14.1.\n\n不存在返回 404（``ORG.DEPT_NOT_FOUND``）。",
+        "operationId": "get_department_detail",
+        "parameters": [
+          {
+            "name": "department_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "部门 ID",
+              "title": "Department Id"
+            },
+            "description": "部门 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepartmentDetailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "org"
+        ],
+        "summary": "更新部门",
+        "description": "更新部门基本信息 — SPEC 14.1.\n\n层级调整使用独立端点 ``PUT /departments/{id}/hierarchy``。",
+        "operationId": "update_department",
+        "parameters": [
+          {
+            "name": "department_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "部门 ID",
+              "title": "Department Id"
+            },
+            "description": "部门 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DepartmentUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepartmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "org"
+        ],
+        "summary": "删除部门",
+        "description": "删除部门 — SPEC 14.1.\n\nSPEC 14.1: \"有用户或子部门时的删除规则明确\"。\n- 存在子部门返回 409（``ORG.DEPT_HAS_CHILDREN``）。\n- 存在用户关联返回 409（``ORG.DEPT_HAS_USERS``）。",
+        "operationId": "delete_department",
+        "parameters": [
+          {
+            "name": "department_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "部门 ID",
+              "title": "Department Id"
+            },
+            "description": "部门 ID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/departments/{department_id}/enable": {
+      "post": {
+        "tags": [
+          "org"
+        ],
+        "summary": "启用部门",
+        "description": "启用部门 — SPEC 14.1.",
+        "operationId": "enable_department",
+        "parameters": [
+          {
+            "name": "department_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "部门 ID",
+              "title": "Department Id"
+            },
+            "description": "部门 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepartmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/departments/{department_id}/disable": {
+      "post": {
+        "tags": [
+          "org"
+        ],
+        "summary": "禁用部门",
+        "description": "禁用部门 — SPEC 14.1.\n\nSPEC 14.1: \"部门禁用后树查询可见性符合文档规则\"。\n禁用部门在树查询中标记为禁用但默认仍可见。",
+        "operationId": "disable_department",
+        "parameters": [
+          {
+            "name": "department_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "部门 ID",
+              "title": "Department Id"
+            },
+            "description": "部门 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepartmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/departments/{department_id}/hierarchy": {
+      "put": {
+        "tags": [
+          "org"
+        ],
+        "summary": "调整部门层级与排序",
+        "description": "调整部门层级与排序 — SPEC 14.1.\n\n循环防护:\n  - 直接循环（目标父部门是自身）返回 409（``ORG.DEPT_CYCLE_DETECTED``）。\n  - 间接循环（目标父部门是自身后代）返回 409（``ORG.DEPT_CYCLE_DETECTED``）。\n  - 并发调整通过事务级咨询锁序列化，防止竞态形成循环。\n\n父部门不存在或已禁用返回 400（``ORG.DEPT_INVALID_PARENT``）。",
+        "operationId": "adjust_department_hierarchy",
+        "parameters": [
+          {
+            "name": "department_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "部门 ID",
+              "title": "Department Id"
+            },
+            "description": "部门 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DepartmentHierarchyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepartmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/departments/{department_id}/leader": {
+      "put": {
+        "tags": [
+          "org"
+        ],
+        "summary": "设置部门负责人",
+        "description": "设置部门负责人 — SPEC 14.1.\n\n负责人引用用户 ID（跨模块不建数据库外键，SPEC 5.5）。\n通过 identity 模块 Port 校验用户存在性。\n不存在返回 404（``USER.NOT_FOUND``）。",
+        "operationId": "set_department_leader",
+        "parameters": [
+          {
+            "name": "department_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "部门 ID",
+              "title": "Department Id"
+            },
+            "description": "部门 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DepartmentLeaderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepartmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/posts": {
+      "post": {
+        "tags": [
+          "org"
+        ],
+        "summary": "创建岗位",
+        "description": "创建岗位 — HTTP 201 + Location（SPEC 9.3 / 14.2）.\n\nSPEC 14.2: \"岗位不直接替代角色和权限\"。\n岗位编码冲突返回 409（``ORG.POST_ALREADY_EXISTS``）。",
+        "operationId": "create_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "org"
+        ],
+        "summary": "查询岗位列表",
+        "description": "查询岗位列表 — SPEC 14.2.",
+        "operationId": "list_posts",
+        "parameters": [
+          {
+            "name": "include_disabled",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "是否包含禁用状态的岗位（默认 true）",
+              "default": true,
+              "title": "Include Disabled"
+            },
+            "description": "是否包含禁用状态的岗位（默认 true）"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PostResponse"
+                  },
+                  "title": "Response List Posts"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/posts/{post_id}": {
+      "get": {
+        "tags": [
+          "org"
+        ],
+        "summary": "查询岗位详情",
+        "description": "查询岗位详情 — SPEC 14.2.\n\n不存在返回 404（``ORG.POST_NOT_FOUND``）。",
+        "operationId": "get_post_detail",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "岗位 ID",
+              "title": "Post Id"
+            },
+            "description": "岗位 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostDetailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "org"
+        ],
+        "summary": "更新岗位",
+        "description": "更新岗位基本信息 — SPEC 14.2.",
+        "operationId": "update_post",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "岗位 ID",
+              "title": "Post Id"
+            },
+            "description": "岗位 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "org"
+        ],
+        "summary": "删除岗位",
+        "description": "删除岗位 — SPEC 14.2.\n\n存在用户关联返回 409（``ORG.POST_HAS_USERS``）。",
+        "operationId": "delete_post",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "岗位 ID",
+              "title": "Post Id"
+            },
+            "description": "岗位 ID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/posts/{post_id}/enable": {
+      "post": {
+        "tags": [
+          "org"
+        ],
+        "summary": "启用岗位",
+        "description": "启用岗位 — SPEC 14.2.",
+        "operationId": "enable_post",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "岗位 ID",
+              "title": "Post Id"
+            },
+            "description": "岗位 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/posts/{post_id}/disable": {
+      "post": {
+        "tags": [
+          "org"
+        ],
+        "summary": "禁用岗位",
+        "description": "禁用岗位 — SPEC 14.2.",
+        "operationId": "disable_post",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "岗位 ID",
+              "title": "Post Id"
+            },
+            "description": "岗位 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{user_id}/department": {
+      "put": {
+        "tags": [
+          "org"
+        ],
+        "summary": "设置用户主部门",
+        "description": "设置用户主部门 — SPEC 14.3.\n\nSPEC 14.3: \"用户具有明确的主部门\"。\n基座默认仅主部门。用户已有主部门时返回 409\n（``ORG.USER_ALREADY_HAS_DEPARTMENT``）。\n部门不存在返回 404（``ORG.DEPT_NOT_FOUND``）。\n部门已禁用返回 409（``ORG.DEPT_DISABLED``）。",
+        "operationId": "assign_user_department",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "用户 ID",
+              "title": "User Id"
+            },
+            "description": "用户 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignUserDepartmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Assign User Department"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "org"
+        ],
+        "summary": "移除用户主部门",
+        "description": "移除用户主部门 — SPEC 14.3.\n\n关系不存在返回 409（``ORG.USER_DEPT_NOT_FOUND``）。",
+        "operationId": "remove_user_department",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "用户 ID",
+              "title": "User Id"
+            },
+            "description": "用户 ID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{user_id}/posts": {
+      "post": {
+        "tags": [
+          "org"
+        ],
+        "summary": "为用户分配岗位",
+        "description": "为用户分配岗位 — SPEC 14.2.\n\nSPEC 14.2: \"为用户分配岗位\"。\n分配幂等——已存在时返回成功（无操作）。\n岗位不存在返回 404（``ORG.POST_NOT_FOUND``）。\n岗位已禁用返回 409（``ORG.POST_DISABLED``）。",
+        "operationId": "assign_user_post",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "用户 ID",
+              "title": "User Id"
+            },
+            "description": "用户 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignUserPostRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Assign User Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{user_id}/posts/{post_id}": {
+      "delete": {
+        "tags": [
+          "org"
+        ],
+        "summary": "移除用户岗位",
+        "description": "移除用户岗位 — SPEC 14.2.\n\nSPEC 14.2: \"移除用户岗位\"。\n关系不存在返回 409（``ORG.USER_POST_NOT_FOUND``）。",
+        "operationId": "remove_user_post",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "用户 ID",
+              "title": "User Id"
+            },
+            "description": "用户 ID"
+          },
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "岗位 ID",
+              "title": "Post Id"
+            },
+            "description": "岗位 ID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{user_id}/org-info": {
+      "get": {
+        "tags": [
+          "org"
+        ],
+        "summary": "查询用户组织关系",
+        "description": "查询用户组织关系（部门 + 岗位）— SPEC 14.3 / 11.1.",
+        "operationId": "get_user_org_info",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "用户 ID",
+              "title": "User Id"
+            },
+            "description": "用户 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get User Org Info"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/menus": {
+      "post": {
+        "tags": [
+          "menu"
+        ],
+        "summary": "创建菜单",
+        "description": "创建菜单 — HTTP 201 + Location（SPEC 9.3 / 15.1）.\n\n支持目录/页面/外链类型与路由元数据、可见性配置。\n父菜单不存在或已禁用返回 400（``MENU.INVALID_PARENT``）。",
+        "operationId": "create_menu",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MenuCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MenuResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/menus/tree": {
+      "get": {
+        "tags": [
+          "menu"
+        ],
+        "summary": "查询菜单树",
+        "description": "查询菜单树 — SPEC 15.1.\n\n返回完整菜单树（含不可见菜单，管理端需要看到全部）。\n当 ``include_disabled=false`` 时，禁用菜单被排除。",
+        "operationId": "get_menu_tree",
+        "parameters": [
+          {
+            "name": "include_disabled",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Include Disabled"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MenuTreeResponse"
+                  },
+                  "title": "Response Get Menu Tree"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/menus/{menu_id}": {
+      "get": {
+        "tags": [
+          "menu"
+        ],
+        "summary": "查询菜单详情",
+        "description": "查询菜单详情 — SPEC 15.1.\n\n不存在返回 404（``MENU.NOT_FOUND``）。",
+        "operationId": "get_menu_detail",
+        "parameters": [
+          {
+            "name": "menu_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "菜单 ID",
+              "title": "Menu Id"
+            },
+            "description": "菜单 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MenuResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "menu"
+        ],
+        "summary": "更新菜单",
+        "description": "更新菜单基本信息 — SPEC 15.1.\n\n层级调整使用独立端点 ``PUT /menus/{id}/hierarchy``。\n菜单类型不可变更。",
+        "operationId": "update_menu",
+        "parameters": [
+          {
+            "name": "menu_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "菜单 ID",
+              "title": "Menu Id"
+            },
+            "description": "菜单 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MenuUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MenuResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "menu"
+        ],
+        "summary": "删除菜单",
+        "description": "删除菜单 — SPEC 15.1.\n\n存在子菜单返回 409（``MENU.HAS_CHILDREN``）。",
+        "operationId": "delete_menu",
+        "parameters": [
+          {
+            "name": "menu_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "菜单 ID",
+              "title": "Menu Id"
+            },
+            "description": "菜单 ID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/menus/{menu_id}/enable": {
+      "post": {
+        "tags": [
+          "menu"
+        ],
+        "summary": "启用菜单",
+        "description": "启用菜单 — SPEC 15.1.",
+        "operationId": "enable_menu",
+        "parameters": [
+          {
+            "name": "menu_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "菜单 ID",
+              "title": "Menu Id"
+            },
+            "description": "菜单 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MenuResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/menus/{menu_id}/disable": {
+      "post": {
+        "tags": [
+          "menu"
+        ],
+        "summary": "禁用菜单",
+        "description": "禁用菜单 — SPEC 15.1.\n\n禁用菜单不出现在当前用户菜单树中。",
+        "operationId": "disable_menu",
+        "parameters": [
+          {
+            "name": "menu_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "菜单 ID",
+              "title": "Menu Id"
+            },
+            "description": "菜单 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MenuResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/menus/{menu_id}/hierarchy": {
+      "put": {
+        "tags": [
+          "menu"
+        ],
+        "summary": "调整菜单层级与排序",
+        "description": "调整菜单层级与排序 — SPEC 15.1.\n\n循环防护:\n  - 直接循环（目标父菜单是自身）返回 409（``MENU.CYCLE_DETECTED``）。\n  - 间接循环（目标父菜单是自身后代）返回 409（``MENU.CYCLE_DETECTED``）。\n  - 并发调整通过事务级咨询锁序列化，防止竞态形成循环。\n\n父菜单不存在或已禁用返回 400（``MENU.INVALID_PARENT``）。",
+        "operationId": "adjust_menu_hierarchy",
+        "parameters": [
+          {
+            "name": "menu_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "菜单 ID",
+              "title": "Menu Id"
+            },
+            "description": "菜单 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MenuHierarchyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MenuResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/roles/{role_id}/menus": {
+      "put": {
+        "tags": [
+          "menu"
+        ],
+        "summary": "为角色分配菜单（全量替换）",
+        "description": "为角色分配菜单（全量替换，幂等）— SPEC 15.1.\n\nSPEC 15.1: \"为角色分配和移除菜单\"。\n全量替换天然幂等——相同输入多次调用结果一致。\n菜单不存在返回 404（``MENU.NOT_FOUND``）。",
+        "operationId": "assign_role_menus",
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "角色 ID",
+              "title": "Role Id"
+            },
+            "description": "角色 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignRoleMenusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleMenuIdsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "menu"
+        ],
+        "summary": "查询角色已分配菜单",
+        "description": "查询角色已分配的菜单 ID 列表 — SPEC 15.1.",
+        "operationId": "get_role_menu_ids",
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "角色 ID",
+              "title": "Role Id"
+            },
+            "description": "角色 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleMenuIdsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/roles/{role_id}/menus/{menu_id}": {
+      "delete": {
+        "tags": [
+          "menu"
+        ],
+        "summary": "移除角色单个菜单",
+        "description": "移除角色单个菜单（幂等）— SPEC 15.1.\n\n幂等——关联不存在时也返回 204。",
+        "operationId": "remove_role_menu",
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "角色 ID",
+              "title": "Role Id"
+            },
+            "description": "角色 ID"
+          },
+          {
+            "name": "menu_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "菜单 ID",
+              "title": "Menu Id"
+            },
+            "description": "菜单 ID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/menus": {
+      "get": {
+        "tags": [
+          "menu"
+        ],
+        "summary": "当前用户菜单树",
+        "description": "当前用户菜单树 — SPEC 15.2.\n\nSPEC 15.2: \"根据当前用户角色返回可访问菜单树\"。\n根据当前用户启用角色聚合可访问菜单树。\n不可见菜单不出现在当前用户菜单树中（SPEC 23.5: 仅前端展示控制）。\n\nSPEC 15.2: \"菜单变更事务提交后，当前用户下一次菜单查询立即读取新关系\"。\n每次调用查库，无缓存。",
+        "operationId": "get_current_user_menus",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MenuTreeResponse"
+                  },
+                  "type": "array",
+                  "title": "Response Get Current User Menus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/permissions": {
+      "get": {
+        "tags": [
+          "menu"
+        ],
+        "summary": "当前用户权限编码",
+        "description": "当前用户按钮/操作权限编码 — SPEC 15.2.\n\nSPEC 15.2: \"返回当前用户拥有的按钮或操作权限编码\"。\n返回当前用户启用角色权限并集（来自 RBAC 权限点）。\n每次调用查库，无缓存（SPEC 13.3）。",
+        "operationId": "get_current_user_permissions",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionCodesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/configs": {
+      "post": {
+        "tags": [
+          "sysconfig"
+        ],
+        "summary": "创建配置项",
+        "description": "创建配置项 — HTTP 201 + Location（SPEC 9.3 / 16.1）.\n\n配置键在分组内唯一。配置值按声明类型校验。\n敏感配置加密存储且 API 不回显明文（SPEC 16.1）。",
+        "operationId": "create_config",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "sysconfig"
+        ],
+        "summary": "查询配置项列表",
+        "description": "查询配置项列表 — SPEC 16.1 按分组管理.\n\n敏感配置值在响应中掩码（SPEC 16.1: 默认不回显）。",
+        "operationId": "list_configs",
+        "parameters": [
+          {
+            "name": "group",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "按分组过滤",
+              "title": "Group"
+            },
+            "description": "按分组过滤"
+          },
+          {
+            "name": "include_disabled",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "是否包含禁用状态的配置项（默认 true）",
+              "default": true,
+              "title": "Include Disabled"
+            },
+            "description": "是否包含禁用状态的配置项（默认 true）"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConfigResponse"
+                  },
+                  "title": "Response List Configs"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/configs/groups": {
+      "get": {
+        "tags": [
+          "sysconfig"
+        ],
+        "summary": "查询配置分组列表",
+        "description": "查询配置分组列表 — SPEC 16.1 按分组管理.",
+        "operationId": "list_config_groups",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConfigGroupResponse"
+                  },
+                  "type": "array",
+                  "title": "Response List Config Groups"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/configs/{config_id}": {
+      "get": {
+        "tags": [
+          "sysconfig"
+        ],
+        "summary": "查询配置项详情",
+        "description": "查询配置项详情 — SPEC 16.1.\n\n敏感配置值在响应中掩码（SPEC 16.1: 默认不回显）。\n不存在返回 404。",
+        "operationId": "get_config",
+        "parameters": [
+          {
+            "name": "config_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "配置项 ID",
+              "title": "Config Id"
+            },
+            "description": "配置项 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "sysconfig"
+        ],
+        "summary": "更新配置项",
+        "description": "更新配置项 — SPEC 16.1.\n\n核心安全配置不可通过此端点更新（SPEC 16.1: 不可被普通后台覆盖）。\n配置值按声明类型校验。",
+        "operationId": "update_config",
+        "parameters": [
+          {
+            "name": "config_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "配置项 ID",
+              "title": "Config Id"
+            },
+            "description": "配置项 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/configs/{config_id}/enable": {
+      "post": {
+        "tags": [
+          "sysconfig"
+        ],
+        "summary": "启用配置项",
+        "description": "启用配置项 — SPEC 16.1.\n\n核心安全配置不可通过此端点操作（SPEC 16.1）。",
+        "operationId": "enable_config",
+        "parameters": [
+          {
+            "name": "config_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "配置项 ID",
+              "title": "Config Id"
+            },
+            "description": "配置项 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/configs/{config_id}/disable": {
+      "post": {
+        "tags": [
+          "sysconfig"
+        ],
+        "summary": "禁用配置项",
+        "description": "禁用配置项 — SPEC 16.1.\n\n核心安全配置不可通过此端点操作（SPEC 16.1）。",
+        "operationId": "disable_config",
+        "parameters": [
+          {
+            "name": "config_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "配置项 ID",
+              "title": "Config Id"
+            },
+            "description": "配置项 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dict-types": {
+      "post": {
+        "tags": [
+          "dict"
+        ],
+        "summary": "创建字典类型",
+        "description": "创建字典类型 — HTTP 201 + Location（SPEC 9.3 / 17.1）.\n\n字典编码全局唯一（SPEC 17.1: 字典编码保持稳定和唯一）。",
+        "operationId": "create_dict_type",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DictTypeCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DictTypeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "dict"
+        ],
+        "summary": "查询字典类型列表",
+        "description": "查询字典类型列表 — SPEC 17.1.",
+        "operationId": "list_dict_types",
+        "parameters": [
+          {
+            "name": "include_disabled",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "是否包含禁用状态的字典类型（默认 true）",
+              "default": true,
+              "title": "Include Disabled"
+            },
+            "description": "是否包含禁用状态的字典类型（默认 true）"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DictTypeResponse"
+                  },
+                  "title": "Response List Dict Types"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dict-types/{type_id}": {
+      "get": {
+        "tags": [
+          "dict"
+        ],
+        "summary": "查询字典类型详情",
+        "description": "查询字典类型详情 — SPEC 17.1.",
+        "operationId": "get_dict_type",
+        "parameters": [
+          {
+            "name": "type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "字典类型 ID",
+              "title": "Type Id"
+            },
+            "description": "字典类型 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DictTypeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "dict"
+        ],
+        "summary": "更新字典类型",
+        "description": "更新字典类型 — SPEC 17.1.\n\n编码不可变更（稳定标识）。更新名称和描述。",
+        "operationId": "update_dict_type",
+        "parameters": [
+          {
+            "name": "type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "字典类型 ID",
+              "title": "Type Id"
+            },
+            "description": "字典类型 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DictTypeUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DictTypeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "dict"
+        ],
+        "summary": "删除字典类型",
+        "description": "删除字典类型 — SPEC 17.1.\n\nSPEC 17.1: \"已被业务引用的字典类型具有删除保护\"。\n被引用登记 Port 标记为业务引用的字典类型不可删除。\n同时删除该类型下的全部字典项。",
+        "operationId": "delete_dict_type",
+        "parameters": [
+          {
+            "name": "type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "字典类型 ID",
+              "title": "Type Id"
+            },
+            "description": "字典类型 ID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dict-types/{type_id}/enable": {
+      "post": {
+        "tags": [
+          "dict"
+        ],
+        "summary": "启用字典类型",
+        "description": "启用字典类型 — SPEC 17.1.",
+        "operationId": "enable_dict_type",
+        "parameters": [
+          {
+            "name": "type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "字典类型 ID",
+              "title": "Type Id"
+            },
+            "description": "字典类型 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DictTypeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dict-types/{type_id}/disable": {
+      "post": {
+        "tags": [
+          "dict"
+        ],
+        "summary": "禁用字典类型",
+        "description": "禁用字典类型 — SPEC 17.1.",
+        "operationId": "disable_dict_type",
+        "parameters": [
+          {
+            "name": "type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "字典类型 ID",
+              "title": "Type Id"
+            },
+            "description": "字典类型 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DictTypeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dict-types/{type_id}/items": {
+      "post": {
+        "tags": [
+          "dict"
+        ],
+        "summary": "创建字典项",
+        "description": "创建字典项 — HTTP 201 + Location（SPEC 9.3 / 17.2）.\n\nSPEC 17.2: 支持显示文本、稳定值、排序和扩展元数据。",
+        "operationId": "create_dict_item",
+        "parameters": [
+          {
+            "name": "type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "字典类型 ID",
+              "title": "Type Id"
+            },
+            "description": "字典类型 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DictItemCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DictItemResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "dict"
+        ],
+        "summary": "查询字典项列表",
+        "description": "查询字典项列表 — SPEC 17.2.\n\n返回结果按 ``sort_order`` 升序排列。",
+        "operationId": "list_dict_items",
+        "parameters": [
+          {
+            "name": "type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "字典类型 ID",
+              "title": "Type Id"
+            },
+            "description": "字典类型 ID"
+          },
+          {
+            "name": "include_disabled",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "是否包含禁用状态的字典项（默认 true）",
+              "default": true,
+              "title": "Include Disabled"
+            },
+            "description": "是否包含禁用状态的字典项（默认 true）"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DictItemResponse"
+                  },
+                  "title": "Response List Dict Items"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dict-types/{type_id}/items/{item_id}": {
+      "get": {
+        "tags": [
+          "dict"
+        ],
+        "summary": "查询字典项详情",
+        "description": "查询字典项详情 — SPEC 17.2.",
+        "operationId": "get_dict_item",
+        "parameters": [
+          {
+            "name": "type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "字典类型 ID",
+              "title": "Type Id"
+            },
+            "description": "字典类型 ID"
+          },
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "字典项 ID",
+              "title": "Item Id"
+            },
+            "description": "字典项 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DictItemResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "dict"
+        ],
+        "summary": "更新字典项",
+        "description": "更新字典项 — SPEC 17.2.\n\n支持更新显示文本、稳定值、排序和扩展元数据。",
+        "operationId": "update_dict_item",
+        "parameters": [
+          {
+            "name": "type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "字典类型 ID",
+              "title": "Type Id"
+            },
+            "description": "字典类型 ID"
+          },
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "字典项 ID",
+              "title": "Item Id"
+            },
+            "description": "字典项 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DictItemUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DictItemResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "dict"
+        ],
+        "summary": "删除字典项",
+        "description": "删除字典项 — SPEC 17.2.",
+        "operationId": "delete_dict_item",
+        "parameters": [
+          {
+            "name": "type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "字典类型 ID",
+              "title": "Type Id"
+            },
+            "description": "字典类型 ID"
+          },
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "字典项 ID",
+              "title": "Item Id"
+            },
+            "description": "字典项 ID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dict-types/{type_id}/items/{item_id}/enable": {
+      "post": {
+        "tags": [
+          "dict"
+        ],
+        "summary": "启用字典项",
+        "description": "启用字典项 — SPEC 17.2.",
+        "operationId": "enable_dict_item",
+        "parameters": [
+          {
+            "name": "type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "字典类型 ID",
+              "title": "Type Id"
+            },
+            "description": "字典类型 ID"
+          },
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "字典项 ID",
+              "title": "Item Id"
+            },
+            "description": "字典项 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DictItemResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dict-types/{type_id}/items/{item_id}/disable": {
+      "post": {
+        "tags": [
+          "dict"
+        ],
+        "summary": "禁用字典项",
+        "description": "禁用字典项 — SPEC 17.2.",
+        "operationId": "disable_dict_item",
+        "parameters": [
+          {
+            "name": "type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "字典类型 ID",
+              "title": "Type Id"
+            },
+            "description": "字典类型 ID"
+          },
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "字典项 ID",
+              "title": "Item Id"
+            },
+            "description": "字典项 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DictItemResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/files": {
+      "post": {
+        "tags": [
+          "file"
+        ],
+        "summary": "上传文件",
+        "description": "上传文件 — multipart/form-data（SPEC 19.2 / 19.3）.\n\nSPEC 19.2:\n  - 限制单文件大小。\n  - 限制单次上传数量。\n  - 分块流式写入，禁止一次性读取整个文件到内存。\n  - 使用白名单校验允许的文件类型。\n\n每个文件独立处理，部分失败时已成功的文件仍然返回。",
+        "operationId": "upload_files",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_files"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FileMetadataResponse"
+                  },
+                  "title": "Response Upload Files"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "file"
+        ],
+        "summary": "查询当前用户文件列表",
+        "description": "查询当前用户的文件列表 — SPEC 19.4.",
+        "operationId": "list_my_files",
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FileMetadataResponse"
+                  },
+                  "title": "Response List My Files"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/files/{file_id}": {
+      "get": {
+        "tags": [
+          "file"
+        ],
+        "summary": "查询文件详情",
+        "description": "查询文件详情 — SPEC 19.1.",
+        "operationId": "get_file",
+        "parameters": [
+          {
+            "name": "file_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "文件 ID",
+              "title": "File Id"
+            },
+            "description": "文件 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileMetadataResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "file"
+        ],
+        "summary": "删除文件",
+        "description": "删除文件 — SPEC 19.3 / 19.4.\n\nSPEC 19.3: \"删除前必须在事务中确认没有活动业务引用并更新为 DELETING\"。\nSPEC 19.3: 物理删除延迟至少 7 天（reconcile 在 TASK-026 执行）。\n\nSPEC 19.4: 上传者或拥有文件管理权限的管理员可删除。",
+        "operationId": "delete_file",
+        "parameters": [
+          {
+            "name": "file_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "文件 ID",
+              "title": "File Id"
+            },
+            "description": "文件 ID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/files/{file_id}/download": {
+      "get": {
+        "tags": [
+          "file"
+        ],
+        "summary": "下载文件",
+        "description": "下载文件 — SPEC 19.2 / 19.3 / 19.4.\n\nSPEC 19.3: 仅 READY 文件可下载。\nSPEC 19.4: 上传者或拥有文件管理权限的管理员可下载。\nSPEC 19.2: 响应头安全处理原始文件名（RFC 5987）。\nSPEC 19.2: 下载接口防止未授权枚举文件（不区分 404 和 403）。",
+        "operationId": "download_file",
+        "parameters": [
+          {
+            "name": "file_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "文件 ID",
+              "title": "File Id"
+            },
+            "description": "文件 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1719,6 +5392,60 @@
         "title": "AssignPermissionsRequest",
         "description": "为角色分配权限点请求 — SPEC 13.2.\n\n全量替换角色的权限点集合。\n\n属性:\n    permission_codes: 权限编码列表（全量替换）。空列表表示清除全部权限。"
       },
+      "AssignRoleMenusRequest": {
+        "properties": {
+          "menu_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Menu Ids",
+            "description": "菜单 ID 列表（全量替换角色的菜单分配）"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "menu_ids"
+        ],
+        "title": "AssignRoleMenusRequest",
+        "description": "为角色分配菜单请求 — SPEC 15.1.\n\n全量替换角色菜单。调用幂等——相同输入多次调用结果一致。\n\n属性:\n    menu_ids: 菜单 ID 列表（全量替换）。"
+      },
+      "AssignUserDepartmentRequest": {
+        "properties": {
+          "department_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Department Id",
+            "description": "部门 ID"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "department_id"
+        ],
+        "title": "AssignUserDepartmentRequest",
+        "description": "为用户分配主部门请求 — SPEC 14.3.\n\n属性:\n    department_id: 部门 ID。"
+      },
+      "AssignUserPostRequest": {
+        "properties": {
+          "post_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Post Id",
+            "description": "岗位 ID"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "post_id"
+        ],
+        "title": "AssignUserPostRequest",
+        "description": "为用户分配岗位请求 — SPEC 14.2.\n\n属性:\n    post_id: 岗位 ID。"
+      },
       "AssignUserRolesRequest": {
         "properties": {
           "role_codes": {
@@ -1737,6 +5464,1094 @@
         ],
         "title": "AssignUserRolesRequest",
         "description": "为用户分配角色请求 — SPEC 13.2.\n\n全量替换用户的角色集合。\n\n属性:\n    role_codes: 角色编码列表（全量替换）。"
+      },
+      "AuditLogPageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AuditLogResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "pages"
+        ],
+        "title": "AuditLogPageResponse",
+        "description": "审计日志分页响应 — SPEC 9.4 / 18.3."
+      },
+      "AuditLogResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          },
+          "actor_display_name": {
+            "type": "string",
+            "title": "Actor Display Name"
+          },
+          "module": {
+            "type": "string",
+            "title": "Module"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "resource_type": {
+            "type": "string",
+            "title": "Resource Type"
+          },
+          "resource_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Id"
+          },
+          "resource_display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Display Name"
+          },
+          "result": {
+            "type": "string",
+            "title": "Result"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          },
+          "diff": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diff"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "actor_id",
+          "actor_display_name",
+          "module",
+          "action",
+          "resource_type",
+          "resource_id",
+          "resource_display_name",
+          "result",
+          "request_id",
+          "diff",
+          "occurred_at"
+        ],
+        "title": "AuditLogResponse",
+        "description": "审计日志响应模型 — SPEC 9.3 / 18.3."
+      },
+      "Body_upload_files": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string",
+              "contentMediaType": "application/octet-stream"
+            },
+            "type": "array",
+            "title": "Files",
+            "description": "上传的文件列表"
+          }
+        },
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "Body_upload_files"
+      },
+      "ConfigCreateRequest": {
+        "properties": {
+          "group": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Group",
+            "description": "配置分组"
+          },
+          "key": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Key",
+            "description": "配置键（分组内唯一）"
+          },
+          "value_type": {
+            "type": "string",
+            "pattern": "^(string|int|bool|json)$",
+            "title": "Value Type",
+            "description": "值类型（string / int / bool / json）"
+          },
+          "value": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Value",
+            "description": "配置值字符串（保存时按 value_type 校验）"
+          },
+          "is_sensitive": {
+            "type": "boolean",
+            "title": "Is Sensitive",
+            "description": "是否为敏感配置（加密存储且 API 不回显明文）",
+            "default": false
+          },
+          "is_core_security": {
+            "type": "boolean",
+            "title": "Is Core Security",
+            "description": "是否为核心安全配置（不可被普通后台覆盖）",
+            "default": false
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "配置说明（可选）"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "group",
+          "key",
+          "value_type",
+          "value"
+        ],
+        "title": "ConfigCreateRequest",
+        "description": "创建配置项请求 — SPEC 9.2 / 16.1.\n\n属性:\n    group:            配置分组，1-100 字符。\n    key:              配置键，1-200 字符（分组内唯一）。\n    value_type:       值类型（string / int / bool / json）。\n    value:            配置值字符串（保存时按 value_type 校验）。\n    is_sensitive:     是否为敏感配置（敏感配置加密存储且不回显）。\n    is_core_security: 是否为核心安全配置（不可被普通后台覆盖）。\n    description:      配置说明（可选）。"
+      },
+      "ConfigGroupResponse": {
+        "properties": {
+          "group": {
+            "type": "string",
+            "title": "Group"
+          },
+          "item_count": {
+            "type": "integer",
+            "title": "Item Count"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "group",
+          "item_count"
+        ],
+        "title": "ConfigGroupResponse",
+        "description": "配置分组响应 — SPEC 16.1 按分组管理."
+      },
+      "ConfigResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "group": {
+            "type": "string",
+            "title": "Group"
+          },
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "value_type": {
+            "type": "string",
+            "title": "Value Type"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "is_sensitive": {
+            "type": "boolean",
+            "title": "Is Sensitive"
+          },
+          "is_core_security": {
+            "type": "boolean",
+            "title": "Is Core Security"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "group",
+          "key",
+          "value_type",
+          "value",
+          "is_sensitive",
+          "is_core_security",
+          "description",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ConfigResponse",
+        "description": "配置项响应模型 — SPEC 9.3 / 16.1.\n\nSPEC 16.1: 敏感配置 API 响应不回显明文（掩码）。\n敏感配置的 ``value`` 字段返回 ``***MASKED***``。"
+      },
+      "ConfigUpdateRequest": {
+        "properties": {
+          "value": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Value",
+            "description": "新配置值字符串（保存时按 value_type 校验）"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "配置说明（可选）"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "title": "ConfigUpdateRequest",
+        "description": "更新配置项请求 — SPEC 9.2 / 16.1.\n\n更新配置值和说明。分组和键不可变更。\n核心安全配置不可通过此端点更新。\n\n属性:\n    value:       新配置值字符串（保存时按 value_type 校验）。\n    description: 配置说明（可选）。"
+      },
+      "DepartmentCreateRequest": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 2,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Code",
+            "description": "部门编码（小写字母、数字和下划线，字母开头）"
+          },
+          "display_name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Display Name",
+            "description": "显示名称"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "描述（可选）"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id",
+            "description": "父部门 ID（根部门为 null）"
+          },
+          "sort_order": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sort Order",
+            "description": "排序序号",
+            "default": 0
+          },
+          "leader_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Leader Id",
+            "description": "负责人用户 ID（可选）"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "display_name"
+        ],
+        "title": "DepartmentCreateRequest",
+        "description": "创建部门请求 — SPEC 9.2 / 14.1.\n\n属性:\n    code:         部门编码，2-100 字符，小写字母/数字/下划线。\n    display_name: 显示名称，1-200 字符。\n    description:  描述（可选），最多 500 字符。\n    parent_id:    父部门 ID（可选，根部门为 null）。\n    sort_order:   排序序号，默认 0。\n    leader_id:    负责人用户 ID（可选）。"
+      },
+      "DepartmentDetailResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "sort_order": {
+            "type": "integer",
+            "title": "Sort Order"
+          },
+          "leader_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Leader Id"
+          },
+          "child_count": {
+            "type": "integer",
+            "title": "Child Count"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "display_name",
+          "description",
+          "parent_id",
+          "status",
+          "sort_order",
+          "leader_id",
+          "child_count",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "DepartmentDetailResponse",
+        "description": "部门详情响应（含子部门数量）— SPEC 9.3 / 14.1."
+      },
+      "DepartmentHierarchyRequest": {
+        "properties": {
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id",
+            "description": "新的父部门 ID（null 表示设为根部门）"
+          },
+          "sort_order": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sort Order",
+            "description": "排序序号",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "parent_id"
+        ],
+        "title": "DepartmentHierarchyRequest",
+        "description": "调整部门层级与排序请求 — SPEC 14.1.\n\n用于调整部门的父级和排序序号。循环防护在 Use Case 中执行。\n\n属性:\n    parent_id:  新的父部门 ID（null 表示设为根部门）。\n    sort_order: 排序序号。"
+      },
+      "DepartmentLeaderRequest": {
+        "properties": {
+          "leader_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Leader Id",
+            "description": "负责人用户 ID（null 清除负责人）"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "leader_id"
+        ],
+        "title": "DepartmentLeaderRequest",
+        "description": "设置部门负责人请求 — SPEC 14.1.\n\n负责人引用用户 ID，跨模块不建数据库外键（SPEC 5.5）。\n设为 null 清除负责人。\n\n属性:\n    leader_id: 负责人用户 ID（null 清除负责人）。"
+      },
+      "DepartmentResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "sort_order": {
+            "type": "integer",
+            "title": "Sort Order"
+          },
+          "leader_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Leader Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "display_name",
+          "description",
+          "parent_id",
+          "status",
+          "sort_order",
+          "leader_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "DepartmentResponse",
+        "description": "部门响应模型 — SPEC 9.3 / 14.1."
+      },
+      "DepartmentTreeResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "sort_order": {
+            "type": "integer",
+            "title": "Sort Order"
+          },
+          "leader_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Leader Id"
+          },
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/DepartmentTreeResponse"
+            },
+            "type": "array",
+            "title": "Children"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "display_name",
+          "description",
+          "parent_id",
+          "status",
+          "sort_order",
+          "leader_id",
+          "children",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "DepartmentTreeResponse",
+        "description": "部门树节点响应 — SPEC 9.3 / 14.1."
+      },
+      "DepartmentUpdateRequest": {
+        "properties": {
+          "display_name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Display Name",
+            "description": "显示名称"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "描述（可选）"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "display_name"
+        ],
+        "title": "DepartmentUpdateRequest",
+        "description": "更新部门请求 — SPEC 9.2 / 14.1.\n\n部门编码不可变更——编码是全局唯一的稳定标识。\n层级调整使用独立端点（``PUT /departments/{id}/hierarchy``）。\n\n属性:\n    display_name: 显示名称，1-200 字符。\n    description:  描述（可选），最多 500 字符。"
+      },
+      "DictItemCreateRequest": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Label",
+            "description": "显示文本"
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Value",
+            "description": "稳定值（业务持久化此值，不变更）"
+          },
+          "sort_order": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sort Order",
+            "description": "排序序号（升序）",
+            "default": 0
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata",
+            "description": "扩展元数据"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "描述说明（可选）"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "label",
+          "value"
+        ],
+        "title": "DictItemCreateRequest",
+        "description": "创建字典项请求 — SPEC 9.2 / 17.2.\n\nSPEC 17.2: 支持显示文本、稳定值、排序和扩展元数据。\n\n属性:\n    label:      显示文本（人类可读），1-200 字符。\n    value:      稳定值（业务持久化），1-200 字符。\n    sort_order: 排序序号（升序），默认 0。\n    metadata:   扩展元数据（JSON 对象），默认空字典。\n    description: 描述说明（可选），最长 1000 字符。"
+      },
+      "DictItemResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "dict_type_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Dict Type Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "sort_order": {
+            "type": "integer",
+            "title": "Sort Order"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "dict_type_id",
+          "label",
+          "value",
+          "sort_order",
+          "metadata",
+          "description",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "DictItemResponse",
+        "description": "字典项响应模型 — SPEC 9.3 / 17.2."
+      },
+      "DictItemUpdateRequest": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Label",
+            "description": "显示文本"
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Value",
+            "description": "稳定值"
+          },
+          "sort_order": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sort Order",
+            "description": "排序序号（升序）"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata",
+            "description": "扩展元数据"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "描述说明（可选）"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "label",
+          "value",
+          "sort_order"
+        ],
+        "title": "DictItemUpdateRequest",
+        "description": "更新字典项请求 — SPEC 9.2 / 17.2.\n\n更新显示文本、稳定值、排序和扩展元数据。\n\n属性:\n    label:      显示文本，1-200 字符。\n    value:      稳定值，1-200 字符。\n    sort_order: 排序序号（升序）。\n    metadata:   扩展元数据。\n    description: 描述说明（可选）。"
+      },
+      "DictTypeCreateRequest": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Code",
+            "description": "字典编码（全局唯一，小写字母/数字/下划线）"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "description": "字典类型显示名称"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "描述说明（可选）"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "DictTypeCreateRequest",
+        "description": "创建字典类型请求 — SPEC 9.2 / 17.1.\n\n属性:\n    code:        稳定编码（全局唯一），1-100 字符，小写字母/数字/下划线。\n    name:        显示名称，1-200 字符。\n    description: 描述说明（可选），最长 1000 字符。"
+      },
+      "DictTypeResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name",
+          "description",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "DictTypeResponse",
+        "description": "字典类型响应模型 — SPEC 9.3 / 17.1."
+      },
+      "DictTypeUpdateRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "description": "字典类型显示名称"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "描述说明（可选）"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "DictTypeUpdateRequest",
+        "description": "更新字典类型请求 — SPEC 9.2 / 17.1.\n\n更新显示名称和描述。编码不可变更（稳定标识）。\n\n属性:\n    name:        显示名称，1-200 字符。\n    description: 描述说明（可选），最长 1000 字符。"
       },
       "ExampleItemCreateRequest": {
         "properties": {
@@ -1845,6 +6660,93 @@
         "title": "ExampleItemUpdateRequest",
         "description": "全量更新示例条目请求 — SPEC 9.2.\n\nPUT 语义：所有字段必填。\n继承 ``StrictBaseModel``（``extra=\"forbid\"``）。"
       },
+      "FileMetadataResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "original_name": {
+            "type": "string",
+            "title": "Original Name"
+          },
+          "storage_name": {
+            "type": "string",
+            "title": "Storage Name"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "title": "Size Bytes"
+          },
+          "content_type": {
+            "type": "string",
+            "title": "Content Type"
+          },
+          "file_extension": {
+            "type": "string",
+            "title": "File Extension"
+          },
+          "sha256": {
+            "type": "string",
+            "title": "Sha256"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "uploaded_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uploaded By"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "deleting_entered_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleting Entered At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "original_name",
+          "storage_name",
+          "size_bytes",
+          "content_type",
+          "file_extension",
+          "sha256",
+          "status",
+          "uploaded_by",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "FileMetadataResponse",
+        "description": "文件元数据响应模型 — SPEC 9.3 / 19.1."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1857,6 +6759,128 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "LoginLogPageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LoginLogResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "pages"
+        ],
+        "title": "LoginLogPageResponse",
+        "description": "登录日志分页响应 — SPEC 9.4 / 18.3."
+      },
+      "LoginLogResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "ip_address": {
+            "type": "string",
+            "title": "Ip Address"
+          },
+          "user_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Agent"
+          },
+          "result": {
+            "type": "string",
+            "title": "Result"
+          },
+          "failure_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Reason"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "username",
+          "session_id",
+          "ip_address",
+          "user_agent",
+          "result",
+          "failure_reason",
+          "occurred_at"
+        ],
+        "title": "LoginLogResponse",
+        "description": "登录日志响应模型 — SPEC 9.3 / 18.1 / 18.3."
       },
       "LoginRequest": {
         "properties": {
@@ -1940,6 +6964,452 @@
         ],
         "title": "LogoutResponse",
         "description": "退出登录响应."
+      },
+      "MenuCreateRequest": {
+        "properties": {
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id",
+            "description": "父菜单 ID（根菜单为 null）"
+          },
+          "menu_type": {
+            "type": "string",
+            "pattern": "^(directory|page|link)$",
+            "title": "Menu Type",
+            "description": "菜单类型（directory / page / link）"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "description": "显示标题"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "前端路由名称（可选）"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path",
+            "description": "前端路由路径（可选）"
+          },
+          "component": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Component",
+            "description": "前端组件标识（可选）"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon",
+            "description": "图标标识（可选）"
+          },
+          "sort_order": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sort Order",
+            "description": "排序序号",
+            "default": 0
+          },
+          "visible": {
+            "type": "boolean",
+            "title": "Visible",
+            "description": "是否可见（仅控制前端展示，不承担授权）",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "menu_type",
+          "title"
+        ],
+        "title": "MenuCreateRequest",
+        "description": "创建菜单请求 — SPEC 9.2 / 15.1.\n\n属性:\n    parent_id:   父菜单 ID（可选，根菜单为 null）。\n    menu_type:   菜单类型（directory / page / link）。\n    title:       显示标题，1-200 字符。\n    name:        前端路由名称（可选）。\n    path:        前端路由路径（可选）。\n    component:   前端组件标识（可选）。\n    icon:        图标标识（可选）。\n    sort_order:  排序序号，默认 0。\n    visible:     是否可见，默认 true。"
+      },
+      "MenuHierarchyRequest": {
+        "properties": {
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id",
+            "description": "新的父菜单 ID（null 表示设为根菜单）"
+          },
+          "sort_order": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sort Order",
+            "description": "排序序号",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "parent_id"
+        ],
+        "title": "MenuHierarchyRequest",
+        "description": "调整菜单层级与排序请求 — SPEC 15.1.\n\n用于调整菜单的父级和排序序号。循环防护在 Use Case 中执行。\n\n属性:\n    parent_id:  新的父菜单 ID（null 表示设为根菜单）。\n    sort_order: 排序序号。"
+      },
+      "MenuResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "menu_type": {
+            "type": "string",
+            "title": "Menu Type"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "component": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Component"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon"
+          },
+          "sort_order": {
+            "type": "integer",
+            "title": "Sort Order"
+          },
+          "visible": {
+            "type": "boolean",
+            "title": "Visible"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "parent_id",
+          "menu_type",
+          "title",
+          "name",
+          "path",
+          "component",
+          "icon",
+          "sort_order",
+          "visible",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "MenuResponse",
+        "description": "菜单响应模型 — SPEC 9.3 / 15.1."
+      },
+      "MenuTreeResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "menu_type": {
+            "type": "string",
+            "title": "Menu Type"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "component": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Component"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon"
+          },
+          "sort_order": {
+            "type": "integer",
+            "title": "Sort Order"
+          },
+          "visible": {
+            "type": "boolean",
+            "title": "Visible"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/MenuTreeResponse"
+            },
+            "type": "array",
+            "title": "Children"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "parent_id",
+          "menu_type",
+          "title",
+          "name",
+          "path",
+          "component",
+          "icon",
+          "sort_order",
+          "visible",
+          "status",
+          "children",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "MenuTreeResponse",
+        "description": "菜单树节点响应 — SPEC 9.3 / 15.1 / 15.2.\n\nSPEC 23.5: ``visible`` 仅控制前端展示。当前用户菜单树端点不返回\n不可见菜单；管理端菜单树端点返回全部菜单（含不可见菜单）。"
+      },
+      "MenuUpdateRequest": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "description": "显示标题"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "前端路由名称（可选）"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path",
+            "description": "前端路由路径（可选）"
+          },
+          "component": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Component",
+            "description": "前端组件标识（可选）"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon",
+            "description": "图标标识（可选）"
+          },
+          "visible": {
+            "type": "boolean",
+            "title": "Visible",
+            "description": "是否可见（仅控制前端展示，不承担授权）",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "title": "MenuUpdateRequest",
+        "description": "更新菜单请求 — SPEC 9.2 / 15.1.\n\n层级调整使用独立端点（``PUT /menus/{id}/hierarchy``）。\n菜单类型不可变更。\n\n属性:\n    title:      显示标题，1-200 字符。\n    name:       前端路由名称（可选）。\n    path:       前端路由路径（可选）。\n    component:  前端组件标识（可选）。\n    icon:       图标标识（可选）。\n    visible:    是否可见。"
       },
       "MetaResponse": {
         "properties": {
@@ -2146,6 +7616,227 @@
         ],
         "title": "PageResponse[UserResponse]"
       },
+      "PermissionCodesResponse": {
+        "properties": {
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Permissions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "permissions"
+        ],
+        "title": "PermissionCodesResponse",
+        "description": "当前用户权限编码响应 — SPEC 15.2."
+      },
+      "PostCreateRequest": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 2,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Code",
+            "description": "岗位编码（小写字母、数字和下划线，字母开头）"
+          },
+          "display_name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Display Name",
+            "description": "显示名称"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "描述（可选）"
+          },
+          "sort_order": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sort Order",
+            "description": "排序序号",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "display_name"
+        ],
+        "title": "PostCreateRequest",
+        "description": "创建岗位请求 — SPEC 9.2 / 14.2.\n\nSPEC 14.2: \"岗位不直接替代角色和权限\"。\n\n属性:\n    code:         岗位编码，2-100 字符，小写字母/数字/下划线。\n    display_name: 显示名称，1-200 字符。\n    description:  描述（可选），最多 500 字符。\n    sort_order:   排序序号，默认 0。"
+      },
+      "PostDetailResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "sort_order": {
+            "type": "integer",
+            "title": "Sort Order"
+          },
+          "user_count": {
+            "type": "integer",
+            "title": "User Count"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "display_name",
+          "description",
+          "status",
+          "sort_order",
+          "user_count",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "PostDetailResponse",
+        "description": "岗位详情响应（含关联用户数量）— SPEC 9.3 / 14.2."
+      },
+      "PostResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "sort_order": {
+            "type": "integer",
+            "title": "Sort Order"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "display_name",
+          "description",
+          "status",
+          "sort_order",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "PostResponse",
+        "description": "岗位响应模型 — SPEC 9.3 / 14.2."
+      },
+      "PostUpdateRequest": {
+        "properties": {
+          "display_name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Display Name",
+            "description": "显示名称"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "描述（可选）"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "display_name"
+        ],
+        "title": "PostUpdateRequest",
+        "description": "更新岗位请求 — SPEC 9.2 / 14.2.\n\n岗位编码不可变更——编码是全局唯一的稳定标识。\n\n属性:\n    display_name: 显示名称，1-200 字符。\n    description:  描述（可选），最多 500 字符。"
+      },
       "RefreshResponse": {
         "properties": {
           "access_token": {
@@ -2338,6 +8029,31 @@
         ],
         "title": "RoleMemberResponse",
         "description": "角色成员响应 — SPEC 13.2."
+      },
+      "RoleMenuIdsResponse": {
+        "properties": {
+          "role_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Role Id"
+          },
+          "menu_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Menu Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "role_id",
+          "menu_ids"
+        ],
+        "title": "RoleMenuIdsResponse",
+        "description": "角色菜单 ID 列表响应 — SPEC 15.1."
       },
       "RoleResponse": {
         "properties": {
@@ -2726,6 +8442,27 @@
             "type": "string",
             "format": "date-time",
             "title": "Updated At"
+          },
+          "department": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Department"
+          },
+          "posts": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Posts",
+            "default": []
           }
         },
         "additionalProperties": false,
@@ -2743,7 +8480,7 @@
           "updated_at"
         ],
         "title": "UserResponse",
-        "description": "用户响应模型 — SPEC 9.3 / 11.2.\n\nSPEC 9.3: \"普通成功响应直接返回资源 Schema，不使用成功信封\"。\nSPEC 9.3: \"敏感字段不得进入响应模型\"。\n密码哈希不出现在响应中（SPEC 23.2: \"禁止记录和回显密码\"）。\n\nJSON 字段使用 snake_case，时间为带时区 ISO 8601 字符串。\n响应模型不使用 ``extra=\"forbid\"``（响应可能有扩展字段），\n但字段命名遵循 snake_case 约定。"
+        "description": "用户响应模型 — SPEC 9.3 / 11.1 / 11.2.\n\nSPEC 9.3: \"普通成功响应直接返回资源 Schema，不使用成功信封\"。\nSPEC 9.3: \"敏感字段不得进入响应模型\"。\n密码哈希不出现在响应中（SPEC 23.2: \"禁止记录和回显密码\"）。\n\nSPEC 11.1: \"通过 G3 后同时返回部门和岗位关系\"。\ndepartment 和 posts 由 org 模块公开 Port 聚合返回（SPEC 14.3）。\nG2 阶段（org 模块未接入时）department 为 None、posts 为空列表。\n\nJSON 字段使用 snake_case，时间为带时区 ISO 8601 字符串。\n响应模型不使用 ``extra=\"forbid\"``（响应可能有扩展字段），\n但字段命名遵循 snake_case 约定。"
       },
       "UserUpdateRequest": {
         "properties": {

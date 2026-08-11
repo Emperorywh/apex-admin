@@ -163,6 +163,23 @@ class Settings(BaseSettings):
     LOGIN_LOG_RETENTION_DAYS: int = 90
     SECURITY_EVENT_RETENTION_DAYS: int = 365
 
+    # ── 文件存储配置（SPEC 19.1 / 19.2 / 19.3）──────────────────────
+    # SPEC 19.1: "支持配置存储根目录"。
+    # SPEC 19.1: "存储目录不得位于 Web Root"。
+    # 临时目录与正式目录（tmp/ 和 files/）在根目录下，
+    # 位于同一文件系统以确保原子 rename（SPEC 19.3）。
+
+    FILE_STORAGE_ROOT: str = "./data/files"
+
+    # SPEC 19.2: "限制单文件大小"（默认 50 MiB）。
+    FILE_MAX_SIZE_BYTES: int = 52428800
+
+    # SPEC 19.2: "限制单次上传数量"（默认 10）。
+    FILE_MAX_UPLOAD_COUNT: int = 10
+
+    # SPEC 19.3: "DELETING 文件的物理删除至少延迟 7 天"。
+    FILE_DELETION_DELAY_DAYS: int = 7
+
     # ── 模型级校验 ────────────────────────────────────────────────────
 
     def __init__(self, **values: Any) -> None:
