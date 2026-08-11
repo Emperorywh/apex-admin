@@ -20,11 +20,18 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
+from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.exception_handlers import register_exception_handlers
 from app.api.health import router as health_router
 from app.api.meta import router as meta_router
 from app.api.middleware import RequestContextMiddleware
+from app.api.security import (
+    RequestBodySizeMiddleware,
+    SecurityHeadersMiddleware,
+    TrustedProxyMiddleware,
+)
 from app.core.config import Settings
 from app.core.logging import configure_logging
 
@@ -127,8 +134,54 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # 将配置存入应用状态，供端点和中间件读取
     app.state.settings = settings
 
-    # 注册中间件 — Request ID 注入与请求日志（SPEC 9.5 / 24.1）
+    # ── 注册中间件（SPEC 23.1 / 9.5 / 24.1）──────────────────────────
+    #
+    # Starlette 中间件按 LIFO 顺序处理请求: 后添加的中间件在最外层，
+    # 先处理入站请求。注册顺序由内到外:
+    #
+    #   1. RequestContextMiddleware（最内层）— Request ID + 请求日志。
+    #   2. TrustedProxyMiddleware — 可信代理头处理，存入 scope。
+    #   3. RequestBodySizeMiddleware — 请求体大小限制，超限 413。
+    #   4. SecurityHeadersMiddleware — 安全响应头。
+    #   5. CORSMiddleware — CORS 预检与跨域头。
+    #   6. TrustedHostMiddleware（最外层）— Host 白名单，最早拒绝。
+
+    # 内层: Request ID 注入与请求日志（SPEC 9.5 / 24.1）
     app.add_middleware(RequestContextMiddleware)
+
+    # 可信代理头处理 — 仅信任配置来源的 X-Forwarded-*（SPEC 23.1 / 26.3）
+    app.add_middleware(
+        TrustedProxyMiddleware,
+        trusted_proxies=settings.trusted_proxy_list,
+    )
+
+    # 请求体大小限制 — 常规与上传分别限制（SPEC 23.1）
+    app.add_middleware(
+        RequestBodySizeMiddleware,
+        max_request_size=settings.MAX_REQUEST_BODY_SIZE,
+        max_upload_size=settings.MAX_UPLOAD_BODY_SIZE,
+    )
+
+    # 安全响应头（SPEC 23.1）
+    app.add_middleware(SecurityHeadersMiddleware)
+
+    # CORS 白名单 — SPEC 23.1: "CORS 使用明确来源白名单"
+    # 复用 ALLOWED_ORIGINS 作为 CORS 来源白名单。
+    # 开发/测试环境默认 http://localhost，生产环境禁止通配。
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(settings.allowed_origin_set),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # 可信 Host 白名单 — SPEC 23.1: "配置可信 Host"
+    # 最外层，最早拒绝非白名单 Host 请求。
+    app.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=list(settings.trusted_host_set),
+    )
 
     # 注册异常处理器 — API 边界统一转换为 RFC 9457 problem+json（SPEC 9.3 / 10.1）
     register_exception_handlers(app)

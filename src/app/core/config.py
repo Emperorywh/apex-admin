@@ -189,6 +189,30 @@ class Settings(BaseSettings):
     # SPEC 19.4: "未被引用的正式文件按保留期清理，保留期不短于 7 天"。
     FILE_UNREFERENCED_RETENTION_DAYS: int = 7
 
+    # ── HTTP 安全配置（SPEC 23.1）────────────────────────────────────
+    # SPEC 23.1: "配置可信 Host"、"CORS 使用明确来源白名单"、
+    # "限制请求体大小"、"对上传接口使用更严格限制"。
+
+    # 可信 Host 白名单 — SPEC 23.1: "配置可信 Host"。
+    # 逗号分隔（如 "admin.example.com,api.example.com"）。
+    # "*" 表示接受任意 Host（开发环境默认，生产环境禁止）。
+    TRUSTED_HOSTS: str = "*"
+
+    # 通用请求体大小限制 — SPEC 23.1: "限制请求体大小"。
+    # 默认 1 MiB，适用于 JSON API 等常规请求。
+    MAX_REQUEST_BODY_SIZE: int = 1_048_576
+
+    # 上传请求体大小限制 — SPEC 23.1: "对上传接口使用更严格限制"。
+    # 默认 50 MiB，适用于 multipart/form-data 上传请求。
+    # 与 FILE_MAX_SIZE_BYTES 对齐，防止单次上传超过策略上限。
+    MAX_UPLOAD_BODY_SIZE: int = 52_428_800
+
+    # 可信代理来源 — SPEC 23.1: "正确处理可信反向代理头" / SPEC 26.3。
+    # 逗号分隔的 IP 地址（如 "127.0.0.1,10.0.0.0/8"）。
+    # 仅当请求的直接来源在此列表中时，X-Forwarded-* 代理头才被采信。
+    # 空字符串表示不信任任何代理头（开发/测试默认）。
+    TRUSTED_PROXIES: str = ""
+
     # ── 模型级校验 ────────────────────────────────────────────────────
 
     def __init__(self, **values: Any) -> None:
@@ -201,6 +225,7 @@ class Settings(BaseSettings):
         super().__init__(**values)
         self._resolve_token_keys()
         self._resolve_sysconfig_key()
+        self._validate_production_http_security()
 
     def _resolve_token_keys(self) -> None:
         """解析 Token 密钥：开发环境填充默认值，生产环境强制校验.
@@ -248,6 +273,42 @@ class Settings(BaseSettings):
             if sysconfig_raw is None:
                 self.SYSCONFIG_ENCRYPTION_KEY = SecretStr(_DEV_SYSCONFIG_KEY)
 
+    def _validate_production_http_security(self) -> None:
+        """生产环境 HTTP 安全配置校验 — SPEC 23.1.
+
+        校验规则:
+          1. CORS 来源白名单不得为空或包含通配 "*"。
+          2. 可信 Host 白名单不得为空或包含通配 "*"。
+
+        生产环境无条件开放所有跨域来源或接受任意 Host 违反
+        SPEC 23.1 的安全基线要求。
+        """
+
+        if self.ENVIRONMENT != Environment.PRODUCTION:
+            return
+
+        # CORS 来源白名单校验
+        origins = self.allowed_origin_set
+        if not origins:
+            raise ValueError(
+                "生产环境必须配置 CORS 来源白名单（APEX_ALLOWED_ORIGINS），禁止留空",
+            )
+        if "*" in origins:
+            raise ValueError(
+                "生产环境禁止使用 CORS 通配 '*'，请设置明确的 APEX_ALLOWED_ORIGINS",
+            )
+
+        # 可信 Host 白名单校验
+        hosts = self.trusted_host_set
+        if not hosts:
+            raise ValueError(
+                "生产环境必须配置可信 Host（APEX_TRUSTED_HOSTS），禁止留空",
+            )
+        if "*" in hosts:
+            raise ValueError(
+                "生产环境禁止使用通配 Host '*'，请设置明确的 APEX_TRUSTED_HOSTS",
+            )
+
     @staticmethod
     def _validate_production_sysconfig_key(key_raw: str | None) -> None:
         """生产环境敏感配置加密密钥安全校验 — SPEC 23.2."""
@@ -288,13 +349,41 @@ class Settings(BaseSettings):
         """解析 ``ALLOWED_ORIGINS`` 为不可变集合 — SPEC 12.4.
 
         逗号分隔的 Origin 列表，空白被去除，空项被忽略。
-        用于 Refresh/Logout 端点的 Origin 精确匹配校验。
+        用于 Refresh/Logout 端点的 Origin 精确匹配校验，
+        同时复用为 CORS 来源白名单（SPEC 23.1）。
         """
 
         return frozenset(
             origin.strip()
             for origin in self.ALLOWED_ORIGINS.split(",")
             if origin.strip()
+        )
+
+    @property
+    def trusted_host_set(self) -> frozenset[str]:
+        """解析 ``TRUSTED_HOSTS`` 为不可变集合 — SPEC 23.1.
+
+        逗号分隔的 Host 列表，空白被去除，空项被忽略。
+        "*" 表示接受任意 Host（仅开发/测试环境）。
+        供 Starlette TrustedHostMiddleware 使用。
+        """
+
+        return frozenset(
+            host.strip() for host in self.TRUSTED_HOSTS.split(",") if host.strip()
+        )
+
+    @property
+    def trusted_proxy_list(self) -> frozenset[str]:
+        """解析 ``TRUSTED_PROXIES`` 为不可变集合 — SPEC 23.1 / 26.3.
+
+        逗号分隔的可信代理 IP 列表，空白被去除，空项被忽略。
+        仅当请求的直接来源 IP 在此列表中时，
+        X-Forwarded-* 代理头才被采信。
+        空集合表示不信任任何代理头。
+        """
+
+        return frozenset(
+            proxy.strip() for proxy in self.TRUSTED_PROXIES.split(",") if proxy.strip()
         )
 
     @staticmethod
