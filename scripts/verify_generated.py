@@ -70,6 +70,8 @@ _GATE_MARKERS: dict[str, str] = {
     "g2": "g2",
     "g3": "g3",
     "g123": "g1 or g2 or g3",
+    # g4: g1-g3 全量 + 本地可运行 g4 子集（排除需要 Docker 全栈的 integration 测试）
+    "g4": "(g1 or g2 or g3) or (g4 and not integration)",
 }
 
 

@@ -112,10 +112,10 @@ jobs:
         run: |
           uv run alembic -c alembic.ini upgrade head
 
-      # SPEC 34.4: 本地可执行的 g4 子集（不依赖 Docker）
+      # SPEC 34.4: 本地可执行的 g4 子集（不依赖 Docker 全栈）
       - name: pytest g4 local subset
         working-directory: /tmp/generated
-        run: uv run pytest -q -m "g4 and (unit or api)"
+        run: uv run pytest -q -m "g4 and not integration"
 
   # ═══════════════════════════════════════════════════════════════════════
   # Job 3: compose 配置校验（SPEC 34.4 / 28.6: docker compose config --quiet）

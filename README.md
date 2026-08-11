@@ -115,11 +115,37 @@ uv run lint-imports
 src/app/
 ├── main.py          # 应用入口
 ├── cli/             # 管理命令
-├── core/            # 核心基础能力（配置、日志、异常）
+├── core/            # 核心基础能力（配置、日志、异常、安全、API 框架、指标）
+├── api/             # API 层（应用工厂、中间件、端点）
+├── infrastructure/  # 基础设施层（数据库引擎、Unit of Work、迁移）
 ├── composition/     # 装配根（Composition Root）
 └── modules/         # 业务模块根包
+    ├── example/     # 最小示例模块
+    ├── audit/       # 审计与登录日志
+    ├── identity/    # 用户管理
+    ├── auth/        # 认证与会话
+    ├── rbac/        # 角色与权限
+    ├── org/         # 组织（部门、岗位）
+    ├── menu/        # 菜单管理
+    ├── sysconfig/   # 系统配置
+    ├── dict/        # 数据字典
+    ├── file/        # 文件管理
+    └── backup/      # 备份与恢复
 ```
 
 ## 技术栈
 
 详见 [SPEC 5.4](api/SPEC.md) 和 [架构决策记录](docs/adr/README.md)。
+
+## 版本
+
+当前版本：**v0.1.0（候选）** — 初始基座，覆盖 G1-G4 全部能力。
+
+本地全量验收已通过（G1-G3 测试 + G4 本地子集 + 静态分析全绿）。
+Docker 依赖的 G4 验收条目需在 GitHub Actions 确认通过后，方可正式标记"基座完成"。
+
+- [变更日志](CHANGELOG.md)
+- [版本策略](docs/versioning-policy.md)
+- [验收证据清单](docs/evidence-checklist.md)
+- [架构检查报告](docs/architecture-review.md)
+- [文档核对表](docs/document-checklist.md)

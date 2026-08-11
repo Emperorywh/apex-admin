@@ -122,10 +122,15 @@ uv.lock 的模板策略记录于 [ADR-0004](adr/ADR-0004-uv-lock-copier-strategy
 `scripts/verify_generated.py` 是模板验证的单一有界入口：
 
 ```bash
-uv run python scripts/verify_generated.py --gate g3
+uv run python scripts/verify_generated.py --gate g3   # G1-G3 验证
+uv run python scripts/verify_generated.py --gate g4    # G1-G3 + 本地可运行 G4 子集
 ```
 
 它负责：生成临时项目（默认答案）→ 就绪检查 → 数据库迁移 → 指定门槛测试 → 标识残留检查 → 清理。
+
+`--gate g4` 运行 `(g1 or g2 or g3) or (g4 and not integration)`：
+G1-G3 全量测试加上不依赖 Docker 全栈的 G4 本地子集（HTTP 安全、指标、部署静态断言、Nginx 静态断言、CI 工作流分析、备份文档断言）。
+需要 Docker 全栈的集成测试（容器启动、备份恢复演练）由 GitHub Actions `deploy-acceptance.yml` 承载。
 
 前置条件：Git 工作树干净（Copier 使用 git 已提交状态）。
 
