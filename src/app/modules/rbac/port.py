@@ -280,3 +280,17 @@ class UserRbacPort(ABC):
         返回:
             拥有该角色编码的全部用户 ID 集合。
         """
+
+    @abstractmethod
+    async def get_active_role_ids_by_user(self, user_id: UUID) -> set[UUID]:
+        """查询用户启用的角色 ID 集合 — SPEC 13.1 / 13.2 / 15.2.
+
+        SPEC 13.1: 被禁用角色的权限不计入用户有效权限集。
+        SPEC 15.2: 菜单模块通过此方法聚合当前用户可访问菜单。
+
+        参数:
+            user_id: 用户 ID。
+
+        返回:
+            用户全部启用角色（status=active）的 ID 集合。
+        """

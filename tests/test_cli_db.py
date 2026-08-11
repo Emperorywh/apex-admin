@@ -137,6 +137,13 @@ def test_cli_db_upgrade_no_business_data(
     # 组织模块的表名约定
     if any(m.code == "org" for m in get_module_manifest()):
         declared_tables.add("org_departments")
+        declared_tables.add("org_posts")
+        declared_tables.add("org_user_departments")
+        declared_tables.add("org_user_posts")
+    # 菜单模块的表名约定
+    if any(m.code == "menu" for m in get_module_manifest()):
+        declared_tables.add("menu_menus")
+        declared_tables.add("menu_role_menus")
 
     unexpected = tables - declared_tables
     assert unexpected == set(), f"db upgrade 发现未声明的表: {unexpected}"

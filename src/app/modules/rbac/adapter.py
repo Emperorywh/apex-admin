@@ -436,6 +436,23 @@ class SqlAlchemyUserRbacAdapter(UserRbacPort):
         result = await self._session.execute(stmt)
         return set(result.scalars().all())
 
+    async def get_active_role_ids_by_user(self, user_id: UUID) -> set[UUID]:
+        """查询用户启用的角色 ID 集合 — SPEC 13.1 / 13.2 / 15.2.
+
+        被禁用角色的权限不计入有效权限集（SPEC 13.1 / 13.2）。
+        """
+
+        stmt = (
+            select(UserRoleORM.role_id)
+            .join(RoleORM, RoleORM.id == UserRoleORM.role_id)
+            .where(
+                UserRoleORM.user_id == user_id,
+                RoleORM.status == RoleStatus.ACTIVE.value,
+            )
+        )
+        result = await self._session.execute(stmt)
+        return set(result.scalars().all())
+
 
 # ── ORM ↔ 领域实体转换 ──────────────────────────────────────────────────────
 
