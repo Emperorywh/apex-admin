@@ -61,8 +61,9 @@ def test_all_management_routes_declare_permission() -> None:
         "/api/v1/auth/login",
         "/api/v1/auth/refresh",
     }
-    # 健康检查与 meta 端点
-    public_prefixes = ("/health", "/api/v1/meta")
+    # 健康检查、meta 端点与 metrics 端点
+    # /metrics 由部署令牌保护（SPEC 24.2），不使用 RBAC 权限点
+    public_prefixes = ("/health", "/api/v1/meta", "/metrics")
     # 文档端点
     docs_prefixes = ("/docs", "/redoc", "/openapi.json")
     # 示例模块——演示用途，非管理接口

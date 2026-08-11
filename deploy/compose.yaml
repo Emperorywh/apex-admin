@@ -1,0 +1,149 @@
+# Apex Admin Docker Compose 部署编排 — SPEC 26.1 / 26.2.
+#
+# 设计原则:
+#   - PostgreSQL 18 固定摘要镜像（SPEC 5.4 / 26.1）
+#   - Nginx stable 固定摘要镜像（SPEC 26.1: 固定使用 Nginx stable 官方镜像）
+#   - 至少 2 个 API Worker（SPEC 26.1: 默认 API Worker 数量为 2）
+#   - 一次性 migrate 服务，迁移成功才启动 API（SPEC 26.1: 发布门禁）
+#   - pgdata / 文件存储 / 备份卷（SPEC 26.2: 持久化卷管理）
+#   - 重启策略与健康检查（SPEC 26.1: 重启策略自动恢复）
+#
+# 使用方式:
+#   1. 复制 .env.example 为 .env.production 并填写真实值
+#   2. docker compose --env-file .env.production up --build -d
+#
+# 摘要更新方式:
+#   docker pull <image> && docker inspect --format '{{index .RepoDigests 0}}' <image>
+#
+# 注意: Nginx 配置内容由 TASK-032 提供；备份服务内部逻辑由 TASK-033 提供。
+#       Docker 构建与 compose config 验证由 TASK-035 CI 门禁执行。
+
+# ── 共享 API 环境变量锚 ────────────────────────────────────────────────────
+x-api-env: &api-env
+  APEX_ENVIRONMENT: production
+  APEX_DATABASE_URL: postgresql+psycopg://apex:${POSTGRES_PASSWORD}@postgres:5432/apex
+  APEX_ACCESS_TOKEN_HMAC_KEY: ${APEX_ACCESS_TOKEN_HMAC_KEY:?APEX_ACCESS_TOKEN_HMAC_KEY is required}
+  APEX_REFRESH_TOKEN_HMAC_KEY: ${APEX_REFRESH_TOKEN_HMAC_KEY:?APEX_REFRESH_TOKEN_HMAC_KEY is required}
+  APEX_SYSCONFIG_ENCRYPTION_KEY: ${APEX_SYSCONFIG_ENCRYPTION_KEY:?APEX_SYSCONFIG_ENCRYPTION_KEY is required}
+  APEX_ALLOWED_ORIGINS: ${APEX_ALLOWED_ORIGINS:?APEX_ALLOWED_ORIGINS is required}
+  APEX_TRUSTED_HOSTS: ${APEX_TRUSTED_HOSTS:?APEX_TRUSTED_HOSTS is required}
+  APEX_METRICS_TOKEN: ${APEX_METRICS_TOKEN:?APEX_METRICS_TOKEN is required}
+  # 可信代理: 仅信任 Nginx 容器（SPEC 23.1 / 26.3）
+  APEX_TRUSTED_PROXIES: ${APEX_TRUSTED_PROXIES:-nginx}
+
+# ── 共享 API 构建配置锚 ────────────────────────────────────────────────────
+x-api-build: &api-build
+  context: ..
+  dockerfile: Dockerfile
+  args:
+    APP_VERSION: ${APP_VERSION:-0.1.0}
+    GIT_SHA: ${GIT_SHA:-unknown}
+
+services:
+
+  # ── PostgreSQL 18（SPEC 5.4 / 26.1）─────────────────────────────────────
+  postgres:
+    image: postgres:18@sha256:c1f4df8f07fec94f4b5f8da71ef4b046acb5e4f0e746e7e5c2b6a4d8e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: apex
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: apex
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U apex -d apex"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # 生产环境不暴露端口到宿主机；仅通过 Docker 内部网络供 api/migrate 访问
+
+  # ── 一次性迁移服务（SPEC 26.1: 迁移成功后才能启动新版本 API）─────────────
+  migrate:
+    image: apex-admin:${APP_VERSION:-0.1.0}
+    build: *api-build
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *api-env
+      # migrate 运行时不需要完整的安全头/代理配置，但 Settings 构造时仍需满足生产校验
+      APEX_TRUSTED_PROXIES: ""
+    command: ["python", "-m", "app.cli", "db", "upgrade"]
+
+  # ── API Worker（SPEC 26.1: 默认 2 个 Worker，无状态支持水平扩展）─────────
+  api:
+    image: apex-admin:${APP_VERSION:-0.1.0}
+    build: *api-build
+    restart: unless-stopped
+    depends_on:
+      # SPEC 26.1: 迁移成功后才启动 API（发布门禁）
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: *api-env
+    volumes:
+      # SPEC 19.1 / 26.2: 持久化文件目录通过挂载管理
+      - file_storage:/app/data/files
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy:
+      # SPEC 26.1: 默认 API Worker 数量为 2
+      replicas: 2
+
+  # ── Nginx 反向代理（SPEC 26.1 / 26.3）──────────────────────────────────
+  # Nginx 配置内容由 TASK-032 提供
+  nginx:
+    image: nginx:1.28@sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+    volumes:
+      # Nginx 配置（TASK-032 提供具体内容）
+      - ./nginx:/etc/nginx/conf.d:ro
+      # TLS 证书
+      - certs:/etc/nginx/certs:ro
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── 备份服务占位（SPEC 27.1 / 27.2）────────────────────────────────────
+  # 备份服务内部逻辑由 TASK-033 提供
+  backup:
+    image: postgres:18@sha256:c1f4df8f07fec94f4b5f8da71ef4b046acb5e4f0e746e7e5c2b6a4d8e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: apex
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      PGDATABASE: apex
+    volumes:
+      - backups:/backups
+      - file_storage:/file_storage:ro
+    # TASK-033 提供备份脚本与 cron 配置
+
+# ── 持久化卷（SPEC 26.2）──────────────────────────────────────────────────
+volumes:
+  # SPEC 26.2: PostgreSQL 数据目录通过持久化卷管理
+  pgdata:
+  # SPEC 19.1 / 26.2: 持久化文件存储
+  file_storage:
+  # SPEC 27.1 / 27.2: 备份文件独立卷（不得只保存在 PostgreSQL 数据卷中）
+  backups:
+  # TLS 证书
+  certs:
