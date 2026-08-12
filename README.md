@@ -32,10 +32,10 @@ uv sync
    uv run alembic upgrade head
    ```
 
-4. 启动开发服务器（后续 TASK 提供完整入口）：
+4. 启动开发服务器（工厂模式，支持热重载）：
 
    ```bash
-   uv run fastapi dev
+   uv run uvicorn app.main:create_app --factory --reload
    ```
 
 详细说明见 [本地开发指南](docs/development.md)。
@@ -46,13 +46,13 @@ uv sync
 
 | 变量 | 说明 | 默认值 |
 | --- | --- | --- |
-| `APP_ENV` | 运行环境（development/testing/production） | development |
-| `DATABASE_URL` | PostgreSQL 异步连接 URL | — |
-| `DB_POOL_SIZE` | 连接池大小（每 Worker） | 5 |
-| `DB_MAX_OVERFLOW` | 连接池溢出上限 | 5 |
-| `ACCESS_TOKEN_HMAC_KEY` | Access Token HMAC 密钥 | — |
-| `REFRESH_TOKEN_HMAC_KEY` | Refresh Token HMAC 密钥 | — |
-| `SECRET_CONFIG_KEY` | 敏感配置加密密钥 | — |
+| `APEX_ENVIRONMENT` | 运行环境（development/testing/production） | development |
+| `APEX_DATABASE_URL` | PostgreSQL 异步连接 URL，驱动固定 `postgresql+psycopg://` | `postgresql+psycopg://apex@127.0.0.1:55432/postgres` |
+| `APEX_DB_POOL_SIZE` | 连接池大小（每 Worker） | 5 |
+| `APEX_DB_MAX_OVERFLOW` | 连接池溢出上限 | 5 |
+| `APEX_ACCESS_TOKEN_HMAC_KEY` | Access Token HMAC 密钥 | 开发自动填充，生产必填 |
+| `APEX_REFRESH_TOKEN_HMAC_KEY` | Refresh Token HMAC 密钥 | 开发自动填充，生产必填 |
+| `APEX_SYSCONFIG_ENCRYPTION_KEY` | 敏感配置加密密钥（Fernet） | 开发自动填充，生产必填 |
 
 > ⚠️ 生产环境禁止使用示例中的默认密钥。
 
