@@ -63,6 +63,31 @@ OPENAPI_TAGS: list[dict[str, str]] = [
 ]
 
 
+def resolve_docs_urls(settings: Settings) -> dict[str, str | None]:
+    """解析文档端点路径 — SPEC 9.6.
+
+    生产环境（或 ``ENABLE_API_DOCS=False``）时关闭文档端点，
+    非生产环境默认开启。
+
+    参数:
+        settings: 部署配置实例。
+
+    返回:
+        包含 ``docs_url`` / ``redoc_url`` / ``openapi_url`` 三项的字典；
+        文档关闭时各项为 None。
+    """
+
+    if settings.ENVIRONMENT == Environment.PRODUCTION and not _docs_explicitly_enabled(
+        settings,
+    ):
+        return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+
+    if not settings.ENABLE_API_DOCS:
+        return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+
+    return {"docs_url": "/docs", "redoc_url": "/redoc", "openapi_url": "/openapi.json"}
+
+
 def build_openapi_kwargs(settings: Settings) -> dict[str, Any]:
     """根据部署配置构建 FastAPI OpenAPI 参数 — SPEC 9.6.
 
@@ -80,30 +105,7 @@ def build_openapi_kwargs(settings: Settings) -> dict[str, Any]:
         传递给 ``FastAPI(...)`` 构造函数的 OpenAPI 相关参数字典。
     """
 
-    if settings.ENVIRONMENT == Environment.PRODUCTION and not _docs_explicitly_enabled(
-        settings,
-    ):
-        return {
-            "openapi_tags": OPENAPI_TAGS,
-            "docs_url": None,
-            "redoc_url": None,
-            "openapi_url": None,
-        }
-
-    if not settings.ENABLE_API_DOCS:
-        return {
-            "openapi_tags": OPENAPI_TAGS,
-            "docs_url": None,
-            "redoc_url": None,
-            "openapi_url": None,
-        }
-
-    return {
-        "openapi_tags": OPENAPI_TAGS,
-        "docs_url": "/docs",
-        "redoc_url": "/redoc",
-        "openapi_url": "/openapi.json",
-    }
+    return {"openapi_tags": OPENAPI_TAGS, **resolve_docs_urls(settings)}
 
 
 def _docs_explicitly_enabled(settings: Settings) -> bool:

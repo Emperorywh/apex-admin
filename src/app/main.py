@@ -19,6 +19,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
+import structlog
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -39,6 +40,8 @@ from app.core.metrics.middleware import MetricsMiddleware
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
+
+_logger = structlog.get_logger(__name__)
 
 
 @asynccontextmanager
@@ -92,6 +95,20 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         head_revision = ""
 
     app.state.health_checker = DbHealthChecker(engine, head_revision)
+
+    # ── 打印 API 文档地址（SPEC 9.6）──────────────────────────────────
+    from app.core.api.openapi import resolve_docs_urls
+
+    docs_urls = resolve_docs_urls(settings)
+    if docs_urls["docs_url"] is None:
+        _logger.info("API 文档端点已关闭")
+    else:
+        _logger.info(
+            "API 文档端点已启用，请在服务地址后拼接以下路径访问",
+            docs_url=docs_urls["docs_url"],
+            redoc_url=docs_urls["redoc_url"],
+            openapi_url=docs_urls["openapi_url"],
+        )
 
     yield
 
