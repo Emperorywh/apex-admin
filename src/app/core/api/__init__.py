@@ -7,7 +7,7 @@
 公开 API:
   - 分页: ``PageParams``, ``PageResponse``, ``total_pages``
   - 排序: ``SortField``, ``SortOrder``, ``parse_sort``, ``sort_dependency``
-  - Schema: ``StrictBaseModel``
+  - Schema: ``ApiModel``, ``StrictBaseModel``
   - OpenAPI: ``OPENAPI_TAGS``, ``build_openapi_kwargs``
 """
 
@@ -21,10 +21,11 @@ from app.core.api.pagination import (
     sort_dependency,
     total_pages,
 )
-from app.core.api.schemas import StrictBaseModel
+from app.core.api.schemas import ApiModel, StrictBaseModel
 
 __all__ = [
     "OPENAPI_TAGS",
+    "ApiModel",
     "PageParams",
     "PageResponse",
     "SortField",

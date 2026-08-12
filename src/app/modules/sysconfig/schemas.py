@@ -1,7 +1,7 @@
 """系统配置请求与响应 Schema — SPEC 9.2 / 9.3 / 16.1 / 16.2.
 
 SPEC 9.2: 创建、全量更新请求拒绝未知字段（``extra="forbid"``）。
-SPEC 9.3: JSON 字段统一 snake_case。
+SPEC 9.3: JSON 字段统一 camelCase。
 
 SPEC 16.1:
   - 敏感配置 API 响应不回显明文（掩码）。
@@ -13,9 +13,9 @@ from __future__ import annotations
 from datetime import datetime  # noqa: TC003
 from uuid import UUID  # noqa: TC003
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
-from app.core.api.schemas import StrictBaseModel
+from app.core.api.schemas import ApiModel, StrictBaseModel
 
 #: 敏感配置掩码值 — SPEC 16.1: "默认不回显"。
 SENSITIVE_MASK = "***MASKED***"
@@ -92,7 +92,7 @@ class ConfigUpdateRequest(StrictBaseModel):
     )
 
 
-class ConfigResponse(BaseModel):
+class ConfigResponse(ApiModel):
     """配置项响应模型 — SPEC 9.3 / 16.1.
 
     SPEC 16.1: 敏感配置 API 响应不回显明文（掩码）。
@@ -114,7 +114,7 @@ class ConfigResponse(BaseModel):
     updated_at: datetime
 
 
-class ConfigGroupResponse(BaseModel):
+class ConfigGroupResponse(ApiModel):
     """配置分组响应 — SPEC 16.1 按分组管理."""
 
     model_config = {"extra": "forbid"}

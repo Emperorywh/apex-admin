@@ -138,7 +138,7 @@ def _create_user(
         "/api/v1/users",
         json={
             "username": username,
-            "display_name": display_name,
+            "displayName": display_name,
             "password": password,
         },
     )
@@ -159,7 +159,7 @@ def test_create_user_returns_201_with_location(api_client: TestClient) -> None:
         "/api/v1/users",
         json={
             "username": "alice",
-            "display_name": "Alice",
+            "displayName": "Alice",
             "password": _VALID_PASSWORD,
         },
     )
@@ -182,7 +182,7 @@ def test_create_user_unknown_field_returns_422(api_client: TestClient) -> None:
         "/api/v1/users",
         json={
             "username": "alice",
-            "display_name": "Alice",
+            "displayName": "Alice",
             "password": _VALID_PASSWORD,
             "extra_field": "value",
         },
@@ -200,7 +200,7 @@ def test_create_duplicate_username_returns_409(api_client: TestClient) -> None:
         "/api/v1/users",
         json={
             "username": "alice",
-            "display_name": "Alice 2",
+            "displayName": "Alice 2",
             "password": _VALID_PASSWORD,
         },
     )
@@ -251,13 +251,13 @@ def test_list_users_pagination(api_client: TestClient) -> None:
 
     response = api_client.get(
         "/api/v1/users",
-        params={"page": 1, "page_size": 2},
+        params={"page": 1, "pageSize": 2},
     )
     assert response.status_code == 200
     body = response.json()
     assert body["total"] == 3
     assert body["page"] == 1
-    assert body["page_size"] == 2
+    assert body["pageSize"] == 2
     assert body["pages"] == 2
     assert len(body["items"]) == 2
 
@@ -271,7 +271,7 @@ def test_list_users_sorting(api_client: TestClient) -> None:
 
     response = api_client.get(
         "/api/v1/users",
-        params={"sort": "username", "page_size": 10},
+        params={"sort": "username", "pageSize": 10},
     )
     assert response.status_code == 200
     usernames = [u["username"] for u in response.json()["items"]]
@@ -321,10 +321,10 @@ def test_update_user(api_client: TestClient) -> None:
     user = _create_user(api_client)
     response = api_client.put(
         f"/api/v1/users/{user['id']}",
-        json={"display_name": "Updated", "phone": "13800138000", "email": None},
+        json={"displayName": "Updated", "phone": "13800138000", "email": None},
     )
     assert response.status_code == 200
-    assert response.json()["display_name"] == "Updated"
+    assert response.json()["displayName"] == "Updated"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -376,7 +376,7 @@ def test_reset_password_returns_204(api_client: TestClient) -> None:
     user = _create_user(api_client)
     response = api_client.post(
         f"/api/v1/users/{user['id']}/reset-password",
-        json={"new_password": "new_secure_password_12"},
+        json={"newPassword": "new_secure_password_12"},
     )
     assert response.status_code == 204
 
@@ -405,10 +405,10 @@ def test_delete_user_with_audit_returns_409(api_client: TestClient) -> None:
 def api_client_with_actor(
     migrated_database_url: str,
 ) -> Iterator[tuple[TestClient, str]]:
-    """创建带 actor_id 的 TestClient——自助端点测试。
+    """创建带 actorId 的 TestClient——自助端点测试。
 
     通过覆盖认证依赖注入模拟已认证用户，
-    使自助端点的 ``ctx.actor_id`` 指向已创建的用户。
+    使自助端点的 ``ctx.actorId`` 指向已创建的用户。
     """
     settings = Settings(
         ENVIRONMENT=Environment.TESTING,
@@ -483,10 +483,10 @@ def test_update_self_profile(
     client, _ = api_client_with_actor
     response = client.put(
         "/api/v1/users/me",
-        json={"display_name": "Self Updated", "phone": "13900000000", "email": None},
+        json={"displayName": "Self Updated", "phone": "13900000000", "email": None},
     )
     assert response.status_code == 200
-    assert response.json()["display_name"] == "Self Updated"
+    assert response.json()["displayName"] == "Self Updated"
 
 
 @pytest.mark.g2
@@ -499,7 +499,7 @@ def test_self_profile_rejects_username(
     response = client.put(
         "/api/v1/users/me",
         json={
-            "display_name": "Alice",
+            "displayName": "Alice",
             "username": "hacker",
         },
     )
@@ -516,7 +516,7 @@ def test_self_profile_rejects_status(
     response = client.put(
         "/api/v1/users/me",
         json={
-            "display_name": "Alice",
+            "displayName": "Alice",
             "status": "disabled",
         },
     )
@@ -533,8 +533,8 @@ def test_self_change_password_correct_old(
     response = client.put(
         "/api/v1/users/me/password",
         json={
-            "old_password": _VALID_PASSWORD,
-            "new_password": "new_secure_password_12",
+            "oldPassword": _VALID_PASSWORD,
+            "newPassword": "new_secure_password_12",
         },
     )
     assert response.status_code == 204
@@ -550,8 +550,8 @@ def test_self_change_password_wrong_old(
     response = client.put(
         "/api/v1/users/me/password",
         json={
-            "old_password": "wrong_password_12",
-            "new_password": "new_secure_password_12",
+            "oldPassword": "wrong_password_12",
+            "newPassword": "new_secure_password_12",
         },
     )
     assert response.status_code == 409
@@ -563,12 +563,12 @@ def test_self_change_password_wrong_old(
 def test_self_change_password_missing_old_returns_422(
     api_client_with_actor: tuple[TestClient, str],
 ) -> None:
-    """自助改密缺少 old_password 返回 422 — SPEC 11.1 / AC-1."""
+    """自助改密缺少 oldPassword 返回 422 — SPEC 11.1 / AC-1."""
     client, _ = api_client_with_actor
     response = client.put(
         "/api/v1/users/me/password",
         json={
-            "new_password": "new_secure_password_12",
+            "newPassword": "new_secure_password_12",
         },
     )
     assert response.status_code == 422

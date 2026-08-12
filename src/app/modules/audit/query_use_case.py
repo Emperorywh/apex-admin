@@ -33,32 +33,32 @@ if TYPE_CHECKING:
 
 # ── 导出 CSV 列定义 ──────────────────────────────────────────────────────
 
-#: 审计日志 CSV 导出列头。
+#: 审计日志 CSV 导出列头（camelCase，与 JSON 命名约定一致，SPEC 9.3）。
 AUDIT_LOG_CSV_COLUMNS = (
     "id",
-    "actor_id",
-    "actor_display_name",
+    "actorId",
+    "actorDisplayName",
     "module",
     "action",
-    "resource_type",
-    "resource_id",
-    "resource_display_name",
+    "resourceType",
+    "resourceId",
+    "resourceDisplayName",
     "result",
-    "request_id",
-    "occurred_at",
+    "requestId",
+    "occurredAt",
 )
 
-#: 登录日志 CSV 导出列头。
+#: 登录日志 CSV 导出列头（camelCase，与 JSON 命名约定一致，SPEC 9.3）。
 LOGIN_LOG_CSV_COLUMNS = (
     "id",
-    "user_id",
+    "userId",
     "username",
-    "session_id",
-    "ip_address",
-    "user_agent",
+    "sessionId",
+    "ipAddress",
+    "userAgent",
     "result",
-    "failure_reason",
-    "occurred_at",
+    "failureReason",
+    "occurredAt",
 )
 
 #: 流式导出每批次查询的记录数。

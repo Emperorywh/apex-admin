@@ -139,13 +139,13 @@ def _create_config(
     payload: dict[str, object] = {
         "group": group,
         "key": key,
-        "value_type": value_type,
+        "valueType": value_type,
         "value": value,
     }
     if is_sensitive:
-        payload["is_sensitive"] = True
+        payload["isSensitive"] = True
     if is_core_security:
-        payload["is_core_security"] = True
+        payload["isCoreSecurity"] = True
     if description is not None:
         payload["description"] = description
     response = client.post("/api/v1/configs", json=payload)
@@ -174,7 +174,7 @@ class TestConfigApiContract:
             json={
                 "group": "app",
                 "key": "site_name",
-                "value_type": "string",
+                "valueType": "string",
                 "value": "My App",
             },
         )
@@ -198,7 +198,7 @@ class TestConfigApiContract:
             json={
                 "group": "dup",
                 "key": "k",
-                "value_type": "string",
+                "valueType": "string",
                 "value": "v2",
             },
         )
@@ -215,7 +215,7 @@ class TestConfigApiContract:
             json={
                 "group": "types",
                 "key": "bad_int",
-                "value_type": "int",
+                "valueType": "int",
                 "value": "not-a-number",
             },
         )
@@ -307,7 +307,7 @@ class TestConfigApiContract:
             json={
                 "group": "test",
                 "key": "k",
-                "value_type": "string",
+                "valueType": "string",
                 "value": "v",
                 "unknown_field": "bad",
             },
@@ -334,7 +334,7 @@ class TestSensitiveConfigApi:
             is_sensitive=True,
         )
         assert created["value"] == "***MASKED***"
-        assert created["is_sensitive"] is True
+        assert created["isSensitive"] is True
 
     def test_sensitive_config_update_masked(
         self,

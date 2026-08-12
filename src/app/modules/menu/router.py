@@ -10,17 +10,17 @@ Router 通过 FastAPI 依赖注入获得 ``MenuUseCase``。
   菜单管理 — ``/menus`` 前缀:
     POST   /menus                       创建菜单
     GET    /menus/tree                   查询菜单树
-    GET    /menus/{menu_id}              查询菜单详情
-    PUT    /menus/{menu_id}              更新菜单
-    POST   /menus/{menu_id}/enable       启用菜单
-    POST   /menus/{menu_id}/disable      禁用菜单
-    PUT    /menus/{menu_id}/hierarchy    调整层级与排序
-    DELETE /menus/{menu_id}              删除菜单
+    GET    /menus/{menuId}              查询菜单详情
+    PUT    /menus/{menuId}              更新菜单
+    POST   /menus/{menuId}/enable       启用菜单
+    POST   /menus/{menuId}/disable      禁用菜单
+    PUT    /menus/{menuId}/hierarchy    调整层级与排序
+    DELETE /menus/{menuId}              删除菜单
 
   角色菜单分配 — ``/roles`` 前缀:
-    PUT    /roles/{role_id}/menus        为角色分配菜单（全量替换）
-    DELETE /roles/{role_id}/menus/{menu_id} 移除角色单个菜单
-    GET    /roles/{role_id}/menus        查询角色已分配菜单
+    PUT    /roles/{roleId}/menus        为角色分配菜单（全量替换）
+    DELETE /roles/{roleId}/menus/{menuId} 移除角色单个菜单
+    GET    /roles/{roleId}/menus        查询角色已分配菜单
 
   当前用户菜单与权限 — ``/me`` 前缀:
     GET    /me/menus                     当前用户菜单树
@@ -156,7 +156,7 @@ async def get_menu_tree(
 
 
 @router.get(
-    "/menus/{menu_id}",
+    "/menus/{menuId}",
     response_model=MenuResponse,
     summary="查询菜单详情",
     operation_id="get_menu_detail",
@@ -164,7 +164,7 @@ async def get_menu_tree(
 async def get_menu_detail(
     ctx: MenuReadCtx,
     use_case: UseCaseDep,
-    menu_id: Annotated[UUID, Path(description="菜单 ID")],
+    menu_id: Annotated[UUID, Path(alias="menuId", description="菜单 ID")],
 ) -> MenuResponse:
     """查询菜单详情 — SPEC 15.1.
 
@@ -176,7 +176,7 @@ async def get_menu_detail(
 
 
 @router.put(
-    "/menus/{menu_id}",
+    "/menus/{menuId}",
     response_model=MenuResponse,
     summary="更新菜单",
     operation_id="update_menu",
@@ -185,7 +185,7 @@ async def update_menu(
     request_body: MenuUpdateRequest,
     ctx: MenuWriteCtx,
     use_case: UseCaseDep,
-    menu_id: Annotated[UUID, Path(description="菜单 ID")],
+    menu_id: Annotated[UUID, Path(alias="menuId", description="菜单 ID")],
 ) -> MenuResponse:
     """更新菜单基本信息 — SPEC 15.1.
 
@@ -198,7 +198,7 @@ async def update_menu(
 
 
 @router.post(
-    "/menus/{menu_id}/enable",
+    "/menus/{menuId}/enable",
     response_model=MenuResponse,
     summary="启用菜单",
     operation_id="enable_menu",
@@ -206,7 +206,7 @@ async def update_menu(
 async def enable_menu(
     ctx: MenuWriteCtx,
     use_case: UseCaseDep,
-    menu_id: Annotated[UUID, Path(description="菜单 ID")],
+    menu_id: Annotated[UUID, Path(alias="menuId", description="菜单 ID")],
 ) -> MenuResponse:
     """启用菜单 — SPEC 15.1."""
 
@@ -215,7 +215,7 @@ async def enable_menu(
 
 
 @router.post(
-    "/menus/{menu_id}/disable",
+    "/menus/{menuId}/disable",
     response_model=MenuResponse,
     summary="禁用菜单",
     operation_id="disable_menu",
@@ -223,7 +223,7 @@ async def enable_menu(
 async def disable_menu(
     ctx: MenuWriteCtx,
     use_case: UseCaseDep,
-    menu_id: Annotated[UUID, Path(description="菜单 ID")],
+    menu_id: Annotated[UUID, Path(alias="menuId", description="菜单 ID")],
 ) -> MenuResponse:
     """禁用菜单 — SPEC 15.1.
 
@@ -235,7 +235,7 @@ async def disable_menu(
 
 
 @router.put(
-    "/menus/{menu_id}/hierarchy",
+    "/menus/{menuId}/hierarchy",
     response_model=MenuResponse,
     summary="调整菜单层级与排序",
     operation_id="adjust_menu_hierarchy",
@@ -244,7 +244,7 @@ async def adjust_menu_hierarchy(
     request_body: MenuHierarchyRequest,
     ctx: MenuWriteCtx,
     use_case: UseCaseDep,
-    menu_id: Annotated[UUID, Path(description="菜单 ID")],
+    menu_id: Annotated[UUID, Path(alias="menuId", description="菜单 ID")],
 ) -> MenuResponse:
     """调整菜单层级与排序 — SPEC 15.1.
 
@@ -261,7 +261,7 @@ async def adjust_menu_hierarchy(
 
 
 @router.delete(
-    "/menus/{menu_id}",
+    "/menus/{menuId}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="删除菜单",
     operation_id="delete_menu",
@@ -269,7 +269,7 @@ async def adjust_menu_hierarchy(
 async def delete_menu(
     ctx: MenuWriteCtx,
     use_case: UseCaseDep,
-    menu_id: Annotated[UUID, Path(description="菜单 ID")],
+    menu_id: Annotated[UUID, Path(alias="menuId", description="菜单 ID")],
 ) -> Response:
     """删除菜单 — SPEC 15.1.
 
@@ -281,12 +281,12 @@ async def delete_menu(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 角色菜单分配 — /roles/{role_id}/menus 前缀
+# 角色菜单分配 — /roles/{roleId}/menus 前缀
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
 @router.put(
-    "/roles/{role_id}/menus",
+    "/roles/{roleId}/menus",
     response_model=RoleMenuIdsResponse,
     summary="为角色分配菜单（全量替换）",
     operation_id="assign_role_menus",
@@ -295,7 +295,7 @@ async def assign_role_menus(
     request_body: AssignRoleMenusRequest,
     ctx: RoleMenuWriteCtx,
     use_case: UseCaseDep,
-    role_id: Annotated[UUID, Path(description="角色 ID")],
+    role_id: Annotated[UUID, Path(alias="roleId", description="角色 ID")],
 ) -> RoleMenuIdsResponse:
     """为角色分配菜单（全量替换，幂等）— SPEC 15.1.
 
@@ -309,7 +309,7 @@ async def assign_role_menus(
 
 
 @router.delete(
-    "/roles/{role_id}/menus/{menu_id}",
+    "/roles/{roleId}/menus/{menuId}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="移除角色单个菜单",
     operation_id="remove_role_menu",
@@ -317,8 +317,8 @@ async def assign_role_menus(
 async def remove_role_menu(
     ctx: RoleMenuWriteCtx,
     use_case: UseCaseDep,
-    role_id: Annotated[UUID, Path(description="角色 ID")],
-    menu_id: Annotated[UUID, Path(description="菜单 ID")],
+    role_id: Annotated[UUID, Path(alias="roleId", description="角色 ID")],
+    menu_id: Annotated[UUID, Path(alias="menuId", description="菜单 ID")],
 ) -> Response:
     """移除角色单个菜单（幂等）— SPEC 15.1.
 
@@ -330,7 +330,7 @@ async def remove_role_menu(
 
 
 @router.get(
-    "/roles/{role_id}/menus",
+    "/roles/{roleId}/menus",
     response_model=RoleMenuIdsResponse,
     summary="查询角色已分配菜单",
     operation_id="get_role_menu_ids",
@@ -338,7 +338,7 @@ async def remove_role_menu(
 async def get_role_menu_ids(
     ctx: MenuReadCtx,
     use_case: UseCaseDep,
-    role_id: Annotated[UUID, Path(description="角色 ID")],
+    role_id: Annotated[UUID, Path(alias="roleId", description="角色 ID")],
 ) -> RoleMenuIdsResponse:
     """查询角色已分配的菜单 ID 列表 — SPEC 15.1."""
 

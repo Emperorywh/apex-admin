@@ -5,7 +5,7 @@ SPEC 9.2 约定:
   - 请求参数使用明确的 Schema 校验。
 
 SPEC 9.3 约定:
-  - JSON 字段统一使用 snake_case。
+  - JSON 字段统一使用 camelCase。
   - 普通成功响应直接返回资源 Schema，不使用成功信封。
   - 创建成功返回 HTTP 201 + Location。
 """
@@ -15,9 +15,9 @@ from __future__ import annotations
 from datetime import datetime  # noqa: TC003
 from uuid import UUID  # noqa: TC003
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
-from app.core.api.schemas import StrictBaseModel
+from app.core.api.schemas import ApiModel, StrictBaseModel
 
 # ── 角色请求 Schema ──────────────────────────────────────────────────────
 
@@ -114,7 +114,7 @@ class AssignUserRolesRequest(StrictBaseModel):
 # ── 响应 Schema ──────────────────────────────────────────────────────────
 
 
-class RoleResponse(BaseModel):
+class RoleResponse(ApiModel):
     """角色响应模型 — SPEC 9.3 / 13.2."""
 
     model_config = {"extra": "forbid"}
@@ -130,7 +130,7 @@ class RoleResponse(BaseModel):
     updated_at: datetime
 
 
-class RoleDetailResponse(BaseModel):
+class RoleDetailResponse(ApiModel):
     """角色详情响应（含权限编码列表）— SPEC 9.3 / 13.2."""
 
     model_config = {"extra": "forbid"}
@@ -148,7 +148,7 @@ class RoleDetailResponse(BaseModel):
     updated_at: datetime
 
 
-class RoleMemberResponse(BaseModel):
+class RoleMemberResponse(ApiModel):
     """角色成员响应 — SPEC 13.2."""
 
     model_config = {"extra": "forbid"}
@@ -159,7 +159,7 @@ class RoleMemberResponse(BaseModel):
     created_by: str | None
 
 
-class PermissionResponse(BaseModel):
+class PermissionResponse(ApiModel):
     """权限点响应模型 — SPEC 9.3 / 13.1."""
 
     model_config = {"extra": "forbid"}

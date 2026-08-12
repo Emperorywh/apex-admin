@@ -116,13 +116,13 @@ async def _get_session_by_digest(
                 return None
             return {
                 "id": row[0],
-                "user_id": row[1],
+                "userId": row[1],
                 "access_token_digest": row[2],
                 "revoked": row[3],
                 "revoked_reason": row[4],
-                "last_activity_at": row[5],
-                "created_at": row[6],
-                "token_expires_at": row[7],
+                "lastActivityAt": row[5],
+                "createdAt": row[6],
+                "tokenExpiresAt": row[7],
                 "absolute_expires_at": row[8],
             }
     finally:
@@ -145,8 +145,8 @@ async def _get_login_logs(database_url: str) -> list[dict[str, object]]:
                 {
                     "username": row[0],
                     "result": row[1],
-                    "failure_reason": row[2],
-                    "ip_address": row[3],
+                    "failureReason": row[2],
+                    "ipAddress": row[3],
                 }
                 for row in result
             ]
@@ -335,7 +335,7 @@ async def test_login_success_returns_token_and_persists_session(
             assert session["access_token_digest"] == digest
             assert session["access_token_digest"] != response.access_token
             assert session["revoked"] is False
-            assert session["user_id"] == user_id
+            assert session["userId"] == user_id
         finally:
             await engine.dispose()
     finally:
@@ -366,9 +366,9 @@ async def test_login_success_records_login_log(database_url: str) -> None:
             logs = await _get_login_logs(database_url)
             assert len(logs) == 1
             assert logs[0]["result"] == "success"
-            assert logs[0]["failure_reason"] is None
+            assert logs[0]["failureReason"] is None
             assert logs[0]["username"] == "testuser"
-            assert logs[0]["ip_address"] == "192.168.1.1"
+            assert logs[0]["ipAddress"] == "192.168.1.1"
         finally:
             await engine.dispose()
     finally:
@@ -408,7 +408,7 @@ async def test_login_nonexistent_user_same_error(database_url: str) -> None:
             logs = await _get_login_logs(database_url)
             assert len(logs) == 1
             assert logs[0]["result"] == "failure"
-            assert logs[0]["failure_reason"] == "user_not_found"
+            assert logs[0]["failureReason"] == "user_not_found"
         finally:
             await engine.dispose()
     finally:
@@ -835,7 +835,7 @@ async def test_activity_time_conditional_update(database_url: str) -> None:
             # 获取初始 last_activity_at
             session1 = await _get_session_by_digest(database_url, digest)
             assert session1 is not None
-            initial_activity = session1["last_activity_at"]
+            initial_activity = session1["lastActivityAt"]
 
             # 2 分钟后再次认证——不应更新活动时间
             clock.advance(timedelta(minutes=2))
@@ -843,7 +843,7 @@ async def test_activity_time_conditional_update(database_url: str) -> None:
 
             session2 = await _get_session_by_digest(database_url, digest)
             assert session2 is not None
-            assert session2["last_activity_at"] == initial_activity
+            assert session2["lastActivityAt"] == initial_activity
 
             # 再过 4 分钟（总计 6 分钟，超过 5 分钟间隔）——应更新活动时间
             clock.advance(timedelta(minutes=4))
@@ -851,7 +851,7 @@ async def test_activity_time_conditional_update(database_url: str) -> None:
 
             session3 = await _get_session_by_digest(database_url, digest)
             assert session3 is not None
-            assert session3["last_activity_at"] != initial_activity
+            assert session3["lastActivityAt"] != initial_activity
         finally:
             await engine.dispose()
     finally:
@@ -1257,7 +1257,7 @@ async def test_login_log_records_failure_with_reason(database_url: str) -> None:
             logs = await _get_login_logs(database_url)
             assert len(logs) == 1
             assert logs[0]["result"] == "failure"
-            assert logs[0]["failure_reason"] == "wrong_password"
+            assert logs[0]["failureReason"] == "wrong_password"
         finally:
             await engine.dispose()
     finally:
@@ -1330,7 +1330,7 @@ async def test_disabled_user_login_records_reason(database_url: str) -> None:
             logs = await _get_login_logs(database_url)
             assert len(logs) == 1
             assert logs[0]["result"] == "failure"
-            assert logs[0]["failure_reason"] == "user_disabled"
+            assert logs[0]["failureReason"] == "user_disabled"
         finally:
             await engine.dispose()
     finally:

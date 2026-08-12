@@ -15,19 +15,19 @@ Router 不接触 UoW、Repository 或 AsyncSession。
   管理端 — ``/users`` 前缀:
     POST   /users                    创建用户
     GET    /users                    分页查询
-    GET    /users/{user_id}          查询详情
-    PUT    /users/{user_id}          更新资料
-    POST   /users/{user_id}/enable   启用
-    POST   /users/{user_id}/disable  禁用
-    POST   /users/{user_id}/reset-password  重置密码
-    DELETE /users/{user_id}          物理删除（审计保护）
+    GET    /users/{userId}          查询详情
+    PUT    /users/{userId}          更新资料
+    POST   /users/{userId}/enable   启用
+    POST   /users/{userId}/disable  禁用
+    POST   /users/{userId}/reset-password  重置密码
+    DELETE /users/{userId}          物理删除（审计保护）
 
   自助端点 — ``/users/me`` 路径:
     GET    /users/me                 查询个人资料
     PUT    /users/me                 更新个人资料（白名单字段）
     PUT    /users/me/password        修改密码（校验旧密码）
 
-自助端点路径 ``/users/me`` 必须注册在 ``/users/{user_id}`` 之前，
+自助端点路径 ``/users/me`` 必须注册在 ``/users/{userId}`` 之前，
 避免 ``me`` 被 UUID 路径参数匹配。
 """
 
@@ -183,7 +183,7 @@ AuthenticatedDep = Annotated[UseCaseContext, Depends(require_actor)]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 自助端点 — 必须注册在 /{user_id} 之前
+# 自助端点 — 必须注册在 /{userId} 之前
 # SPEC 11.1: 用户查询/更新自己的资料、修改自己的密码
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -301,9 +301,10 @@ async def list_users(
 ) -> dict[str, object]:
     """分页查询用户列表 — SPEC 9.4 分页排序.
 
-    分页参数: ``page``（默认 1）、``page_size``（默认 20）。
+    分页参数: ``page``（默认 1）、``pageSize``（默认 20）。
     排序参数: ``sort``，逗号分隔，``-`` 前缀降序。
-    排序白名单: ``username``、``display_name``、``created_at``、``updated_at``。
+    排序白名单（camelCase）: ``username``、``displayName``、
+    ``createdAt``、``updatedAt``。
     筛选参数: ``status``（active / disabled，可选）。
     """
 
@@ -321,7 +322,7 @@ async def list_users(
 
 
 @router.get(
-    "/{user_id}",
+    "/{userId}",
     response_model=UserResponse,
     summary="查询用户详情",
     operation_id="get_user",
@@ -329,7 +330,7 @@ async def list_users(
 async def get_user(
     ctx: UserReadCtx,
     use_case: UseCaseDep,
-    user_id: Annotated[UUID, Path(description="用户 ID")],
+    user_id: Annotated[UUID, Path(alias="userId", description="用户 ID")],
 ) -> UserResponse:
     """查询用户详情 — 不存在返回 404（``USER.NOT_FOUND``）。"""
 
@@ -337,7 +338,7 @@ async def get_user(
 
 
 @router.put(
-    "/{user_id}",
+    "/{userId}",
     response_model=UserResponse,
     summary="更新用户资料",
     operation_id="update_user",
@@ -346,7 +347,7 @@ async def update_user(
     request_body: UserUpdateRequest,
     ctx: UserWriteCtx,
     use_case: UseCaseDep,
-    user_id: Annotated[UUID, Path(description="用户 ID")],
+    user_id: Annotated[UUID, Path(alias="userId", description="用户 ID")],
 ) -> UserResponse:
     """更新用户资料（管理端）— SPEC 11.1: "更新用户基本资料"."""
 
@@ -354,7 +355,7 @@ async def update_user(
 
 
 @router.post(
-    "/{user_id}/enable",
+    "/{userId}/enable",
     response_model=UserResponse,
     summary="启用用户",
     operation_id="enable_user",
@@ -362,7 +363,7 @@ async def update_user(
 async def enable_user(
     ctx: UserWriteCtx,
     use_case: UseCaseDep,
-    user_id: Annotated[UUID, Path(description="用户 ID")],
+    user_id: Annotated[UUID, Path(alias="userId", description="用户 ID")],
 ) -> UserResponse:
     """启用用户 — SPEC 11.1: "启用用户".
 
@@ -373,7 +374,7 @@ async def enable_user(
 
 
 @router.post(
-    "/{user_id}/disable",
+    "/{userId}/disable",
     response_model=UserResponse,
     summary="禁用用户",
     operation_id="disable_user",
@@ -381,7 +382,7 @@ async def enable_user(
 async def disable_user(
     ctx: UserWriteCtx,
     use_case: UseCaseDep,
-    user_id: Annotated[UUID, Path(description="用户 ID")],
+    user_id: Annotated[UUID, Path(alias="userId", description="用户 ID")],
 ) -> UserResponse:
     """禁用用户 — SPEC 11.1: "禁用用户".
 
@@ -393,7 +394,7 @@ async def disable_user(
 
 
 @router.post(
-    "/{user_id}/reset-password",
+    "/{userId}/reset-password",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="重置用户密码",
     operation_id="reset_user_password",
@@ -402,7 +403,7 @@ async def reset_user_password(
     request_body: UserResetPasswordRequest,
     ctx: UserWriteCtx,
     use_case: UseCaseDep,
-    user_id: Annotated[UUID, Path(description="用户 ID")],
+    user_id: Annotated[UUID, Path(alias="userId", description="用户 ID")],
 ) -> Response:
     """管理员重置用户密码 — SPEC 11.1: "重置用户密码".
 
@@ -416,7 +417,7 @@ async def reset_user_password(
 
 
 @router.delete(
-    "/{user_id}",
+    "/{userId}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="物理删除用户",
     operation_id="delete_user",
@@ -424,7 +425,7 @@ async def reset_user_password(
 async def delete_user(
     ctx: UserWriteCtx,
     use_case: UseCaseDep,
-    user_id: Annotated[UUID, Path(description="用户 ID")],
+    user_id: Annotated[UUID, Path(alias="userId", description="用户 ID")],
 ) -> Response:
     """物理删除用户 — SPEC 11.3 删除策略.
 

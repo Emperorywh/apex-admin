@@ -7,9 +7,9 @@ SPEC 5.6: "Router 只能获得 Use Case"。
   文件管理 — ``/files`` 前缀:
     POST   /files                 上传文件（multipart/form-data）
     GET    /files                 查询当前用户文件列表
-    GET    /files/{file_id}       查询文件详情
-    GET    /files/{file_id}/download  下载文件
-    DELETE /files/{file_id}       删除文件（置 DELETING）
+    GET    /files/{fileId}       查询文件详情
+    GET    /files/{fileId}/download  下载文件
+    DELETE /files/{fileId}       删除文件（置 DELETING）
 """
 
 from __future__ import annotations
@@ -211,7 +211,7 @@ async def list_my_files(
 
 
 @router.get(
-    "/files/{file_id}",
+    "/files/{fileId}",
     response_model=FileMetadataResponse,
     summary="查询文件详情",
     operation_id="get_file",
@@ -219,7 +219,7 @@ async def list_my_files(
 async def get_file(
     use_case: UseCaseDep,
     ctx: FileReadCtx,
-    file_id: Annotated[UUID, Path(description="文件 ID")],
+    file_id: Annotated[UUID, Path(alias="fileId", description="文件 ID")],
 ) -> FileMetadataResponse:
     """查询文件详情 — SPEC 19.1."""
 
@@ -247,14 +247,14 @@ def _build_content_disposition(filename: str) -> str:
 
 
 @router.get(
-    "/files/{file_id}/download",
+    "/files/{fileId}/download",
     summary="下载文件",
     operation_id="download_file",
 )
 async def download_file(
     use_case: UseCaseDep,
     download_dep: DownloadDep,
-    file_id: Annotated[UUID, Path(description="文件 ID")],
+    file_id: Annotated[UUID, Path(alias="fileId", description="文件 ID")],
 ) -> StreamingResponse:
     """下载文件 — SPEC 19.2 / 19.3 / 19.4.
 
@@ -302,7 +302,7 @@ async def download_file(
 
 
 @router.delete(
-    "/files/{file_id}",
+    "/files/{fileId}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="删除文件",
     operation_id="delete_file",
@@ -310,7 +310,7 @@ async def download_file(
 async def delete_file(
     use_case: UseCaseDep,
     download_dep: DownloadDep,
-    file_id: Annotated[UUID, Path(description="文件 ID")],
+    file_id: Annotated[UUID, Path(alias="fileId", description="文件 ID")],
 ) -> None:
     """删除文件 — SPEC 19.3 / 19.4.
 

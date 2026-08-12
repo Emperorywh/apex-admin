@@ -81,8 +81,8 @@ def test_all_management_routes_declare_permission() -> None:
         ("GET", "/api/v1/me/permissions"),
         # 文件模块下载/删除——SPEC 19.4: 上传者或文件管理权限管理员可访问，
         # 授权在 Use Case 内按资源归属判定，路由层仅需认证。
-        ("GET", "/api/v1/files/{file_id}/download"),
-        ("DELETE", "/api/v1/files/{file_id}"),
+        ("GET", "/api/v1/files/{fileId}/download"),
+        ("DELETE", "/api/v1/files/{fileId}"),
     }
 
     # ── 展开 _IncludedRouter 获取全部 APIRoute 实例 ──────────────────────
@@ -206,8 +206,8 @@ def test_super_admin_bypass_is_centralized_no_magic_ids() -> None:
                         and isinstance(node.left, ast.Name)
                         and node.left.id
                         in (
-                            "user_id",
-                            "actor_id",
+                            "userId",
+                            "actorId",
                             "uid",
                         )
                     ):

@@ -60,6 +60,8 @@ from app.modules.identity.schemas import (
     SelfChangePasswordRequest,
     SelfProfileUpdateRequest,
     UserCreateRequest,
+    UserDepartmentInfo,
+    UserPostInfo,
     UserResetPasswordRequest,
     UserResponse,
     UserUpdateRequest,
@@ -397,25 +399,25 @@ class UserUseCase:
                 raise UserNotFoundError(str(user_id))
 
             # SPEC 11.1 / 14.3: 通过 org 模块公开 Port 聚合部门岗位关系。
-            department: dict[str, object] | None = None
-            posts: list[dict[str, object]] = []
+            department: UserDepartmentInfo | None = None
+            posts: list[UserPostInfo] = []
             if self._org_port_factory is not None:
                 org_port = self._org_port_factory(uow.session)
                 dept_info = await org_port.get_user_department(user_id)
                 if dept_info is not None:
-                    department = {
-                        "department_id": dept_info.department_id,
-                        "department_code": dept_info.department_code,
-                        "department_name": dept_info.department_name,
-                        "is_primary": dept_info.is_primary,
-                    }
+                    department = UserDepartmentInfo(
+                        department_id=dept_info.department_id,
+                        department_code=dept_info.department_code,
+                        department_name=dept_info.department_name,
+                        is_primary=dept_info.is_primary,
+                    )
                 post_infos = await org_port.list_user_posts(user_id)
                 posts = [
-                    {
-                        "post_id": p.post_id,
-                        "post_code": p.post_code,
-                        "post_name": p.post_name,
-                    }
+                    UserPostInfo(
+                        post_id=p.post_id,
+                        post_code=p.post_code,
+                        post_name=p.post_name,
+                    )
                     for p in post_infos
                 ]
 
@@ -946,8 +948,8 @@ class UserUseCase:
 def _to_response(
     user: User,
     *,
-    department: dict[str, object] | None = None,
-    posts: list[dict[str, object]] | None = None,
+    department: UserDepartmentInfo | None = None,
+    posts: list[UserPostInfo] | None = None,
 ) -> UserResponse:
     """领域实体 → 响应 Schema 转换 — SPEC 5.2 职责分离.
 

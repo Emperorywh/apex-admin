@@ -1,18 +1,19 @@
 """分页与排序框架 — SPEC 9.4.
 
 SPEC 9.4 约定:
-  - 页码分页参数固定为 ``page`` 和 ``page_size``，默认值分别为 1 和 20。
-  - ``page`` 最小值为 1，``page_size`` 范围为 1 至 100。
-  - 页码分页响应固定为 ``{items, total, page, page_size, pages}``。
-  - 排序参数固定为 ``sort``，使用逗号分隔字段，前缀 ``-`` 表示降序，
-    例如 ``-created_at,name``。
+  - 页码分页参数固定为 ``page`` 和 ``pageSize``，默认值分别为 1 和 20。
+  - ``page`` 最小值为 1，``pageSize`` 范围为 1 至 100。
+  - 页码分页响应固定为 ``{items, total, page, pageSize, pages}``。
+  - 排序参数固定为 ``sort``，使用逗号分隔字段，字段名使用 ``camelCase``，
+    前缀 ``-`` 表示降序，例如 ``-createdAt,name``。
   - 排序字段使用每个查询显式声明的白名单，不在白名单内返回参数错误。
   - 禁止将客户端输入直接拼接为 SQL（排序字段经白名单校验后再使用）。
   - 游标分页必须使用独立响应模型，禁止与页码分页参数混用。
     当前无游标分页使用者，此规则以文档约束形式建立。
 
-所有排序字段在解析阶段即验证白名单，确保后续构建 SQL 排序时只使用
-已声明的安全字段名，不存在客户端输入直接进入 SQL 的路径。
+排序字段在 API 边界由 camelCase 转换为 snake_case 后再做白名单校验，
+确保后续构建 SQL 排序时只使用已声明的安全字段名（Python/ORM 属性名），
+不存在客户端输入直接进入 SQL 的路径。
 """
 
 from __future__ import annotations
@@ -23,8 +24,9 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Annotated, Generic, TypeVar
 
 from fastapi import Query
-from pydantic import BaseModel
+from pydantic import alias_generators
 
+from app.core.api.schemas import ApiModel
 from app.core.errors.exceptions import ParameterError
 
 if TYPE_CHECKING:
@@ -38,8 +40,9 @@ T = TypeVar("T")
 class PageParams:
     """页码分页查询参数 — SPEC 9.4.
 
-    作为 FastAPI 依赖使用，从查询字符串提取 ``page`` 和 ``page_size``。
-    SPEC 9.4 约定默认 page=1、page_size=20，page 最小 1，page_size 1-100。
+    作为 FastAPI 依赖使用，从查询字符串提取 ``page`` 和 ``pageSize``。
+    SPEC 9.4 约定默认 page=1、pageSize=20，page 最小 1，pageSize 1-100。
+    对外参数名为 camelCase（SPEC 9.3），内部属性保持 snake_case。
 
     使用方式::
 
@@ -62,10 +65,10 @@ class PageParams:
         ] = 1,
         page_size: Annotated[
             int,
-            Query(ge=1, le=100, description="每页数量，范围 1-100"),
+            Query(alias="pageSize", ge=1, le=100, description="每页数量，范围 1-100"),
         ] = 20,
     ) -> None:
-        """初始化分页参数，校验 page ≥ 1 且 page_size ∈ [1, 100]。"""
+        """初始化分页参数，校验 page ≥ 1 且 pageSize ∈ [1, 100]。"""
 
         self.page = page
         self.page_size = page_size
@@ -102,15 +105,16 @@ def total_pages(total: int, page_size: int) -> int:
 # ── 分页响应 ──────────────────────────────────────────────────────────────
 
 
-class PageResponse(BaseModel, Generic[T]):  # noqa: UP046
+class PageResponse(ApiModel, Generic[T]):  # noqa: UP046
     """页码分页响应模型 — SPEC 9.4 固定结构.
 
-    响应固定包含 ``{items, total, page, page_size, pages}`` 五个字段，
+    响应固定包含 ``{items, total, page, pageSize, pages}`` 五个字段
+    （camelCase 序列化继承自 ``ApiModel``，SPEC 9.3），
     不使用 ``{code, message, data}`` 成功信封（SPEC 9.3）。
 
     泛型参数 ``T`` 为 items 元素的 Schema 类型，使用方式::
 
-        class ItemOut(StrictBaseModel):
+        class ItemOut(ApiModel):
             id: str
             name: str
 
@@ -156,10 +160,13 @@ def parse_sort(
     """解析排序查询参数并校验白名单 — SPEC 9.4.
 
     解析规则:
-      - 逗号分隔多个字段，例如 ``-created_at,name``。
+      - 逗号分隔多个字段，例如 ``-createdAt,name``。
       - ``-`` 前缀表示降序，否则为升序。
       - 空白段（连续逗号或前后空白）被忽略。
       - None 或空字符串返回空列表（不排序）。
+      - 字段名按 SPEC 9.3 使用 camelCase；解析时转换为 snake_case
+        后再做白名单校验，``SortField.name`` 保持 snake_case，
+        可直接对应 Python/ORM 属性名。
 
     安全规则:
       - 每个字段必须在 ``allowed_fields`` 白名单内，否则抛出
@@ -167,8 +174,8 @@ def parse_sort(
         拼接为 SQL（SPEC 9.4 / 23.3）。
 
     参数:
-        sort:           原始排序字符串。
-        allowed_fields: 允许排序的字段白名单（每个查询显式声明）。
+        sort:           原始排序字符串（camelCase 字段名）。
+        allowed_fields: 允许排序的字段白名单（snake_case，每个查询显式声明）。
 
     返回:
         按声明顺序排列的排序字段列表。
@@ -194,13 +201,16 @@ def parse_sort(
             name = part
             order = SortOrder.ASC
 
+        # 对外 camelCase → 内部 snake_case（SPEC 9.3 / 9.4）
+        internal_name = alias_generators.to_snake(name)
+
         # 白名单校验 — 阻止非声明字段进入排序（SPEC 9.4 / 23.3）
-        if name not in allowed_fields:
+        if internal_name not in allowed_fields:
             raise ParameterError(
                 f"排序字段 '{name}' 不在允许的白名单内",
             )
 
-        result.append(SortField(name=name, order=order))
+        result.append(SortField(name=internal_name, order=order))
 
     return result
 
@@ -226,7 +236,8 @@ def sort_dependency(
             ...
 
     参数:
-        allowed_fields: 允许排序的字段白名单。
+        allowed_fields: 允许排序的字段白名单（snake_case；客户端以
+            camelCase 传入，解析时自动转换）。
 
     返回:
         FastAPI 依赖函数，从 ``sort`` 查询参数解析排序字段。

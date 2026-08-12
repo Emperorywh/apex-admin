@@ -28,7 +28,8 @@
               }
             }
           }
-        }
+        },
+        "security": []
       }
     },
     "/health/ready": {
@@ -48,7 +49,8 @@
               }
             }
           }
-        }
+        },
+        "security": []
       }
     },
     "/metrics": {
@@ -68,7 +70,8 @@
               }
             }
           }
-        }
+        },
+        "security": []
       }
     },
     "/api/v1/meta": {
@@ -90,7 +93,8 @@
               }
             }
           }
-        }
+        },
+        "security": []
       }
     },
     "/api/v1/example/items": {
@@ -139,7 +143,7 @@
           "example"
         ],
         "summary": "分页查询示例条目列表",
-        "description": "分页查询示例条目列表 — SPEC 9.4 分页排序.\n\n分页参数: ``page``（默认 1）、``page_size``（默认 20）。\n排序参数: ``sort``，逗号分隔，``-`` 前缀降序。\n排序字段白名单: ``name``、``created_at``、``updated_at``。",
+        "description": "分页查询示例条目列表 — SPEC 9.4 分页排序.\n\n分页参数: ``page``（默认 1）、``pageSize``（默认 20）。\n排序参数: ``sort``，逗号分隔，``-`` 前缀降序。\n排序字段白名单（camelCase）: ``name``、``createdAt``、``updatedAt``。",
         "operationId": "list_example_items",
         "parameters": [
           {
@@ -156,7 +160,7 @@
             "description": "页码，从 1 开始"
           },
           {
-            "name": "page_size",
+            "name": "pageSize",
             "in": "query",
             "required": false,
             "schema": {
@@ -165,7 +169,7 @@
               "minimum": 1,
               "description": "每页数量，范围 1-100",
               "default": 20,
-              "title": "Page Size"
+              "title": "Pagesize"
             },
             "description": "每页数量，范围 1-100"
           },
@@ -212,7 +216,7 @@
         }
       }
     },
-    "/api/v1/example/items/{item_id}": {
+    "/api/v1/example/items/{itemId}": {
       "get": {
         "tags": [
           "example"
@@ -222,14 +226,14 @@
         "operationId": "get_example_item",
         "parameters": [
           {
-            "name": "item_id",
+            "name": "itemId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "条目 ID",
-              "title": "Item Id"
+              "title": "Itemid"
             },
             "description": "条目 ID"
           }
@@ -266,14 +270,14 @@
         "operationId": "update_example_item",
         "parameters": [
           {
-            "name": "item_id",
+            "name": "itemId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "条目 ID",
-              "title": "Item Id"
+              "title": "Itemid"
             },
             "description": "条目 ID"
           }
@@ -320,14 +324,14 @@
         "operationId": "delete_example_item",
         "parameters": [
           {
-            "name": "item_id",
+            "name": "itemId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "条目 ID",
-              "title": "Item Id"
+              "title": "Itemid"
             },
             "description": "条目 ID"
           }
@@ -359,7 +363,7 @@
         "operationId": "list_audit_logs",
         "parameters": [
           {
-            "name": "actor_id",
+            "name": "actorId",
             "in": "query",
             "required": false,
             "schema": {
@@ -372,7 +376,7 @@
                 }
               ],
               "description": "操作者标识筛选",
-              "title": "Actor Id"
+              "title": "Actorid"
             },
             "description": "操作者标识筛选"
           },
@@ -413,7 +417,7 @@
             "description": "审计动作筛选"
           },
           {
-            "name": "resource_type",
+            "name": "resourceType",
             "in": "query",
             "required": false,
             "schema": {
@@ -426,12 +430,12 @@
                 }
               ],
               "description": "资源类型筛选",
-              "title": "Resource Type"
+              "title": "Resourcetype"
             },
             "description": "资源类型筛选"
           },
           {
-            "name": "resource_id",
+            "name": "resourceId",
             "in": "query",
             "required": false,
             "schema": {
@@ -444,7 +448,7 @@
                 }
               ],
               "description": "资源标识筛选",
-              "title": "Resource Id"
+              "title": "Resourceid"
             },
             "description": "资源标识筛选"
           },
@@ -467,7 +471,7 @@
             "description": "操作结果筛选"
           },
           {
-            "name": "start_time",
+            "name": "startTime",
             "in": "query",
             "required": false,
             "schema": {
@@ -481,12 +485,12 @@
                 }
               ],
               "description": "发生时间下界（含），ISO 8601",
-              "title": "Start Time"
+              "title": "Starttime"
             },
             "description": "发生时间下界（含），ISO 8601"
           },
           {
-            "name": "end_time",
+            "name": "endTime",
             "in": "query",
             "required": false,
             "schema": {
@@ -500,7 +504,7 @@
                 }
               ],
               "description": "发生时间上界（含），ISO 8601",
-              "title": "End Time"
+              "title": "Endtime"
             },
             "description": "发生时间上界（含），ISO 8601"
           },
@@ -518,7 +522,7 @@
             "description": "页码，从 1 开始"
           },
           {
-            "name": "page_size",
+            "name": "pageSize",
             "in": "query",
             "required": false,
             "schema": {
@@ -527,7 +531,7 @@
               "minimum": 1,
               "description": "每页数量，范围 1-100",
               "default": 20,
-              "title": "Page Size"
+              "title": "Pagesize"
             },
             "description": "每页数量，范围 1-100"
           }
@@ -566,7 +570,7 @@
         "operationId": "export_audit_logs",
         "parameters": [
           {
-            "name": "actor_id",
+            "name": "actorId",
             "in": "query",
             "required": false,
             "schema": {
@@ -579,7 +583,7 @@
                 }
               ],
               "description": "操作者标识筛选",
-              "title": "Actor Id"
+              "title": "Actorid"
             },
             "description": "操作者标识筛选"
           },
@@ -620,7 +624,7 @@
             "description": "审计动作筛选"
           },
           {
-            "name": "resource_type",
+            "name": "resourceType",
             "in": "query",
             "required": false,
             "schema": {
@@ -633,12 +637,12 @@
                 }
               ],
               "description": "资源类型筛选",
-              "title": "Resource Type"
+              "title": "Resourcetype"
             },
             "description": "资源类型筛选"
           },
           {
-            "name": "resource_id",
+            "name": "resourceId",
             "in": "query",
             "required": false,
             "schema": {
@@ -651,7 +655,7 @@
                 }
               ],
               "description": "资源标识筛选",
-              "title": "Resource Id"
+              "title": "Resourceid"
             },
             "description": "资源标识筛选"
           },
@@ -674,7 +678,7 @@
             "description": "操作结果筛选"
           },
           {
-            "name": "start_time",
+            "name": "startTime",
             "in": "query",
             "required": false,
             "schema": {
@@ -688,12 +692,12 @@
                 }
               ],
               "description": "发生时间下界（含），ISO 8601",
-              "title": "Start Time"
+              "title": "Starttime"
             },
             "description": "发生时间下界（含），ISO 8601"
           },
           {
-            "name": "end_time",
+            "name": "endTime",
             "in": "query",
             "required": false,
             "schema": {
@@ -707,7 +711,7 @@
                 }
               ],
               "description": "发生时间上界（含），ISO 8601",
-              "title": "End Time"
+              "title": "Endtime"
             },
             "description": "发生时间上界（含），ISO 8601"
           }
@@ -734,7 +738,7 @@
         }
       }
     },
-    "/api/v1/audit/logs/{log_id}": {
+    "/api/v1/audit/logs/{logId}": {
       "get": {
         "tags": [
           "audit"
@@ -744,14 +748,14 @@
         "operationId": "get_audit_log",
         "parameters": [
           {
-            "name": "log_id",
+            "name": "logId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "审计日志 ID",
-              "title": "Log Id"
+              "title": "Logid"
             },
             "description": "审计日志 ID"
           }
@@ -790,7 +794,7 @@
         "operationId": "list_login_logs",
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "in": "query",
             "required": false,
             "schema": {
@@ -803,7 +807,7 @@
                 }
               ],
               "description": "用户标识筛选",
-              "title": "User Id"
+              "title": "Userid"
             },
             "description": "用户标识筛选"
           },
@@ -826,7 +830,7 @@
             "description": "登录账号筛选"
           },
           {
-            "name": "ip_address",
+            "name": "ipAddress",
             "in": "query",
             "required": false,
             "schema": {
@@ -839,7 +843,7 @@
                 }
               ],
               "description": "客户端 IP 筛选",
-              "title": "Ip Address"
+              "title": "Ipaddress"
             },
             "description": "客户端 IP 筛选"
           },
@@ -862,7 +866,7 @@
             "description": "登录结果筛选"
           },
           {
-            "name": "start_time",
+            "name": "startTime",
             "in": "query",
             "required": false,
             "schema": {
@@ -876,12 +880,12 @@
                 }
               ],
               "description": "发生时间下界（含），ISO 8601",
-              "title": "Start Time"
+              "title": "Starttime"
             },
             "description": "发生时间下界（含），ISO 8601"
           },
           {
-            "name": "end_time",
+            "name": "endTime",
             "in": "query",
             "required": false,
             "schema": {
@@ -895,7 +899,7 @@
                 }
               ],
               "description": "发生时间上界（含），ISO 8601",
-              "title": "End Time"
+              "title": "Endtime"
             },
             "description": "发生时间上界（含），ISO 8601"
           },
@@ -913,7 +917,7 @@
             "description": "页码，从 1 开始"
           },
           {
-            "name": "page_size",
+            "name": "pageSize",
             "in": "query",
             "required": false,
             "schema": {
@@ -922,7 +926,7 @@
               "minimum": 1,
               "description": "每页数量，范围 1-100",
               "default": 20,
-              "title": "Page Size"
+              "title": "Pagesize"
             },
             "description": "每页数量，范围 1-100"
           }
@@ -961,7 +965,7 @@
         "operationId": "export_login_logs",
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "in": "query",
             "required": false,
             "schema": {
@@ -974,7 +978,7 @@
                 }
               ],
               "description": "用户标识筛选",
-              "title": "User Id"
+              "title": "Userid"
             },
             "description": "用户标识筛选"
           },
@@ -997,7 +1001,7 @@
             "description": "登录账号筛选"
           },
           {
-            "name": "ip_address",
+            "name": "ipAddress",
             "in": "query",
             "required": false,
             "schema": {
@@ -1010,7 +1014,7 @@
                 }
               ],
               "description": "客户端 IP 筛选",
-              "title": "Ip Address"
+              "title": "Ipaddress"
             },
             "description": "客户端 IP 筛选"
           },
@@ -1033,7 +1037,7 @@
             "description": "登录结果筛选"
           },
           {
-            "name": "start_time",
+            "name": "startTime",
             "in": "query",
             "required": false,
             "schema": {
@@ -1047,12 +1051,12 @@
                 }
               ],
               "description": "发生时间下界（含），ISO 8601",
-              "title": "Start Time"
+              "title": "Starttime"
             },
             "description": "发生时间下界（含），ISO 8601"
           },
           {
-            "name": "end_time",
+            "name": "endTime",
             "in": "query",
             "required": false,
             "schema": {
@@ -1066,7 +1070,7 @@
                 }
               ],
               "description": "发生时间上界（含），ISO 8601",
-              "title": "End Time"
+              "title": "Endtime"
             },
             "description": "发生时间上界（含），ISO 8601"
           }
@@ -1093,7 +1097,7 @@
         }
       }
     },
-    "/api/v1/audit/login-logs/{log_id}": {
+    "/api/v1/audit/login-logs/{logId}": {
       "get": {
         "tags": [
           "audit"
@@ -1103,14 +1107,14 @@
         "operationId": "get_login_log",
         "parameters": [
           {
-            "name": "log_id",
+            "name": "logId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "登录日志 ID",
-              "title": "Log Id"
+              "title": "Logid"
             },
             "description": "登录日志 ID"
           }
@@ -1282,7 +1286,7 @@
           "identity"
         ],
         "summary": "分页查询用户列表",
-        "description": "分页查询用户列表 — SPEC 9.4 分页排序.\n\n分页参数: ``page``（默认 1）、``page_size``（默认 20）。\n排序参数: ``sort``，逗号分隔，``-`` 前缀降序。\n排序白名单: ``username``、``display_name``、``created_at``、``updated_at``。\n筛选参数: ``status``（active / disabled，可选）。",
+        "description": "分页查询用户列表 — SPEC 9.4 分页排序.\n\n分页参数: ``page``（默认 1）、``pageSize``（默认 20）。\n排序参数: ``sort``，逗号分隔，``-`` 前缀降序。\n排序白名单（camelCase）: ``username``、``displayName``、\n``createdAt``、``updatedAt``。\n筛选参数: ``status``（active / disabled，可选）。",
         "operationId": "list_users",
         "parameters": [
           {
@@ -1317,7 +1321,7 @@
             "description": "页码，从 1 开始"
           },
           {
-            "name": "page_size",
+            "name": "pageSize",
             "in": "query",
             "required": false,
             "schema": {
@@ -1326,7 +1330,7 @@
               "minimum": 1,
               "description": "每页数量，范围 1-100",
               "default": 20,
-              "title": "Page Size"
+              "title": "Pagesize"
             },
             "description": "每页数量，范围 1-100"
           },
@@ -1373,7 +1377,7 @@
         }
       }
     },
-    "/api/v1/users/{user_id}": {
+    "/api/v1/users/{userId}": {
       "get": {
         "tags": [
           "identity"
@@ -1383,14 +1387,14 @@
         "operationId": "get_user",
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "用户 ID",
-              "title": "User Id"
+              "title": "Userid"
             },
             "description": "用户 ID"
           }
@@ -1427,14 +1431,14 @@
         "operationId": "update_user",
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "用户 ID",
-              "title": "User Id"
+              "title": "Userid"
             },
             "description": "用户 ID"
           }
@@ -1481,14 +1485,14 @@
         "operationId": "delete_user",
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "用户 ID",
-              "title": "User Id"
+              "title": "Userid"
             },
             "description": "用户 ID"
           }
@@ -1510,7 +1514,7 @@
         }
       }
     },
-    "/api/v1/users/{user_id}/enable": {
+    "/api/v1/users/{userId}/enable": {
       "post": {
         "tags": [
           "identity"
@@ -1520,14 +1524,14 @@
         "operationId": "enable_user",
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "用户 ID",
-              "title": "User Id"
+              "title": "Userid"
             },
             "description": "用户 ID"
           }
@@ -1556,7 +1560,7 @@
         }
       }
     },
-    "/api/v1/users/{user_id}/disable": {
+    "/api/v1/users/{userId}/disable": {
       "post": {
         "tags": [
           "identity"
@@ -1566,14 +1570,14 @@
         "operationId": "disable_user",
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "用户 ID",
-              "title": "User Id"
+              "title": "Userid"
             },
             "description": "用户 ID"
           }
@@ -1602,7 +1606,7 @@
         }
       }
     },
-    "/api/v1/users/{user_id}/reset-password": {
+    "/api/v1/users/{userId}/reset-password": {
       "post": {
         "tags": [
           "identity"
@@ -1612,14 +1616,14 @@
         "operationId": "reset_user_password",
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "用户 ID",
-              "title": "User Id"
+              "title": "Userid"
             },
             "description": "用户 ID"
           }
@@ -1690,7 +1694,8 @@
               }
             }
           }
-        }
+        },
+        "security": []
       }
     },
     "/api/v1/auth/refresh": {
@@ -1740,7 +1745,8 @@
               }
             }
           }
-        }
+        },
+        "security": []
       }
     },
     "/api/v1/auth/logout": {
@@ -1809,7 +1815,7 @@
         }
       }
     },
-    "/api/v1/auth/users/{user_id}/force-offline": {
+    "/api/v1/auth/users/{userId}/force-offline": {
       "post": {
         "tags": [
           "auth"
@@ -1819,14 +1825,14 @@
         "operationId": "auth_force_offline",
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "目标用户 ID",
-              "title": "User Id"
+              "title": "Userid"
             },
             "description": "目标用户 ID"
           }
@@ -1837,9 +1843,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Auth Force Offline"
+                  "$ref": "#/components/schemas/ForceOfflineResponse"
                 }
               }
             }
@@ -1938,7 +1942,7 @@
             "description": "页码，从 1 开始"
           },
           {
-            "name": "page_size",
+            "name": "pageSize",
             "in": "query",
             "required": false,
             "schema": {
@@ -1947,7 +1951,7 @@
               "minimum": 1,
               "description": "每页数量，范围 1-100",
               "default": 20,
-              "title": "Page Size"
+              "title": "Pagesize"
             },
             "description": "每页数量，范围 1-100"
           },
@@ -1994,7 +1998,7 @@
         }
       }
     },
-    "/api/v1/roles/{role_id}": {
+    "/api/v1/roles/{roleId}": {
       "get": {
         "tags": [
           "rbac"
@@ -2004,14 +2008,14 @@
         "operationId": "get_role_detail",
         "parameters": [
           {
-            "name": "role_id",
+            "name": "roleId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "角色 ID",
-              "title": "Role Id"
+              "title": "Roleid"
             },
             "description": "角色 ID"
           }
@@ -2048,14 +2052,14 @@
         "operationId": "update_role",
         "parameters": [
           {
-            "name": "role_id",
+            "name": "roleId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "角色 ID",
-              "title": "Role Id"
+              "title": "Roleid"
             },
             "description": "角色 ID"
           }
@@ -2102,14 +2106,14 @@
         "operationId": "delete_role",
         "parameters": [
           {
-            "name": "role_id",
+            "name": "roleId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "角色 ID",
-              "title": "Role Id"
+              "title": "Roleid"
             },
             "description": "角色 ID"
           }
@@ -2131,7 +2135,7 @@
         }
       }
     },
-    "/api/v1/roles/{role_id}/enable": {
+    "/api/v1/roles/{roleId}/enable": {
       "post": {
         "tags": [
           "rbac"
@@ -2141,14 +2145,14 @@
         "operationId": "enable_role",
         "parameters": [
           {
-            "name": "role_id",
+            "name": "roleId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "角色 ID",
-              "title": "Role Id"
+              "title": "Roleid"
             },
             "description": "角色 ID"
           }
@@ -2177,7 +2181,7 @@
         }
       }
     },
-    "/api/v1/roles/{role_id}/disable": {
+    "/api/v1/roles/{roleId}/disable": {
       "post": {
         "tags": [
           "rbac"
@@ -2187,14 +2191,14 @@
         "operationId": "disable_role",
         "parameters": [
           {
-            "name": "role_id",
+            "name": "roleId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "角色 ID",
-              "title": "Role Id"
+              "title": "Roleid"
             },
             "description": "角色 ID"
           }
@@ -2223,7 +2227,7 @@
         }
       }
     },
-    "/api/v1/roles/{role_id}/permissions": {
+    "/api/v1/roles/{roleId}/permissions": {
       "put": {
         "tags": [
           "rbac"
@@ -2233,14 +2237,14 @@
         "operationId": "assign_role_permissions",
         "parameters": [
           {
-            "name": "role_id",
+            "name": "roleId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "角色 ID",
-              "title": "Role Id"
+              "title": "Roleid"
             },
             "description": "角色 ID"
           }
@@ -2279,7 +2283,7 @@
         }
       }
     },
-    "/api/v1/roles/{role_id}/members": {
+    "/api/v1/roles/{roleId}/members": {
       "get": {
         "tags": [
           "rbac"
@@ -2289,14 +2293,14 @@
         "operationId": "get_role_members",
         "parameters": [
           {
-            "name": "role_id",
+            "name": "roleId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "角色 ID",
-              "title": "Role Id"
+              "title": "Roleid"
             },
             "description": "角色 ID"
           },
@@ -2314,7 +2318,7 @@
             "description": "页码，从 1 开始"
           },
           {
-            "name": "page_size",
+            "name": "pageSize",
             "in": "query",
             "required": false,
             "schema": {
@@ -2323,7 +2327,7 @@
               "minimum": 1,
               "description": "每页数量，范围 1-100",
               "default": 20,
-              "title": "Page Size"
+              "title": "Pagesize"
             },
             "description": "每页数量，范围 1-100"
           }
@@ -2352,7 +2356,7 @@
         }
       }
     },
-    "/api/v1/users/{user_id}/roles": {
+    "/api/v1/users/{userId}/roles": {
       "get": {
         "tags": [
           "rbac"
@@ -2362,14 +2366,14 @@
         "operationId": "get_user_roles",
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "用户 ID",
-              "title": "User Id"
+              "title": "Userid"
             },
             "description": "用户 ID"
           }
@@ -2408,14 +2412,14 @@
         "operationId": "assign_user_roles",
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "用户 ID",
-              "title": "User Id"
+              "title": "Userid"
             },
             "description": "用户 ID"
           }
@@ -2456,7 +2460,7 @@
         }
       }
     },
-    "/api/v1/users/{user_id}/roles/{role_id}": {
+    "/api/v1/users/{userId}/roles/{roleId}": {
       "delete": {
         "tags": [
           "rbac"
@@ -2466,26 +2470,26 @@
         "operationId": "remove_user_role",
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "用户 ID",
-              "title": "User Id"
+              "title": "Userid"
             },
             "description": "用户 ID"
           },
           {
-            "name": "role_id",
+            "name": "roleId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "角色 ID",
-              "title": "Role Id"
+              "title": "Roleid"
             },
             "description": "角色 ID"
           }
@@ -2559,14 +2563,14 @@
         "operationId": "get_department_tree",
         "parameters": [
           {
-            "name": "include_disabled",
+            "name": "includeDisabled",
             "in": "query",
             "required": false,
             "schema": {
               "type": "boolean",
               "description": "是否包含禁用状态的部门（默认 true）",
               "default": true,
-              "title": "Include Disabled"
+              "title": "Includedisabled"
             },
             "description": "是否包含禁用状态的部门（默认 true）"
           }
@@ -2599,7 +2603,7 @@
         }
       }
     },
-    "/api/v1/departments/{department_id}": {
+    "/api/v1/departments/{departmentId}": {
       "get": {
         "tags": [
           "org"
@@ -2609,14 +2613,14 @@
         "operationId": "get_department_detail",
         "parameters": [
           {
-            "name": "department_id",
+            "name": "departmentId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "部门 ID",
-              "title": "Department Id"
+              "title": "Departmentid"
             },
             "description": "部门 ID"
           }
@@ -2653,14 +2657,14 @@
         "operationId": "update_department",
         "parameters": [
           {
-            "name": "department_id",
+            "name": "departmentId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "部门 ID",
-              "title": "Department Id"
+              "title": "Departmentid"
             },
             "description": "部门 ID"
           }
@@ -2707,14 +2711,14 @@
         "operationId": "delete_department",
         "parameters": [
           {
-            "name": "department_id",
+            "name": "departmentId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "部门 ID",
-              "title": "Department Id"
+              "title": "Departmentid"
             },
             "description": "部门 ID"
           }
@@ -2736,7 +2740,7 @@
         }
       }
     },
-    "/api/v1/departments/{department_id}/enable": {
+    "/api/v1/departments/{departmentId}/enable": {
       "post": {
         "tags": [
           "org"
@@ -2746,14 +2750,14 @@
         "operationId": "enable_department",
         "parameters": [
           {
-            "name": "department_id",
+            "name": "departmentId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "部门 ID",
-              "title": "Department Id"
+              "title": "Departmentid"
             },
             "description": "部门 ID"
           }
@@ -2782,7 +2786,7 @@
         }
       }
     },
-    "/api/v1/departments/{department_id}/disable": {
+    "/api/v1/departments/{departmentId}/disable": {
       "post": {
         "tags": [
           "org"
@@ -2792,14 +2796,14 @@
         "operationId": "disable_department",
         "parameters": [
           {
-            "name": "department_id",
+            "name": "departmentId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "部门 ID",
-              "title": "Department Id"
+              "title": "Departmentid"
             },
             "description": "部门 ID"
           }
@@ -2828,7 +2832,7 @@
         }
       }
     },
-    "/api/v1/departments/{department_id}/hierarchy": {
+    "/api/v1/departments/{departmentId}/hierarchy": {
       "put": {
         "tags": [
           "org"
@@ -2838,14 +2842,14 @@
         "operationId": "adjust_department_hierarchy",
         "parameters": [
           {
-            "name": "department_id",
+            "name": "departmentId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "部门 ID",
-              "title": "Department Id"
+              "title": "Departmentid"
             },
             "description": "部门 ID"
           }
@@ -2884,7 +2888,7 @@
         }
       }
     },
-    "/api/v1/departments/{department_id}/leader": {
+    "/api/v1/departments/{departmentId}/leader": {
       "put": {
         "tags": [
           "org"
@@ -2894,14 +2898,14 @@
         "operationId": "set_department_leader",
         "parameters": [
           {
-            "name": "department_id",
+            "name": "departmentId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "部门 ID",
-              "title": "Department Id"
+              "title": "Departmentid"
             },
             "description": "部门 ID"
           }
@@ -2990,14 +2994,14 @@
         "operationId": "list_posts",
         "parameters": [
           {
-            "name": "include_disabled",
+            "name": "includeDisabled",
             "in": "query",
             "required": false,
             "schema": {
               "type": "boolean",
               "description": "是否包含禁用状态的岗位（默认 true）",
               "default": true,
-              "title": "Include Disabled"
+              "title": "Includedisabled"
             },
             "description": "是否包含禁用状态的岗位（默认 true）"
           }
@@ -3030,7 +3034,7 @@
         }
       }
     },
-    "/api/v1/posts/{post_id}": {
+    "/api/v1/posts/{postId}": {
       "get": {
         "tags": [
           "org"
@@ -3040,14 +3044,14 @@
         "operationId": "get_post_detail",
         "parameters": [
           {
-            "name": "post_id",
+            "name": "postId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "岗位 ID",
-              "title": "Post Id"
+              "title": "Postid"
             },
             "description": "岗位 ID"
           }
@@ -3084,14 +3088,14 @@
         "operationId": "update_post",
         "parameters": [
           {
-            "name": "post_id",
+            "name": "postId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "岗位 ID",
-              "title": "Post Id"
+              "title": "Postid"
             },
             "description": "岗位 ID"
           }
@@ -3138,14 +3142,14 @@
         "operationId": "delete_post",
         "parameters": [
           {
-            "name": "post_id",
+            "name": "postId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "岗位 ID",
-              "title": "Post Id"
+              "title": "Postid"
             },
             "description": "岗位 ID"
           }
@@ -3167,7 +3171,7 @@
         }
       }
     },
-    "/api/v1/posts/{post_id}/enable": {
+    "/api/v1/posts/{postId}/enable": {
       "post": {
         "tags": [
           "org"
@@ -3177,14 +3181,14 @@
         "operationId": "enable_post",
         "parameters": [
           {
-            "name": "post_id",
+            "name": "postId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "岗位 ID",
-              "title": "Post Id"
+              "title": "Postid"
             },
             "description": "岗位 ID"
           }
@@ -3213,7 +3217,7 @@
         }
       }
     },
-    "/api/v1/posts/{post_id}/disable": {
+    "/api/v1/posts/{postId}/disable": {
       "post": {
         "tags": [
           "org"
@@ -3223,14 +3227,14 @@
         "operationId": "disable_post",
         "parameters": [
           {
-            "name": "post_id",
+            "name": "postId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "岗位 ID",
-              "title": "Post Id"
+              "title": "Postid"
             },
             "description": "岗位 ID"
           }
@@ -3259,7 +3263,7 @@
         }
       }
     },
-    "/api/v1/users/{user_id}/department": {
+    "/api/v1/users/{userId}/department": {
       "put": {
         "tags": [
           "org"
@@ -3269,14 +3273,14 @@
         "operationId": "assign_user_department",
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "用户 ID",
-              "title": "User Id"
+              "title": "Userid"
             },
             "description": "用户 ID"
           }
@@ -3325,14 +3329,14 @@
         "operationId": "remove_user_department",
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "用户 ID",
-              "title": "User Id"
+              "title": "Userid"
             },
             "description": "用户 ID"
           }
@@ -3354,7 +3358,7 @@
         }
       }
     },
-    "/api/v1/users/{user_id}/posts": {
+    "/api/v1/users/{userId}/posts": {
       "post": {
         "tags": [
           "org"
@@ -3364,14 +3368,14 @@
         "operationId": "assign_user_post",
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "用户 ID",
-              "title": "User Id"
+              "title": "Userid"
             },
             "description": "用户 ID"
           }
@@ -3412,7 +3416,7 @@
         }
       }
     },
-    "/api/v1/users/{user_id}/posts/{post_id}": {
+    "/api/v1/users/{userId}/posts/{postId}": {
       "delete": {
         "tags": [
           "org"
@@ -3422,26 +3426,26 @@
         "operationId": "remove_user_post",
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "用户 ID",
-              "title": "User Id"
+              "title": "Userid"
             },
             "description": "用户 ID"
           },
           {
-            "name": "post_id",
+            "name": "postId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "岗位 ID",
-              "title": "Post Id"
+              "title": "Postid"
             },
             "description": "岗位 ID"
           }
@@ -3463,7 +3467,7 @@
         }
       }
     },
-    "/api/v1/users/{user_id}/org-info": {
+    "/api/v1/users/{userId}/org-info": {
       "get": {
         "tags": [
           "org"
@@ -3473,14 +3477,14 @@
         "operationId": "get_user_org_info",
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "用户 ID",
-              "title": "User Id"
+              "title": "Userid"
             },
             "description": "用户 ID"
           }
@@ -3601,7 +3605,7 @@
         }
       }
     },
-    "/api/v1/menus/{menu_id}": {
+    "/api/v1/menus/{menuId}": {
       "get": {
         "tags": [
           "menu"
@@ -3611,14 +3615,14 @@
         "operationId": "get_menu_detail",
         "parameters": [
           {
-            "name": "menu_id",
+            "name": "menuId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "菜单 ID",
-              "title": "Menu Id"
+              "title": "Menuid"
             },
             "description": "菜单 ID"
           }
@@ -3655,14 +3659,14 @@
         "operationId": "update_menu",
         "parameters": [
           {
-            "name": "menu_id",
+            "name": "menuId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "菜单 ID",
-              "title": "Menu Id"
+              "title": "Menuid"
             },
             "description": "菜单 ID"
           }
@@ -3709,14 +3713,14 @@
         "operationId": "delete_menu",
         "parameters": [
           {
-            "name": "menu_id",
+            "name": "menuId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "菜单 ID",
-              "title": "Menu Id"
+              "title": "Menuid"
             },
             "description": "菜单 ID"
           }
@@ -3738,7 +3742,7 @@
         }
       }
     },
-    "/api/v1/menus/{menu_id}/enable": {
+    "/api/v1/menus/{menuId}/enable": {
       "post": {
         "tags": [
           "menu"
@@ -3748,14 +3752,14 @@
         "operationId": "enable_menu",
         "parameters": [
           {
-            "name": "menu_id",
+            "name": "menuId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "菜单 ID",
-              "title": "Menu Id"
+              "title": "Menuid"
             },
             "description": "菜单 ID"
           }
@@ -3784,7 +3788,7 @@
         }
       }
     },
-    "/api/v1/menus/{menu_id}/disable": {
+    "/api/v1/menus/{menuId}/disable": {
       "post": {
         "tags": [
           "menu"
@@ -3794,14 +3798,14 @@
         "operationId": "disable_menu",
         "parameters": [
           {
-            "name": "menu_id",
+            "name": "menuId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "菜单 ID",
-              "title": "Menu Id"
+              "title": "Menuid"
             },
             "description": "菜单 ID"
           }
@@ -3830,7 +3834,7 @@
         }
       }
     },
-    "/api/v1/menus/{menu_id}/hierarchy": {
+    "/api/v1/menus/{menuId}/hierarchy": {
       "put": {
         "tags": [
           "menu"
@@ -3840,14 +3844,14 @@
         "operationId": "adjust_menu_hierarchy",
         "parameters": [
           {
-            "name": "menu_id",
+            "name": "menuId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "菜单 ID",
-              "title": "Menu Id"
+              "title": "Menuid"
             },
             "description": "菜单 ID"
           }
@@ -3886,7 +3890,7 @@
         }
       }
     },
-    "/api/v1/roles/{role_id}/menus": {
+    "/api/v1/roles/{roleId}/menus": {
       "put": {
         "tags": [
           "menu"
@@ -3896,14 +3900,14 @@
         "operationId": "assign_role_menus",
         "parameters": [
           {
-            "name": "role_id",
+            "name": "roleId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "角色 ID",
-              "title": "Role Id"
+              "title": "Roleid"
             },
             "description": "角色 ID"
           }
@@ -3950,14 +3954,14 @@
         "operationId": "get_role_menu_ids",
         "parameters": [
           {
-            "name": "role_id",
+            "name": "roleId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "角色 ID",
-              "title": "Role Id"
+              "title": "Roleid"
             },
             "description": "角色 ID"
           }
@@ -3986,7 +3990,7 @@
         }
       }
     },
-    "/api/v1/roles/{role_id}/menus/{menu_id}": {
+    "/api/v1/roles/{roleId}/menus/{menuId}": {
       "delete": {
         "tags": [
           "menu"
@@ -3996,26 +4000,26 @@
         "operationId": "remove_role_menu",
         "parameters": [
           {
-            "name": "role_id",
+            "name": "roleId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "角色 ID",
-              "title": "Role Id"
+              "title": "Roleid"
             },
             "description": "角色 ID"
           },
           {
-            "name": "menu_id",
+            "name": "menuId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "菜单 ID",
-              "title": "Menu Id"
+              "title": "Menuid"
             },
             "description": "菜单 ID"
           }
@@ -4153,14 +4157,14 @@
             "description": "按分组过滤"
           },
           {
-            "name": "include_disabled",
+            "name": "includeDisabled",
             "in": "query",
             "required": false,
             "schema": {
               "type": "boolean",
               "description": "是否包含禁用状态的配置项（默认 true）",
               "default": true,
-              "title": "Include Disabled"
+              "title": "Includedisabled"
             },
             "description": "是否包含禁用状态的配置项（默认 true）"
           }
@@ -4219,7 +4223,7 @@
         }
       }
     },
-    "/api/v1/configs/{config_id}": {
+    "/api/v1/configs/{configId}": {
       "get": {
         "tags": [
           "sysconfig"
@@ -4229,14 +4233,14 @@
         "operationId": "get_config",
         "parameters": [
           {
-            "name": "config_id",
+            "name": "configId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "配置项 ID",
-              "title": "Config Id"
+              "title": "Configid"
             },
             "description": "配置项 ID"
           }
@@ -4273,14 +4277,14 @@
         "operationId": "update_config",
         "parameters": [
           {
-            "name": "config_id",
+            "name": "configId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "配置项 ID",
-              "title": "Config Id"
+              "title": "Configid"
             },
             "description": "配置项 ID"
           }
@@ -4319,7 +4323,7 @@
         }
       }
     },
-    "/api/v1/configs/{config_id}/enable": {
+    "/api/v1/configs/{configId}/enable": {
       "post": {
         "tags": [
           "sysconfig"
@@ -4329,14 +4333,14 @@
         "operationId": "enable_config",
         "parameters": [
           {
-            "name": "config_id",
+            "name": "configId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "配置项 ID",
-              "title": "Config Id"
+              "title": "Configid"
             },
             "description": "配置项 ID"
           }
@@ -4365,7 +4369,7 @@
         }
       }
     },
-    "/api/v1/configs/{config_id}/disable": {
+    "/api/v1/configs/{configId}/disable": {
       "post": {
         "tags": [
           "sysconfig"
@@ -4375,14 +4379,14 @@
         "operationId": "disable_config",
         "parameters": [
           {
-            "name": "config_id",
+            "name": "configId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "配置项 ID",
-              "title": "Config Id"
+              "title": "Configid"
             },
             "description": "配置项 ID"
           }
@@ -4461,14 +4465,14 @@
         "operationId": "list_dict_types",
         "parameters": [
           {
-            "name": "include_disabled",
+            "name": "includeDisabled",
             "in": "query",
             "required": false,
             "schema": {
               "type": "boolean",
               "description": "是否包含禁用状态的字典类型（默认 true）",
               "default": true,
-              "title": "Include Disabled"
+              "title": "Includedisabled"
             },
             "description": "是否包含禁用状态的字典类型（默认 true）"
           },
@@ -4524,7 +4528,7 @@
         }
       }
     },
-    "/api/v1/dict-types/{type_id}": {
+    "/api/v1/dict-types/{typeId}": {
       "get": {
         "tags": [
           "dict"
@@ -4534,14 +4538,14 @@
         "operationId": "get_dict_type",
         "parameters": [
           {
-            "name": "type_id",
+            "name": "typeId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "字典类型 ID",
-              "title": "Type Id"
+              "title": "Typeid"
             },
             "description": "字典类型 ID"
           }
@@ -4578,14 +4582,14 @@
         "operationId": "update_dict_type",
         "parameters": [
           {
-            "name": "type_id",
+            "name": "typeId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "字典类型 ID",
-              "title": "Type Id"
+              "title": "Typeid"
             },
             "description": "字典类型 ID"
           }
@@ -4632,14 +4636,14 @@
         "operationId": "delete_dict_type",
         "parameters": [
           {
-            "name": "type_id",
+            "name": "typeId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "字典类型 ID",
-              "title": "Type Id"
+              "title": "Typeid"
             },
             "description": "字典类型 ID"
           }
@@ -4661,7 +4665,7 @@
         }
       }
     },
-    "/api/v1/dict-types/{type_id}/enable": {
+    "/api/v1/dict-types/{typeId}/enable": {
       "post": {
         "tags": [
           "dict"
@@ -4671,14 +4675,14 @@
         "operationId": "enable_dict_type",
         "parameters": [
           {
-            "name": "type_id",
+            "name": "typeId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "字典类型 ID",
-              "title": "Type Id"
+              "title": "Typeid"
             },
             "description": "字典类型 ID"
           }
@@ -4707,7 +4711,7 @@
         }
       }
     },
-    "/api/v1/dict-types/{type_id}/disable": {
+    "/api/v1/dict-types/{typeId}/disable": {
       "post": {
         "tags": [
           "dict"
@@ -4717,14 +4721,14 @@
         "operationId": "disable_dict_type",
         "parameters": [
           {
-            "name": "type_id",
+            "name": "typeId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "字典类型 ID",
-              "title": "Type Id"
+              "title": "Typeid"
             },
             "description": "字典类型 ID"
           }
@@ -4753,7 +4757,7 @@
         }
       }
     },
-    "/api/v1/dict-types/{type_id}/items": {
+    "/api/v1/dict-types/{typeId}/items": {
       "post": {
         "tags": [
           "dict"
@@ -4763,14 +4767,14 @@
         "operationId": "create_dict_item",
         "parameters": [
           {
-            "name": "type_id",
+            "name": "typeId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "字典类型 ID",
-              "title": "Type Id"
+              "title": "Typeid"
             },
             "description": "字典类型 ID"
           }
@@ -4817,26 +4821,26 @@
         "operationId": "list_dict_items",
         "parameters": [
           {
-            "name": "type_id",
+            "name": "typeId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "字典类型 ID",
-              "title": "Type Id"
+              "title": "Typeid"
             },
             "description": "字典类型 ID"
           },
           {
-            "name": "include_disabled",
+            "name": "includeDisabled",
             "in": "query",
             "required": false,
             "schema": {
               "type": "boolean",
               "description": "是否包含禁用状态的字典项（默认 true）",
               "default": true,
-              "title": "Include Disabled"
+              "title": "Includedisabled"
             },
             "description": "是否包含禁用状态的字典项（默认 true）"
           }
@@ -4869,7 +4873,7 @@
         }
       }
     },
-    "/api/v1/dict-types/{type_id}/items/{item_id}": {
+    "/api/v1/dict-types/{typeId}/items/{itemId}": {
       "get": {
         "tags": [
           "dict"
@@ -4879,26 +4883,26 @@
         "operationId": "get_dict_item",
         "parameters": [
           {
-            "name": "type_id",
+            "name": "typeId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "字典类型 ID",
-              "title": "Type Id"
+              "title": "Typeid"
             },
             "description": "字典类型 ID"
           },
           {
-            "name": "item_id",
+            "name": "itemId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "字典项 ID",
-              "title": "Item Id"
+              "title": "Itemid"
             },
             "description": "字典项 ID"
           }
@@ -4935,26 +4939,26 @@
         "operationId": "update_dict_item",
         "parameters": [
           {
-            "name": "type_id",
+            "name": "typeId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "字典类型 ID",
-              "title": "Type Id"
+              "title": "Typeid"
             },
             "description": "字典类型 ID"
           },
           {
-            "name": "item_id",
+            "name": "itemId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "字典项 ID",
-              "title": "Item Id"
+              "title": "Itemid"
             },
             "description": "字典项 ID"
           }
@@ -5001,26 +5005,26 @@
         "operationId": "delete_dict_item",
         "parameters": [
           {
-            "name": "type_id",
+            "name": "typeId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "字典类型 ID",
-              "title": "Type Id"
+              "title": "Typeid"
             },
             "description": "字典类型 ID"
           },
           {
-            "name": "item_id",
+            "name": "itemId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "字典项 ID",
-              "title": "Item Id"
+              "title": "Itemid"
             },
             "description": "字典项 ID"
           }
@@ -5042,7 +5046,7 @@
         }
       }
     },
-    "/api/v1/dict-types/{type_id}/items/{item_id}/enable": {
+    "/api/v1/dict-types/{typeId}/items/{itemId}/enable": {
       "post": {
         "tags": [
           "dict"
@@ -5052,26 +5056,26 @@
         "operationId": "enable_dict_item",
         "parameters": [
           {
-            "name": "type_id",
+            "name": "typeId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "字典类型 ID",
-              "title": "Type Id"
+              "title": "Typeid"
             },
             "description": "字典类型 ID"
           },
           {
-            "name": "item_id",
+            "name": "itemId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "字典项 ID",
-              "title": "Item Id"
+              "title": "Itemid"
             },
             "description": "字典项 ID"
           }
@@ -5100,7 +5104,7 @@
         }
       }
     },
-    "/api/v1/dict-types/{type_id}/items/{item_id}/disable": {
+    "/api/v1/dict-types/{typeId}/items/{itemId}/disable": {
       "post": {
         "tags": [
           "dict"
@@ -5110,26 +5114,26 @@
         "operationId": "disable_dict_item",
         "parameters": [
           {
-            "name": "type_id",
+            "name": "typeId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "字典类型 ID",
-              "title": "Type Id"
+              "title": "Typeid"
             },
             "description": "字典类型 ID"
           },
           {
-            "name": "item_id",
+            "name": "itemId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "字典项 ID",
-              "title": "Item Id"
+              "title": "Itemid"
             },
             "description": "字典项 ID"
           }
@@ -5263,7 +5267,7 @@
         }
       }
     },
-    "/api/v1/files/{file_id}": {
+    "/api/v1/files/{fileId}": {
       "get": {
         "tags": [
           "file"
@@ -5273,14 +5277,14 @@
         "operationId": "get_file",
         "parameters": [
           {
-            "name": "file_id",
+            "name": "fileId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "文件 ID",
-              "title": "File Id"
+              "title": "Fileid"
             },
             "description": "文件 ID"
           }
@@ -5317,14 +5321,14 @@
         "operationId": "delete_file",
         "parameters": [
           {
-            "name": "file_id",
+            "name": "fileId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "文件 ID",
-              "title": "File Id"
+              "title": "Fileid"
             },
             "description": "文件 ID"
           }
@@ -5346,7 +5350,7 @@
         }
       }
     },
-    "/api/v1/files/{file_id}/download": {
+    "/api/v1/files/{fileId}/download": {
       "get": {
         "tags": [
           "file"
@@ -5356,14 +5360,14 @@
         "operationId": "download_file",
         "parameters": [
           {
-            "name": "file_id",
+            "name": "fileId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
               "description": "文件 ID",
-              "title": "File Id"
+              "title": "Fileid"
             },
             "description": "文件 ID"
           }
@@ -5395,92 +5399,92 @@
     "schemas": {
       "AssignPermissionsRequest": {
         "properties": {
-          "permission_codes": {
+          "permissionCodes": {
             "items": {
               "type": "string"
             },
             "type": "array",
-            "title": "Permission Codes",
+            "title": "Permissioncodes",
             "description": "权限编码列表（全量替换）"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "permission_codes"
+          "permissionCodes"
         ],
         "title": "AssignPermissionsRequest",
         "description": "为角色分配权限点请求 — SPEC 13.2.\n\n全量替换角色的权限点集合。\n\n属性:\n    permission_codes: 权限编码列表（全量替换）。空列表表示清除全部权限。"
       },
       "AssignRoleMenusRequest": {
         "properties": {
-          "menu_ids": {
+          "menuIds": {
             "items": {
               "type": "string",
               "format": "uuid"
             },
             "type": "array",
-            "title": "Menu Ids",
+            "title": "Menuids",
             "description": "菜单 ID 列表（全量替换角色的菜单分配）"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "menu_ids"
+          "menuIds"
         ],
         "title": "AssignRoleMenusRequest",
         "description": "为角色分配菜单请求 — SPEC 15.1.\n\n全量替换角色菜单。调用幂等——相同输入多次调用结果一致。\n\n属性:\n    menu_ids: 菜单 ID 列表（全量替换）。"
       },
       "AssignUserDepartmentRequest": {
         "properties": {
-          "department_id": {
+          "departmentId": {
             "type": "string",
             "format": "uuid",
-            "title": "Department Id",
+            "title": "Departmentid",
             "description": "部门 ID"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "department_id"
+          "departmentId"
         ],
         "title": "AssignUserDepartmentRequest",
         "description": "为用户分配主部门请求 — SPEC 14.3.\n\n属性:\n    department_id: 部门 ID。"
       },
       "AssignUserPostRequest": {
         "properties": {
-          "post_id": {
+          "postId": {
             "type": "string",
             "format": "uuid",
-            "title": "Post Id",
+            "title": "Postid",
             "description": "岗位 ID"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "post_id"
+          "postId"
         ],
         "title": "AssignUserPostRequest",
         "description": "为用户分配岗位请求 — SPEC 14.2.\n\n属性:\n    post_id: 岗位 ID。"
       },
       "AssignUserRolesRequest": {
         "properties": {
-          "role_codes": {
+          "roleCodes": {
             "items": {
               "type": "string"
             },
             "type": "array",
-            "title": "Role Codes",
+            "title": "Rolecodes",
             "description": "角色编码列表（全量替换）"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "role_codes"
+          "roleCodes"
         ],
         "title": "AssignUserRolesRequest",
         "description": "为用户分配角色请求 — SPEC 13.2.\n\n全量替换用户的角色集合。\n\n属性:\n    role_codes: 角色编码列表（全量替换）。"
@@ -5502,9 +5506,9 @@
             "type": "integer",
             "title": "Page"
           },
-          "page_size": {
+          "pageSize": {
             "type": "integer",
-            "title": "Page Size"
+            "title": "Pagesize"
           },
           "pages": {
             "type": "integer",
@@ -5516,7 +5520,7 @@
           "items",
           "total",
           "page",
-          "page_size",
+          "pageSize",
           "pages"
         ],
         "title": "AuditLogPageResponse",
@@ -5529,7 +5533,7 @@
             "format": "uuid",
             "title": "Id"
           },
-          "actor_id": {
+          "actorId": {
             "anyOf": [
               {
                 "type": "string"
@@ -5538,11 +5542,11 @@
                 "type": "null"
               }
             ],
-            "title": "Actor Id"
+            "title": "Actorid"
           },
-          "actor_display_name": {
+          "actorDisplayName": {
             "type": "string",
-            "title": "Actor Display Name"
+            "title": "Actordisplayname"
           },
           "module": {
             "type": "string",
@@ -5552,11 +5556,11 @@
             "type": "string",
             "title": "Action"
           },
-          "resource_type": {
+          "resourceType": {
             "type": "string",
-            "title": "Resource Type"
+            "title": "Resourcetype"
           },
-          "resource_id": {
+          "resourceId": {
             "anyOf": [
               {
                 "type": "string"
@@ -5565,9 +5569,9 @@
                 "type": "null"
               }
             ],
-            "title": "Resource Id"
+            "title": "Resourceid"
           },
-          "resource_display_name": {
+          "resourceDisplayName": {
             "anyOf": [
               {
                 "type": "string"
@@ -5576,13 +5580,13 @@
                 "type": "null"
               }
             ],
-            "title": "Resource Display Name"
+            "title": "Resourcedisplayname"
           },
           "result": {
             "type": "string",
             "title": "Result"
           },
-          "request_id": {
+          "requestId": {
             "anyOf": [
               {
                 "type": "string"
@@ -5591,7 +5595,7 @@
                 "type": "null"
               }
             ],
-            "title": "Request Id"
+            "title": "Requestid"
           },
           "diff": {
             "anyOf": [
@@ -5608,30 +5612,30 @@
             ],
             "title": "Diff"
           },
-          "occurred_at": {
+          "occurredAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Occurred At"
+            "title": "Occurredat"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "id",
-          "actor_id",
-          "actor_display_name",
+          "actorId",
+          "actorDisplayName",
           "module",
           "action",
-          "resource_type",
-          "resource_id",
-          "resource_display_name",
+          "resourceType",
+          "resourceId",
+          "resourceDisplayName",
           "result",
-          "request_id",
+          "requestId",
           "diff",
-          "occurred_at"
+          "occurredAt"
         ],
         "title": "AuditLogResponse",
-        "description": "审计日志响应模型 — SPEC 9.3 / 18.3."
+        "description": "审计日志响应模型 — SPEC 9.3 / 18.3.\n\n``diff`` 的键为领域字段名（内部 snake_case），序列化时转换为\ncamelCase，与整体 JSON 命名约定一致（SPEC 9.3）。"
       },
       "Body_upload_files": {
         "properties": {
@@ -5667,10 +5671,10 @@
             "title": "Key",
             "description": "配置键（分组内唯一）"
           },
-          "value_type": {
+          "valueType": {
             "type": "string",
             "pattern": "^(string|int|bool|json)$",
-            "title": "Value Type",
+            "title": "Valuetype",
             "description": "值类型（string / int / bool / json）"
           },
           "value": {
@@ -5679,15 +5683,15 @@
             "title": "Value",
             "description": "配置值字符串（保存时按 value_type 校验）"
           },
-          "is_sensitive": {
+          "isSensitive": {
             "type": "boolean",
-            "title": "Is Sensitive",
+            "title": "Issensitive",
             "description": "是否为敏感配置（加密存储且 API 不回显明文）",
             "default": false
           },
-          "is_core_security": {
+          "isCoreSecurity": {
             "type": "boolean",
-            "title": "Is Core Security",
+            "title": "Iscoresecurity",
             "description": "是否为核心安全配置（不可被普通后台覆盖）",
             "default": false
           },
@@ -5710,7 +5714,7 @@
         "required": [
           "group",
           "key",
-          "value_type",
+          "valueType",
           "value"
         ],
         "title": "ConfigCreateRequest",
@@ -5722,16 +5726,16 @@
             "type": "string",
             "title": "Group"
           },
-          "item_count": {
+          "itemCount": {
             "type": "integer",
-            "title": "Item Count"
+            "title": "Itemcount"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "group",
-          "item_count"
+          "itemCount"
         ],
         "title": "ConfigGroupResponse",
         "description": "配置分组响应 — SPEC 16.1 按分组管理."
@@ -5751,21 +5755,21 @@
             "type": "string",
             "title": "Key"
           },
-          "value_type": {
+          "valueType": {
             "type": "string",
-            "title": "Value Type"
+            "title": "Valuetype"
           },
           "value": {
             "type": "string",
             "title": "Value"
           },
-          "is_sensitive": {
+          "isSensitive": {
             "type": "boolean",
-            "title": "Is Sensitive"
+            "title": "Issensitive"
           },
-          "is_core_security": {
+          "isCoreSecurity": {
             "type": "boolean",
-            "title": "Is Core Security"
+            "title": "Iscoresecurity"
           },
           "description": {
             "anyOf": [
@@ -5782,15 +5786,15 @@
             "type": "string",
             "title": "Status"
           },
-          "created_at": {
+          "createdAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Created At"
+            "title": "Createdat"
           },
-          "updated_at": {
+          "updatedAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Updated At"
+            "title": "Updatedat"
           }
         },
         "additionalProperties": false,
@@ -5799,14 +5803,14 @@
           "id",
           "group",
           "key",
-          "value_type",
+          "valueType",
           "value",
-          "is_sensitive",
-          "is_core_security",
+          "isSensitive",
+          "isCoreSecurity",
           "description",
           "status",
-          "created_at",
-          "updated_at"
+          "createdAt",
+          "updatedAt"
         ],
         "title": "ConfigResponse",
         "description": "配置项响应模型 — SPEC 9.3 / 16.1.\n\nSPEC 16.1: 敏感配置 API 响应不回显明文（掩码）。\n敏感配置的 ``value`` 字段返回 ``***MASKED***``。"
@@ -5851,11 +5855,11 @@
             "title": "Code",
             "description": "部门编码（小写字母、数字和下划线，字母开头）"
           },
-          "display_name": {
+          "displayName": {
             "type": "string",
             "maxLength": 200,
             "minLength": 1,
-            "title": "Display Name",
+            "title": "Displayname",
             "description": "显示名称"
           },
           "description": {
@@ -5871,7 +5875,7 @@
             "title": "Description",
             "description": "描述（可选）"
           },
-          "parent_id": {
+          "parentId": {
             "anyOf": [
               {
                 "type": "string",
@@ -5881,17 +5885,17 @@
                 "type": "null"
               }
             ],
-            "title": "Parent Id",
+            "title": "Parentid",
             "description": "父部门 ID（根部门为 null）"
           },
-          "sort_order": {
+          "sortOrder": {
             "type": "integer",
             "minimum": 0.0,
-            "title": "Sort Order",
+            "title": "Sortorder",
             "description": "排序序号",
             "default": 0
           },
-          "leader_id": {
+          "leaderId": {
             "anyOf": [
               {
                 "type": "string",
@@ -5901,7 +5905,7 @@
                 "type": "null"
               }
             ],
-            "title": "Leader Id",
+            "title": "Leaderid",
             "description": "负责人用户 ID（可选）"
           }
         },
@@ -5909,7 +5913,7 @@
         "type": "object",
         "required": [
           "code",
-          "display_name"
+          "displayName"
         ],
         "title": "DepartmentCreateRequest",
         "description": "创建部门请求 — SPEC 9.2 / 14.1.\n\n属性:\n    code:         部门编码，2-100 字符，小写字母/数字/下划线。\n    display_name: 显示名称，1-200 字符。\n    description:  描述（可选），最多 500 字符。\n    parent_id:    父部门 ID（可选，根部门为 null）。\n    sort_order:   排序序号，默认 0。\n    leader_id:    负责人用户 ID（可选）。"
@@ -5925,9 +5929,9 @@
             "type": "string",
             "title": "Code"
           },
-          "display_name": {
+          "displayName": {
             "type": "string",
-            "title": "Display Name"
+            "title": "Displayname"
           },
           "description": {
             "anyOf": [
@@ -5940,7 +5944,7 @@
             ],
             "title": "Description"
           },
-          "parent_id": {
+          "parentId": {
             "anyOf": [
               {
                 "type": "string",
@@ -5950,17 +5954,17 @@
                 "type": "null"
               }
             ],
-            "title": "Parent Id"
+            "title": "Parentid"
           },
           "status": {
             "type": "string",
             "title": "Status"
           },
-          "sort_order": {
+          "sortOrder": {
             "type": "integer",
-            "title": "Sort Order"
+            "title": "Sortorder"
           },
-          "leader_id": {
+          "leaderId": {
             "anyOf": [
               {
                 "type": "string",
@@ -5970,21 +5974,21 @@
                 "type": "null"
               }
             ],
-            "title": "Leader Id"
+            "title": "Leaderid"
           },
-          "child_count": {
+          "childCount": {
             "type": "integer",
-            "title": "Child Count"
+            "title": "Childcount"
           },
-          "created_at": {
+          "createdAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Created At"
+            "title": "Createdat"
           },
-          "updated_at": {
+          "updatedAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Updated At"
+            "title": "Updatedat"
           }
         },
         "additionalProperties": false,
@@ -5992,22 +5996,22 @@
         "required": [
           "id",
           "code",
-          "display_name",
+          "displayName",
           "description",
-          "parent_id",
+          "parentId",
           "status",
-          "sort_order",
-          "leader_id",
-          "child_count",
-          "created_at",
-          "updated_at"
+          "sortOrder",
+          "leaderId",
+          "childCount",
+          "createdAt",
+          "updatedAt"
         ],
         "title": "DepartmentDetailResponse",
         "description": "部门详情响应（含子部门数量）— SPEC 9.3 / 14.1."
       },
       "DepartmentHierarchyRequest": {
         "properties": {
-          "parent_id": {
+          "parentId": {
             "anyOf": [
               {
                 "type": "string",
@@ -6017,13 +6021,13 @@
                 "type": "null"
               }
             ],
-            "title": "Parent Id",
+            "title": "Parentid",
             "description": "新的父部门 ID（null 表示设为根部门）"
           },
-          "sort_order": {
+          "sortOrder": {
             "type": "integer",
             "minimum": 0.0,
-            "title": "Sort Order",
+            "title": "Sortorder",
             "description": "排序序号",
             "default": 0
           }
@@ -6031,14 +6035,14 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "parent_id"
+          "parentId"
         ],
         "title": "DepartmentHierarchyRequest",
         "description": "调整部门层级与排序请求 — SPEC 14.1.\n\n用于调整部门的父级和排序序号。循环防护在 Use Case 中执行。\n\n属性:\n    parent_id:  新的父部门 ID（null 表示设为根部门）。\n    sort_order: 排序序号。"
       },
       "DepartmentLeaderRequest": {
         "properties": {
-          "leader_id": {
+          "leaderId": {
             "anyOf": [
               {
                 "type": "string",
@@ -6048,14 +6052,14 @@
                 "type": "null"
               }
             ],
-            "title": "Leader Id",
+            "title": "Leaderid",
             "description": "负责人用户 ID（null 清除负责人）"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "leader_id"
+          "leaderId"
         ],
         "title": "DepartmentLeaderRequest",
         "description": "设置部门负责人请求 — SPEC 14.1.\n\n负责人引用用户 ID，跨模块不建数据库外键（SPEC 5.5）。\n设为 null 清除负责人。\n\n属性:\n    leader_id: 负责人用户 ID（null 清除负责人）。"
@@ -6071,9 +6075,9 @@
             "type": "string",
             "title": "Code"
           },
-          "display_name": {
+          "displayName": {
             "type": "string",
-            "title": "Display Name"
+            "title": "Displayname"
           },
           "description": {
             "anyOf": [
@@ -6086,7 +6090,7 @@
             ],
             "title": "Description"
           },
-          "parent_id": {
+          "parentId": {
             "anyOf": [
               {
                 "type": "string",
@@ -6096,17 +6100,17 @@
                 "type": "null"
               }
             ],
-            "title": "Parent Id"
+            "title": "Parentid"
           },
           "status": {
             "type": "string",
             "title": "Status"
           },
-          "sort_order": {
+          "sortOrder": {
             "type": "integer",
-            "title": "Sort Order"
+            "title": "Sortorder"
           },
-          "leader_id": {
+          "leaderId": {
             "anyOf": [
               {
                 "type": "string",
@@ -6116,17 +6120,17 @@
                 "type": "null"
               }
             ],
-            "title": "Leader Id"
+            "title": "Leaderid"
           },
-          "created_at": {
+          "createdAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Created At"
+            "title": "Createdat"
           },
-          "updated_at": {
+          "updatedAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Updated At"
+            "title": "Updatedat"
           }
         },
         "additionalProperties": false,
@@ -6134,14 +6138,14 @@
         "required": [
           "id",
           "code",
-          "display_name",
+          "displayName",
           "description",
-          "parent_id",
+          "parentId",
           "status",
-          "sort_order",
-          "leader_id",
-          "created_at",
-          "updated_at"
+          "sortOrder",
+          "leaderId",
+          "createdAt",
+          "updatedAt"
         ],
         "title": "DepartmentResponse",
         "description": "部门响应模型 — SPEC 9.3 / 14.1."
@@ -6157,9 +6161,9 @@
             "type": "string",
             "title": "Code"
           },
-          "display_name": {
+          "displayName": {
             "type": "string",
-            "title": "Display Name"
+            "title": "Displayname"
           },
           "description": {
             "anyOf": [
@@ -6172,7 +6176,7 @@
             ],
             "title": "Description"
           },
-          "parent_id": {
+          "parentId": {
             "anyOf": [
               {
                 "type": "string",
@@ -6182,17 +6186,17 @@
                 "type": "null"
               }
             ],
-            "title": "Parent Id"
+            "title": "Parentid"
           },
           "status": {
             "type": "string",
             "title": "Status"
           },
-          "sort_order": {
+          "sortOrder": {
             "type": "integer",
-            "title": "Sort Order"
+            "title": "Sortorder"
           },
-          "leader_id": {
+          "leaderId": {
             "anyOf": [
               {
                 "type": "string",
@@ -6202,7 +6206,7 @@
                 "type": "null"
               }
             ],
-            "title": "Leader Id"
+            "title": "Leaderid"
           },
           "children": {
             "items": {
@@ -6211,15 +6215,15 @@
             "type": "array",
             "title": "Children"
           },
-          "created_at": {
+          "createdAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Created At"
+            "title": "Createdat"
           },
-          "updated_at": {
+          "updatedAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Updated At"
+            "title": "Updatedat"
           }
         },
         "additionalProperties": false,
@@ -6227,26 +6231,26 @@
         "required": [
           "id",
           "code",
-          "display_name",
+          "displayName",
           "description",
-          "parent_id",
+          "parentId",
           "status",
-          "sort_order",
-          "leader_id",
+          "sortOrder",
+          "leaderId",
           "children",
-          "created_at",
-          "updated_at"
+          "createdAt",
+          "updatedAt"
         ],
         "title": "DepartmentTreeResponse",
         "description": "部门树节点响应 — SPEC 9.3 / 14.1."
       },
       "DepartmentUpdateRequest": {
         "properties": {
-          "display_name": {
+          "displayName": {
             "type": "string",
             "maxLength": 200,
             "minLength": 1,
-            "title": "Display Name",
+            "title": "Displayname",
             "description": "显示名称"
           },
           "description": {
@@ -6266,7 +6270,7 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "display_name"
+          "displayName"
         ],
         "title": "DepartmentUpdateRequest",
         "description": "更新部门请求 — SPEC 9.2 / 14.1.\n\n部门编码不可变更——编码是全局唯一的稳定标识。\n层级调整使用独立端点（``PUT /departments/{id}/hierarchy``）。\n\n属性:\n    display_name: 显示名称，1-200 字符。\n    description:  描述（可选），最多 500 字符。"
@@ -6287,10 +6291,10 @@
             "title": "Value",
             "description": "稳定值（业务持久化此值，不变更）"
           },
-          "sort_order": {
+          "sortOrder": {
             "type": "integer",
             "minimum": 0.0,
-            "title": "Sort Order",
+            "title": "Sortorder",
             "description": "排序序号（升序）",
             "default": 0
           },
@@ -6330,10 +6334,10 @@
             "format": "uuid",
             "title": "Id"
           },
-          "dict_type_id": {
+          "dictTypeId": {
             "type": "string",
             "format": "uuid",
-            "title": "Dict Type Id"
+            "title": "Dicttypeid"
           },
           "label": {
             "type": "string",
@@ -6343,9 +6347,9 @@
             "type": "string",
             "title": "Value"
           },
-          "sort_order": {
+          "sortOrder": {
             "type": "integer",
-            "title": "Sort Order"
+            "title": "Sortorder"
           },
           "metadata": {
             "additionalProperties": true,
@@ -6367,30 +6371,30 @@
             "type": "string",
             "title": "Status"
           },
-          "created_at": {
+          "createdAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Created At"
+            "title": "Createdat"
           },
-          "updated_at": {
+          "updatedAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Updated At"
+            "title": "Updatedat"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "id",
-          "dict_type_id",
+          "dictTypeId",
           "label",
           "value",
-          "sort_order",
+          "sortOrder",
           "metadata",
           "description",
           "status",
-          "created_at",
-          "updated_at"
+          "createdAt",
+          "updatedAt"
         ],
         "title": "DictItemResponse",
         "description": "字典项响应模型 — SPEC 9.3 / 17.2."
@@ -6411,10 +6415,10 @@
             "title": "Value",
             "description": "稳定值"
           },
-          "sort_order": {
+          "sortOrder": {
             "type": "integer",
             "minimum": 0.0,
-            "title": "Sort Order",
+            "title": "Sortorder",
             "description": "排序序号（升序）"
           },
           "metadata": {
@@ -6442,7 +6446,7 @@
         "required": [
           "label",
           "value",
-          "sort_order"
+          "sortOrder"
         ],
         "title": "DictItemUpdateRequest",
         "description": "更新字典项请求 — SPEC 9.2 / 17.2.\n\n更新显示文本、稳定值、排序和扩展元数据。\n\n属性:\n    label:      显示文本，1-200 字符。\n    value:      稳定值，1-200 字符。\n    sort_order: 排序序号（升序）。\n    metadata:   扩展元数据。\n    description: 描述说明（可选）。"
@@ -6517,15 +6521,15 @@
             "type": "string",
             "title": "Status"
           },
-          "created_at": {
+          "createdAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Created At"
+            "title": "Createdat"
           },
-          "updated_at": {
+          "updatedAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Updated At"
+            "title": "Updatedat"
           }
         },
         "additionalProperties": false,
@@ -6536,8 +6540,8 @@
           "name",
           "description",
           "status",
-          "created_at",
-          "updated_at"
+          "createdAt",
+          "updatedAt"
         ],
         "title": "DictTypeResponse",
         "description": "字典类型响应模型 — SPEC 9.3 / 17.1."
@@ -6626,15 +6630,15 @@
             ],
             "title": "Description"
           },
-          "created_at": {
+          "createdAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Created At"
+            "title": "Createdat"
           },
-          "updated_at": {
+          "updatedAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Updated At"
+            "title": "Updatedat"
           }
         },
         "additionalProperties": false,
@@ -6643,11 +6647,11 @@
           "id",
           "name",
           "description",
-          "created_at",
-          "updated_at"
+          "createdAt",
+          "updatedAt"
         ],
         "title": "ExampleItemResponse",
-        "description": "示例条目响应模型 — SPEC 9.3.\n\nSPEC 9.3: \"普通成功响应直接返回资源 Schema，不使用成功信封\"。\n响应模型不使用 ``extra=\"forbid\"``（响应可能有扩展字段）。\nJSON 字段使用 snake_case，时间为带时区 ISO 8601 字符串。"
+        "description": "示例条目响应模型 — SPEC 9.3.\n\nSPEC 9.3: \"普通成功响应直接返回资源 Schema，不使用成功信封\"。\n响应模型不使用 ``extra=\"forbid\"``（响应可能有扩展字段）。\nJSON 字段使用 camelCase，时间为带时区 ISO 8601 字符串。"
       },
       "ExampleItemUpdateRequest": {
         "properties": {
@@ -6687,25 +6691,25 @@
             "format": "uuid",
             "title": "Id"
           },
-          "original_name": {
+          "originalName": {
             "type": "string",
-            "title": "Original Name"
+            "title": "Originalname"
           },
-          "storage_name": {
+          "storageName": {
             "type": "string",
-            "title": "Storage Name"
+            "title": "Storagename"
           },
-          "size_bytes": {
+          "sizeBytes": {
             "type": "integer",
-            "title": "Size Bytes"
+            "title": "Sizebytes"
           },
-          "content_type": {
+          "contentType": {
             "type": "string",
-            "title": "Content Type"
+            "title": "Contenttype"
           },
-          "file_extension": {
+          "fileExtension": {
             "type": "string",
-            "title": "File Extension"
+            "title": "Fileextension"
           },
           "sha256": {
             "type": "string",
@@ -6715,7 +6719,7 @@
             "type": "string",
             "title": "Status"
           },
-          "uploaded_by": {
+          "uploadedBy": {
             "anyOf": [
               {
                 "type": "string"
@@ -6724,19 +6728,19 @@
                 "type": "null"
               }
             ],
-            "title": "Uploaded By"
+            "title": "Uploadedby"
           },
-          "created_at": {
+          "createdAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Created At"
+            "title": "Createdat"
           },
-          "updated_at": {
+          "updatedAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Updated At"
+            "title": "Updatedat"
           },
-          "deleting_entered_at": {
+          "deletingEnteredAt": {
             "anyOf": [
               {
                 "type": "string",
@@ -6746,26 +6750,48 @@
                 "type": "null"
               }
             ],
-            "title": "Deleting Entered At"
+            "title": "Deletingenteredat"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "id",
-          "original_name",
-          "storage_name",
-          "size_bytes",
-          "content_type",
-          "file_extension",
+          "originalName",
+          "storageName",
+          "sizeBytes",
+          "contentType",
+          "fileExtension",
           "sha256",
           "status",
-          "uploaded_by",
-          "created_at",
-          "updated_at"
+          "uploadedBy",
+          "createdAt",
+          "updatedAt"
         ],
         "title": "FileMetadataResponse",
         "description": "文件元数据响应模型 — SPEC 9.3 / 19.1."
+      },
+      "ForceOfflineResponse": {
+        "properties": {
+          "userId": {
+            "type": "string",
+            "title": "Userid",
+            "description": "目标用户 ID"
+          },
+          "revokedSessions": {
+            "type": "integer",
+            "title": "Revokedsessions",
+            "description": "被吊销的会话数量"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "userId",
+          "revokedSessions"
+        ],
+        "title": "ForceOfflineResponse",
+        "description": "管理员强制用户下线响应 — SPEC 12.3.\n\n属性:\n    user_id:           被强制下线的目标用户 ID。\n    revoked_sessions:  被吊销的活动会话数量。"
       },
       "HTTPValidationError": {
         "properties": {
@@ -6797,9 +6823,9 @@
             "type": "integer",
             "title": "Page"
           },
-          "page_size": {
+          "pageSize": {
             "type": "integer",
-            "title": "Page Size"
+            "title": "Pagesize"
           },
           "pages": {
             "type": "integer",
@@ -6811,7 +6837,7 @@
           "items",
           "total",
           "page",
-          "page_size",
+          "pageSize",
           "pages"
         ],
         "title": "LoginLogPageResponse",
@@ -6824,7 +6850,7 @@
             "format": "uuid",
             "title": "Id"
           },
-          "user_id": {
+          "userId": {
             "anyOf": [
               {
                 "type": "string"
@@ -6833,13 +6859,13 @@
                 "type": "null"
               }
             ],
-            "title": "User Id"
+            "title": "Userid"
           },
           "username": {
             "type": "string",
             "title": "Username"
           },
-          "session_id": {
+          "sessionId": {
             "anyOf": [
               {
                 "type": "string"
@@ -6848,13 +6874,13 @@
                 "type": "null"
               }
             ],
-            "title": "Session Id"
+            "title": "Sessionid"
           },
-          "ip_address": {
+          "ipAddress": {
             "type": "string",
-            "title": "Ip Address"
+            "title": "Ipaddress"
           },
-          "user_agent": {
+          "userAgent": {
             "anyOf": [
               {
                 "type": "string"
@@ -6863,13 +6889,13 @@
                 "type": "null"
               }
             ],
-            "title": "User Agent"
+            "title": "Useragent"
           },
           "result": {
             "type": "string",
             "title": "Result"
           },
-          "failure_reason": {
+          "failureReason": {
             "anyOf": [
               {
                 "type": "string"
@@ -6878,26 +6904,26 @@
                 "type": "null"
               }
             ],
-            "title": "Failure Reason"
+            "title": "Failurereason"
           },
-          "occurred_at": {
+          "occurredAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Occurred At"
+            "title": "Occurredat"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "id",
-          "user_id",
+          "userId",
           "username",
-          "session_id",
-          "ip_address",
-          "user_agent",
+          "sessionId",
+          "ipAddress",
+          "userAgent",
           "result",
-          "failure_reason",
-          "occurred_at"
+          "failureReason",
+          "occurredAt"
         ],
         "title": "LoginLogResponse",
         "description": "登录日志响应模型 — SPEC 9.3 / 18.1 / 18.3."
@@ -6943,51 +6969,51 @@
       },
       "LoginResponse": {
         "properties": {
-          "access_token": {
+          "accessToken": {
             "type": "string",
-            "title": "Access Token",
+            "title": "Accesstoken",
             "description": "不透明 Access Token（仅返回一次）"
           },
-          "token_type": {
+          "tokenType": {
             "type": "string",
-            "title": "Token Type",
+            "title": "Tokentype",
             "description": "Token 类型",
             "default": "Bearer"
           },
-          "expires_in": {
+          "expiresIn": {
             "type": "integer",
-            "title": "Expires In",
+            "title": "Expiresin",
             "description": "Token 有效期（秒）"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "access_token",
-          "expires_in"
+          "accessToken",
+          "expiresIn"
         ],
         "title": "LoginResponse",
         "description": "登录成功响应 — SPEC 12.1.\n\nSPEC 12.1: \"Access Token 仅在登录或刷新响应体中返回一次\"。\nSPEC 12.1: \"G2 固定使用不透明随机 Bearer Access Token，不使用 JWT\"。\n``access_token`` 为不透明随机字符串，仅在本次响应中返回，\n前端只允许保存在内存中。\n\nSPEC 12.4: 登录响应必须设置 ``Cache-Control: no-store``\n（由 Router 设置响应头，不在响应体中）。\n\n属性:\n    access_token: 不透明 Access Token 字符串（仅在响应体中返回一次）。\n    token_type:   固定为 ``\"Bearer\"``。\n    expires_in:   Token 有效期（秒），默认 900（15 分钟）。"
       },
       "LogoutResponse": {
         "properties": {
-          "revoked_count": {
+          "revokedCount": {
             "type": "integer",
-            "title": "Revoked Count",
+            "title": "Revokedcount",
             "description": "被吊销的会话数量"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "revoked_count"
+          "revokedCount"
         ],
         "title": "LogoutResponse",
         "description": "退出登录响应."
       },
       "MenuCreateRequest": {
         "properties": {
-          "parent_id": {
+          "parentId": {
             "anyOf": [
               {
                 "type": "string",
@@ -6997,13 +7023,13 @@
                 "type": "null"
               }
             ],
-            "title": "Parent Id",
+            "title": "Parentid",
             "description": "父菜单 ID（根菜单为 null）"
           },
-          "menu_type": {
+          "menuType": {
             "type": "string",
             "pattern": "^(directory|page|link)$",
-            "title": "Menu Type",
+            "title": "Menutype",
             "description": "菜单类型（directory / page / link）"
           },
           "title": {
@@ -7065,10 +7091,10 @@
             "title": "Icon",
             "description": "图标标识（可选）"
           },
-          "sort_order": {
+          "sortOrder": {
             "type": "integer",
             "minimum": 0.0,
-            "title": "Sort Order",
+            "title": "Sortorder",
             "description": "排序序号",
             "default": 0
           },
@@ -7082,7 +7108,7 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "menu_type",
+          "menuType",
           "title"
         ],
         "title": "MenuCreateRequest",
@@ -7090,7 +7116,7 @@
       },
       "MenuHierarchyRequest": {
         "properties": {
-          "parent_id": {
+          "parentId": {
             "anyOf": [
               {
                 "type": "string",
@@ -7100,13 +7126,13 @@
                 "type": "null"
               }
             ],
-            "title": "Parent Id",
+            "title": "Parentid",
             "description": "新的父菜单 ID（null 表示设为根菜单）"
           },
-          "sort_order": {
+          "sortOrder": {
             "type": "integer",
             "minimum": 0.0,
-            "title": "Sort Order",
+            "title": "Sortorder",
             "description": "排序序号",
             "default": 0
           }
@@ -7114,7 +7140,7 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "parent_id"
+          "parentId"
         ],
         "title": "MenuHierarchyRequest",
         "description": "调整菜单层级与排序请求 — SPEC 15.1.\n\n用于调整菜单的父级和排序序号。循环防护在 Use Case 中执行。\n\n属性:\n    parent_id:  新的父菜单 ID（null 表示设为根菜单）。\n    sort_order: 排序序号。"
@@ -7126,7 +7152,7 @@
             "format": "uuid",
             "title": "Id"
           },
-          "parent_id": {
+          "parentId": {
             "anyOf": [
               {
                 "type": "string",
@@ -7136,11 +7162,11 @@
                 "type": "null"
               }
             ],
-            "title": "Parent Id"
+            "title": "Parentid"
           },
-          "menu_type": {
+          "menuType": {
             "type": "string",
-            "title": "Menu Type"
+            "title": "Menutype"
           },
           "title": {
             "type": "string",
@@ -7190,9 +7216,9 @@
             ],
             "title": "Icon"
           },
-          "sort_order": {
+          "sortOrder": {
             "type": "integer",
-            "title": "Sort Order"
+            "title": "Sortorder"
           },
           "visible": {
             "type": "boolean",
@@ -7202,33 +7228,33 @@
             "type": "string",
             "title": "Status"
           },
-          "created_at": {
+          "createdAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Created At"
+            "title": "Createdat"
           },
-          "updated_at": {
+          "updatedAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Updated At"
+            "title": "Updatedat"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "id",
-          "parent_id",
-          "menu_type",
+          "parentId",
+          "menuType",
           "title",
           "name",
           "path",
           "component",
           "icon",
-          "sort_order",
+          "sortOrder",
           "visible",
           "status",
-          "created_at",
-          "updated_at"
+          "createdAt",
+          "updatedAt"
         ],
         "title": "MenuResponse",
         "description": "菜单响应模型 — SPEC 9.3 / 15.1."
@@ -7240,7 +7266,7 @@
             "format": "uuid",
             "title": "Id"
           },
-          "parent_id": {
+          "parentId": {
             "anyOf": [
               {
                 "type": "string",
@@ -7250,11 +7276,11 @@
                 "type": "null"
               }
             ],
-            "title": "Parent Id"
+            "title": "Parentid"
           },
-          "menu_type": {
+          "menuType": {
             "type": "string",
-            "title": "Menu Type"
+            "title": "Menutype"
           },
           "title": {
             "type": "string",
@@ -7304,9 +7330,9 @@
             ],
             "title": "Icon"
           },
-          "sort_order": {
+          "sortOrder": {
             "type": "integer",
-            "title": "Sort Order"
+            "title": "Sortorder"
           },
           "visible": {
             "type": "boolean",
@@ -7323,34 +7349,34 @@
             "type": "array",
             "title": "Children"
           },
-          "created_at": {
+          "createdAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Created At"
+            "title": "Createdat"
           },
-          "updated_at": {
+          "updatedAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Updated At"
+            "title": "Updatedat"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "id",
-          "parent_id",
-          "menu_type",
+          "parentId",
+          "menuType",
           "title",
           "name",
           "path",
           "component",
           "icon",
-          "sort_order",
+          "sortOrder",
           "visible",
           "status",
           "children",
-          "created_at",
-          "updated_at"
+          "createdAt",
+          "updatedAt"
         ],
         "title": "MenuTreeResponse",
         "description": "菜单树节点响应 — SPEC 9.3 / 15.1 / 15.2.\n\nSPEC 23.5: ``visible`` 仅控制前端展示。当前用户菜单树端点不返回\n不可见菜单；管理端菜单树端点返回全部菜单（含不可见菜单）。"
@@ -7473,9 +7499,9 @@
             "type": "integer",
             "title": "Page"
           },
-          "page_size": {
+          "pageSize": {
             "type": "integer",
-            "title": "Page Size"
+            "title": "Pagesize"
           },
           "pages": {
             "type": "integer",
@@ -7487,7 +7513,7 @@
           "items",
           "total",
           "page",
-          "page_size",
+          "pageSize",
           "pages"
         ],
         "title": "PageResponse[ExampleItemResponse]"
@@ -7509,9 +7535,9 @@
             "type": "integer",
             "title": "Page"
           },
-          "page_size": {
+          "pageSize": {
             "type": "integer",
-            "title": "Page Size"
+            "title": "Pagesize"
           },
           "pages": {
             "type": "integer",
@@ -7523,7 +7549,7 @@
           "items",
           "total",
           "page",
-          "page_size",
+          "pageSize",
           "pages"
         ],
         "title": "PageResponse[RoleMemberResponse]"
@@ -7545,9 +7571,9 @@
             "type": "integer",
             "title": "Page"
           },
-          "page_size": {
+          "pageSize": {
             "type": "integer",
-            "title": "Page Size"
+            "title": "Pagesize"
           },
           "pages": {
             "type": "integer",
@@ -7559,7 +7585,7 @@
           "items",
           "total",
           "page",
-          "page_size",
+          "pageSize",
           "pages"
         ],
         "title": "PageResponse[RoleResponse]"
@@ -7581,9 +7607,9 @@
             "type": "integer",
             "title": "Page"
           },
-          "page_size": {
+          "pageSize": {
             "type": "integer",
-            "title": "Page Size"
+            "title": "Pagesize"
           },
           "pages": {
             "type": "integer",
@@ -7595,7 +7621,7 @@
           "items",
           "total",
           "page",
-          "page_size",
+          "pageSize",
           "pages"
         ],
         "title": "PageResponse[SessionResponse]"
@@ -7617,9 +7643,9 @@
             "type": "integer",
             "title": "Page"
           },
-          "page_size": {
+          "pageSize": {
             "type": "integer",
-            "title": "Page Size"
+            "title": "Pagesize"
           },
           "pages": {
             "type": "integer",
@@ -7631,7 +7657,7 @@
           "items",
           "total",
           "page",
-          "page_size",
+          "pageSize",
           "pages"
         ],
         "title": "PageResponse[UserResponse]"
@@ -7664,11 +7690,11 @@
             "title": "Code",
             "description": "岗位编码（小写字母、数字和下划线，字母开头）"
           },
-          "display_name": {
+          "displayName": {
             "type": "string",
             "maxLength": 200,
             "minLength": 1,
-            "title": "Display Name",
+            "title": "Displayname",
             "description": "显示名称"
           },
           "description": {
@@ -7684,10 +7710,10 @@
             "title": "Description",
             "description": "描述（可选）"
           },
-          "sort_order": {
+          "sortOrder": {
             "type": "integer",
             "minimum": 0.0,
-            "title": "Sort Order",
+            "title": "Sortorder",
             "description": "排序序号",
             "default": 0
           }
@@ -7696,7 +7722,7 @@
         "type": "object",
         "required": [
           "code",
-          "display_name"
+          "displayName"
         ],
         "title": "PostCreateRequest",
         "description": "创建岗位请求 — SPEC 9.2 / 14.2.\n\nSPEC 14.2: \"岗位不直接替代角色和权限\"。\n\n属性:\n    code:         岗位编码，2-100 字符，小写字母/数字/下划线。\n    display_name: 显示名称，1-200 字符。\n    description:  描述（可选），最多 500 字符。\n    sort_order:   排序序号，默认 0。"
@@ -7712,9 +7738,9 @@
             "type": "string",
             "title": "Code"
           },
-          "display_name": {
+          "displayName": {
             "type": "string",
-            "title": "Display Name"
+            "title": "Displayname"
           },
           "description": {
             "anyOf": [
@@ -7731,23 +7757,23 @@
             "type": "string",
             "title": "Status"
           },
-          "sort_order": {
+          "sortOrder": {
             "type": "integer",
-            "title": "Sort Order"
+            "title": "Sortorder"
           },
-          "user_count": {
+          "userCount": {
             "type": "integer",
-            "title": "User Count"
+            "title": "Usercount"
           },
-          "created_at": {
+          "createdAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Created At"
+            "title": "Createdat"
           },
-          "updated_at": {
+          "updatedAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Updated At"
+            "title": "Updatedat"
           }
         },
         "additionalProperties": false,
@@ -7755,13 +7781,13 @@
         "required": [
           "id",
           "code",
-          "display_name",
+          "displayName",
           "description",
           "status",
-          "sort_order",
-          "user_count",
-          "created_at",
-          "updated_at"
+          "sortOrder",
+          "userCount",
+          "createdAt",
+          "updatedAt"
         ],
         "title": "PostDetailResponse",
         "description": "岗位详情响应（含关联用户数量）— SPEC 9.3 / 14.2."
@@ -7777,9 +7803,9 @@
             "type": "string",
             "title": "Code"
           },
-          "display_name": {
+          "displayName": {
             "type": "string",
-            "title": "Display Name"
+            "title": "Displayname"
           },
           "description": {
             "anyOf": [
@@ -7796,19 +7822,19 @@
             "type": "string",
             "title": "Status"
           },
-          "sort_order": {
+          "sortOrder": {
             "type": "integer",
-            "title": "Sort Order"
+            "title": "Sortorder"
           },
-          "created_at": {
+          "createdAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Created At"
+            "title": "Createdat"
           },
-          "updated_at": {
+          "updatedAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Updated At"
+            "title": "Updatedat"
           }
         },
         "additionalProperties": false,
@@ -7816,23 +7842,23 @@
         "required": [
           "id",
           "code",
-          "display_name",
+          "displayName",
           "description",
           "status",
-          "sort_order",
-          "created_at",
-          "updated_at"
+          "sortOrder",
+          "createdAt",
+          "updatedAt"
         ],
         "title": "PostResponse",
         "description": "岗位响应模型 — SPEC 9.3 / 14.2."
       },
       "PostUpdateRequest": {
         "properties": {
-          "display_name": {
+          "displayName": {
             "type": "string",
             "maxLength": 200,
             "minLength": 1,
-            "title": "Display Name",
+            "title": "Displayname",
             "description": "显示名称"
           },
           "description": {
@@ -7852,35 +7878,35 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "display_name"
+          "displayName"
         ],
         "title": "PostUpdateRequest",
         "description": "更新岗位请求 — SPEC 9.2 / 14.2.\n\n岗位编码不可变更——编码是全局唯一的稳定标识。\n\n属性:\n    display_name: 显示名称，1-200 字符。\n    description:  描述（可选），最多 500 字符。"
       },
       "RefreshResponse": {
         "properties": {
-          "access_token": {
+          "accessToken": {
             "type": "string",
-            "title": "Access Token",
+            "title": "Accesstoken",
             "description": "新不透明 Access Token"
           },
-          "token_type": {
+          "tokenType": {
             "type": "string",
-            "title": "Token Type",
+            "title": "Tokentype",
             "description": "Token 类型",
             "default": "Bearer"
           },
-          "expires_in": {
+          "expiresIn": {
             "type": "integer",
-            "title": "Expires In",
+            "title": "Expiresin",
             "description": "Token 有效期（秒）"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "access_token",
-          "expires_in"
+          "accessToken",
+          "expiresIn"
         ],
         "title": "RefreshResponse",
         "description": "刷新响应 — SPEC 12.2.\n\nSPEC 12.2: 刷新成功时响应体仅包含新 Access Token。新 Refresh Token\n仅经 Set-Cookie 下发，不进入 JSON 响应（SPEC 12.2 / 12.4）。\nSPEC 12.4: 刷新响应必须设置 ``Cache-Control: no-store``\n（由 Router 设置响应头）。\n\n属性:\n    access_token: 新不透明 Access Token 字符串。\n    token_type:   固定为 ``\"Bearer\"``。\n    expires_in:   Token 有效期（秒），默认 900（15 分钟）。"
@@ -7895,11 +7921,11 @@
             "title": "Code",
             "description": "角色编码（小写字母、数字和下划线，字母开头）"
           },
-          "display_name": {
+          "displayName": {
             "type": "string",
             "maxLength": 200,
             "minLength": 1,
-            "title": "Display Name",
+            "title": "Displayname",
             "description": "显示名称"
           },
           "description": {
@@ -7915,10 +7941,10 @@
             "title": "Description",
             "description": "描述（可选）"
           },
-          "sort_order": {
+          "sortOrder": {
             "type": "integer",
             "minimum": 0.0,
-            "title": "Sort Order",
+            "title": "Sortorder",
             "description": "排序序号",
             "default": 0
           }
@@ -7927,7 +7953,7 @@
         "type": "object",
         "required": [
           "code",
-          "display_name"
+          "displayName"
         ],
         "title": "RoleCreateRequest",
         "description": "创建角色请求 — SPEC 9.2 / 13.2.\n\n属性:\n    code:         角色编码，2-100 字符，小写字母/数字/下划线。\n    display_name: 显示名称，1-200 字符。\n    description:  描述（可选），最多 500 字符。\n    sort_order:   排序序号，默认 0。"
@@ -7943,9 +7969,9 @@
             "type": "string",
             "title": "Code"
           },
-          "display_name": {
+          "displayName": {
             "type": "string",
-            "title": "Display Name"
+            "title": "Displayname"
           },
           "description": {
             "anyOf": [
@@ -7962,34 +7988,34 @@
             "type": "string",
             "title": "Status"
           },
-          "is_builtin": {
+          "isBuiltin": {
             "type": "boolean",
-            "title": "Is Builtin"
+            "title": "Isbuiltin"
           },
-          "sort_order": {
+          "sortOrder": {
             "type": "integer",
-            "title": "Sort Order"
+            "title": "Sortorder"
           },
-          "permission_codes": {
+          "permissionCodes": {
             "items": {
               "type": "string"
             },
             "type": "array",
-            "title": "Permission Codes"
+            "title": "Permissioncodes"
           },
-          "member_count": {
+          "memberCount": {
             "type": "integer",
-            "title": "Member Count"
+            "title": "Membercount"
           },
-          "created_at": {
+          "createdAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Created At"
+            "title": "Createdat"
           },
-          "updated_at": {
+          "updatedAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Updated At"
+            "title": "Updatedat"
           }
         },
         "additionalProperties": false,
@@ -7997,37 +8023,37 @@
         "required": [
           "id",
           "code",
-          "display_name",
+          "displayName",
           "description",
           "status",
-          "is_builtin",
-          "sort_order",
-          "permission_codes",
-          "member_count",
-          "created_at",
-          "updated_at"
+          "isBuiltin",
+          "sortOrder",
+          "permissionCodes",
+          "memberCount",
+          "createdAt",
+          "updatedAt"
         ],
         "title": "RoleDetailResponse",
         "description": "角色详情响应（含权限编码列表）— SPEC 9.3 / 13.2."
       },
       "RoleMemberResponse": {
         "properties": {
-          "user_id": {
+          "userId": {
             "type": "string",
             "format": "uuid",
-            "title": "User Id"
+            "title": "Userid"
           },
-          "role_id": {
+          "roleId": {
             "type": "string",
             "format": "uuid",
-            "title": "Role Id"
+            "title": "Roleid"
           },
-          "created_at": {
+          "createdAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Created At"
+            "title": "Createdat"
           },
-          "created_by": {
+          "createdBy": {
             "anyOf": [
               {
                 "type": "string"
@@ -8036,41 +8062,41 @@
                 "type": "null"
               }
             ],
-            "title": "Created By"
+            "title": "Createdby"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "user_id",
-          "role_id",
-          "created_at",
-          "created_by"
+          "userId",
+          "roleId",
+          "createdAt",
+          "createdBy"
         ],
         "title": "RoleMemberResponse",
         "description": "角色成员响应 — SPEC 13.2."
       },
       "RoleMenuIdsResponse": {
         "properties": {
-          "role_id": {
+          "roleId": {
             "type": "string",
             "format": "uuid",
-            "title": "Role Id"
+            "title": "Roleid"
           },
-          "menu_ids": {
+          "menuIds": {
             "items": {
               "type": "string",
               "format": "uuid"
             },
             "type": "array",
-            "title": "Menu Ids"
+            "title": "Menuids"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "role_id",
-          "menu_ids"
+          "roleId",
+          "menuIds"
         ],
         "title": "RoleMenuIdsResponse",
         "description": "角色菜单 ID 列表响应 — SPEC 15.1."
@@ -8086,9 +8112,9 @@
             "type": "string",
             "title": "Code"
           },
-          "display_name": {
+          "displayName": {
             "type": "string",
-            "title": "Display Name"
+            "title": "Displayname"
           },
           "description": {
             "anyOf": [
@@ -8105,23 +8131,23 @@
             "type": "string",
             "title": "Status"
           },
-          "is_builtin": {
+          "isBuiltin": {
             "type": "boolean",
-            "title": "Is Builtin"
+            "title": "Isbuiltin"
           },
-          "sort_order": {
+          "sortOrder": {
             "type": "integer",
-            "title": "Sort Order"
+            "title": "Sortorder"
           },
-          "created_at": {
+          "createdAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Created At"
+            "title": "Createdat"
           },
-          "updated_at": {
+          "updatedAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Updated At"
+            "title": "Updatedat"
           }
         },
         "additionalProperties": false,
@@ -8129,24 +8155,24 @@
         "required": [
           "id",
           "code",
-          "display_name",
+          "displayName",
           "description",
           "status",
-          "is_builtin",
-          "sort_order",
-          "created_at",
-          "updated_at"
+          "isBuiltin",
+          "sortOrder",
+          "createdAt",
+          "updatedAt"
         ],
         "title": "RoleResponse",
         "description": "角色响应模型 — SPEC 9.3 / 13.2."
       },
       "RoleUpdateRequest": {
         "properties": {
-          "display_name": {
+          "displayName": {
             "type": "string",
             "maxLength": 200,
             "minLength": 1,
-            "title": "Display Name",
+            "title": "Displayname",
             "description": "显示名称"
           },
           "description": {
@@ -8162,10 +8188,10 @@
             "title": "Description",
             "description": "描述（可选）"
           },
-          "sort_order": {
+          "sortOrder": {
             "type": "integer",
             "minimum": 0.0,
-            "title": "Sort Order",
+            "title": "Sortorder",
             "description": "排序序号",
             "default": 0
           }
@@ -8173,43 +8199,43 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "display_name"
+          "displayName"
         ],
         "title": "RoleUpdateRequest",
         "description": "更新角色请求 — SPEC 9.2 / 13.2.\n\n角色编码不可变更——编码是全局唯一的稳定标识。\n\n属性:\n    display_name: 显示名称，1-200 字符。\n    description:  描述（可选），最多 500 字符。\n    sort_order:   排序序号。"
       },
       "SelfChangePasswordRequest": {
         "properties": {
-          "old_password": {
+          "oldPassword": {
             "type": "string",
             "minLength": 1,
-            "title": "Old Password",
+            "title": "Oldpassword",
             "description": "旧密码（需校验）"
           },
-          "new_password": {
+          "newPassword": {
             "type": "string",
             "maxLength": 128,
             "minLength": 12,
-            "title": "New Password",
+            "title": "Newpassword",
             "description": "新密码（12-128 Unicode 字符，SPEC 23.2）"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "old_password",
-          "new_password"
+          "oldPassword",
+          "newPassword"
         ],
         "title": "SelfChangePasswordRequest",
         "description": "自助修改密码请求 — SPEC 11.1.\n\nSPEC 11.1: \"用户修改自己的密码\"。\n自助改密必须提供旧密码（SPEC: 自助改密必须校验旧密码），\n与管理员重置密码不同——管理员重置不需要旧密码。\n\n属性:\n    old_password: 旧明文密码（用于校验）。\n    new_password: 新明文密码，12-128 Unicode 字符（SPEC 23.2）。"
       },
       "SelfProfileUpdateRequest": {
         "properties": {
-          "display_name": {
+          "displayName": {
             "type": "string",
             "maxLength": 200,
             "minLength": 1,
-            "title": "Display Name",
+            "title": "Displayname",
             "description": "显示名称"
           },
           "phone": {
@@ -8242,7 +8268,7 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "display_name"
+          "displayName"
         ],
         "title": "SelfProfileUpdateRequest",
         "description": "自助更新资料请求 — SPEC 11.1 / 9.2.\n\nSPEC 11.1: \"用户更新允许自助修改的资料\"。\n自助端点仅允许白名单字段：display_name、phone、email。\nusername、status 等字段不在白名单内。\n\n继承 ``StrictBaseModel``（``extra=\"forbid\"``），携带未知字段\n（如 username、status）的请求返回 422（SPEC 9.2）。\n\n属性:\n    display_name: 显示名称，1-200 字符。\n    phone:        手机号（可选），最多 50 字符。\n    email:        邮箱（可选），最多 255 字符，格式校验。"
@@ -8265,11 +8291,11 @@
             ],
             "title": "Device"
           },
-          "ip_address": {
+          "ipAddress": {
             "type": "string",
-            "title": "Ip Address"
+            "title": "Ipaddress"
           },
-          "user_agent": {
+          "userAgent": {
             "anyOf": [
               {
                 "type": "string"
@@ -8278,22 +8304,22 @@
                 "type": "null"
               }
             ],
-            "title": "User Agent"
+            "title": "Useragent"
           },
-          "created_at": {
+          "createdAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Created At"
+            "title": "Createdat"
           },
-          "last_activity_at": {
+          "lastActivityAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Last Activity At"
+            "title": "Lastactivityat"
           },
-          "token_expires_at": {
+          "tokenExpiresAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Token Expires At"
+            "title": "Tokenexpiresat"
           }
         },
         "additionalProperties": false,
@@ -8301,11 +8327,11 @@
         "required": [
           "id",
           "device",
-          "ip_address",
-          "user_agent",
-          "created_at",
-          "last_activity_at",
-          "token_expires_at"
+          "ipAddress",
+          "userAgent",
+          "createdAt",
+          "lastActivityAt",
+          "tokenExpiresAt"
         ],
         "title": "SessionResponse",
         "description": "活动会话响应 — SPEC 12.3.\n\nSPEC 12.3: \"用户可以查看自己的活动会话\"。\n响应不含 Access Token 摘要（敏感字段不回显，SPEC 9.3）。\n\n属性:\n    id:                会话 ID。\n    device:            设备标识。\n    ip_address:        创建时客户端 IP。\n    user_agent:        创建时 User-Agent。\n    created_at:        创建时间（UTC ISO 8601）。\n    last_activity_at:  最近活动时间（UTC ISO 8601）。\n    token_expires_at:  Token 过期时间（UTC ISO 8601）。"
@@ -8319,11 +8345,11 @@
             "title": "Username",
             "description": "用户名/登录账号"
           },
-          "display_name": {
+          "displayName": {
             "type": "string",
             "maxLength": 200,
             "minLength": 1,
-            "title": "Display Name",
+            "title": "Displayname",
             "description": "显示名称"
           },
           "password": {
@@ -8364,26 +8390,83 @@
         "type": "object",
         "required": [
           "username",
-          "display_name",
+          "displayName",
           "password"
         ],
         "title": "UserCreateRequest",
         "description": "创建用户请求 — SPEC 9.2 / 11.1 / 23.2.\n\n继承 ``StrictBaseModel``（``extra=\"forbid\"``），携带未知字段的请求返回 422。\n\n属性:\n    username:     用户名，3-100 字符。\n    display_name: 显示名称，1-200 字符。\n    password:     初始明文密码，12-128 Unicode 字符（SPEC 23.2）。\n    phone:        手机号（可选），最多 50 字符。\n    email:        邮箱（可选），最多 255 字符，格式校验。"
       },
+      "UserDepartmentInfo": {
+        "properties": {
+          "departmentId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Departmentid"
+          },
+          "departmentCode": {
+            "type": "string",
+            "title": "Departmentcode"
+          },
+          "departmentName": {
+            "type": "string",
+            "title": "Departmentname"
+          },
+          "isPrimary": {
+            "type": "boolean",
+            "title": "Isprimary"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "departmentId",
+          "departmentCode",
+          "departmentName",
+          "isPrimary"
+        ],
+        "title": "UserDepartmentInfo",
+        "description": "用户所属部门信息 — SPEC 11.1 / 14.3.\n\n由 org 模块公开 Port 聚合的部门投影经 Pydantic 校验后嵌入\n``UserResponse``，JSON 键序列化为 camelCase（SPEC 9.3）。"
+      },
+      "UserPostInfo": {
+        "properties": {
+          "postId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Postid"
+          },
+          "postCode": {
+            "type": "string",
+            "title": "Postcode"
+          },
+          "postName": {
+            "type": "string",
+            "title": "Postname"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "postId",
+          "postCode",
+          "postName"
+        ],
+        "title": "UserPostInfo",
+        "description": "用户岗位信息 — SPEC 11.1 / 14.2.\n\n由 org 模块公开 Port 聚合的岗位投影经 Pydantic 校验后嵌入\n``UserResponse``，JSON 键序列化为 camelCase（SPEC 9.3）。"
+      },
       "UserResetPasswordRequest": {
         "properties": {
-          "new_password": {
+          "newPassword": {
             "type": "string",
             "maxLength": 128,
             "minLength": 12,
-            "title": "New Password",
+            "title": "Newpassword",
             "description": "新密码（12-128 Unicode 字符，SPEC 23.2）"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "new_password"
+          "newPassword"
         ],
         "title": "UserResetPasswordRequest",
         "description": "管理员重置密码请求 — SPEC 11.1.\n\n管理员设置新密码，不需要旧密码（SPEC 11.1: \"重置用户密码\"）。\n重置后发布 ``USER.PASSWORD_RESET_BY_ADMIN`` 事件，\nauth 模块（TASK-013）吊销该用户全部会话。\n\n属性:\n    new_password: 新明文密码，12-128 Unicode 字符（SPEC 23.2）。"
@@ -8399,9 +8482,9 @@
             "type": "string",
             "title": "Username"
           },
-          "display_name": {
+          "displayName": {
             "type": "string",
-            "title": "Display Name"
+            "title": "Displayname"
           },
           "status": {
             "type": "string",
@@ -8429,7 +8512,7 @@
             ],
             "title": "Email"
           },
-          "last_login_at": {
+          "lastLoginAt": {
             "anyOf": [
               {
                 "type": "string",
@@ -8439,9 +8522,9 @@
                 "type": "null"
               }
             ],
-            "title": "Last Login At"
+            "title": "Lastloginat"
           },
-          "password_updated_at": {
+          "passwordUpdatedAt": {
             "anyOf": [
               {
                 "type": "string",
@@ -8451,34 +8534,31 @@
                 "type": "null"
               }
             ],
-            "title": "Password Updated At"
+            "title": "Passwordupdatedat"
           },
-          "created_at": {
+          "createdAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Created At"
+            "title": "Createdat"
           },
-          "updated_at": {
+          "updatedAt": {
             "type": "string",
             "format": "date-time",
-            "title": "Updated At"
+            "title": "Updatedat"
           },
           "department": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/UserDepartmentInfo"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Department"
+            ]
           },
           "posts": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/UserPostInfo"
             },
             "type": "array",
             "title": "Posts",
@@ -8490,25 +8570,25 @@
         "required": [
           "id",
           "username",
-          "display_name",
+          "displayName",
           "status",
           "phone",
           "email",
-          "last_login_at",
-          "password_updated_at",
-          "created_at",
-          "updated_at"
+          "lastLoginAt",
+          "passwordUpdatedAt",
+          "createdAt",
+          "updatedAt"
         ],
         "title": "UserResponse",
-        "description": "用户响应模型 — SPEC 9.3 / 11.1 / 11.2.\n\nSPEC 9.3: \"普通成功响应直接返回资源 Schema，不使用成功信封\"。\nSPEC 9.3: \"敏感字段不得进入响应模型\"。\n密码哈希不出现在响应中（SPEC 23.2: \"禁止记录和回显密码\"）。\n\nSPEC 11.1: \"通过 G3 后同时返回部门和岗位关系\"。\ndepartment 和 posts 由 org 模块公开 Port 聚合返回（SPEC 14.3）。\nG2 阶段（org 模块未接入时）department 为 None、posts 为空列表。\n\nJSON 字段使用 snake_case，时间为带时区 ISO 8601 字符串。\n响应模型不使用 ``extra=\"forbid\"``（响应可能有扩展字段），\n但字段命名遵循 snake_case 约定。"
+        "description": "用户响应模型 — SPEC 9.3 / 11.1 / 11.2.\n\nSPEC 9.3: \"普通成功响应直接返回资源 Schema，不使用成功信封\"。\nSPEC 9.3: \"敏感字段不得进入响应模型\"。\n密码哈希不出现在响应中（SPEC 23.2: \"禁止记录和回显密码\"）。\n\nSPEC 11.1: \"通过 G3 后同时返回部门和岗位关系\"。\ndepartment 和 posts 由 org 模块公开 Port 聚合返回（SPEC 14.3）。\nG2 阶段（org 模块未接入时）department 为 None、posts 为空列表。\n\nJSON 字段使用 camelCase（继承自 ``ApiModel``），\n时间为带时区 ISO 8601 字符串。"
       },
       "UserUpdateRequest": {
         "properties": {
-          "display_name": {
+          "displayName": {
             "type": "string",
             "maxLength": 200,
             "minLength": 1,
-            "title": "Display Name",
+            "title": "Displayname",
             "description": "显示名称"
           },
           "phone": {
@@ -8541,7 +8621,7 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "display_name"
+          "displayName"
         ],
         "title": "UserUpdateRequest",
         "description": "更新用户资料请求（管理端全量更新）— SPEC 9.2 / 11.1.\n\n管理端可更新显示名称、手机号和邮箱。\nusername 不可变更——用户名是全局唯一的稳定登录账号标识，\n变更会影响历史审计记录可追溯性（SPEC 11.3: \"用户名称发生变化时，\n历史审计记录仍能识别当时操作者\"——通过显示名快照解决，\nusername 本身保持不变）。\n\n属性:\n    display_name: 显示名称，1-200 字符。\n    phone:        手机号（可选），最多 50 字符。\n    email:        邮箱（可选），最多 255 字符，格式校验。"
@@ -8586,6 +8666,14 @@
         ],
         "title": "ValidationError"
       }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Opaque",
+        "description": "粘贴登录接口返回的 access_token（无需手写 Bearer 前缀）。认证依赖从 Authorization: Bearer <token> 提取不透明 Access Token（SPEC 12.1）。"
+      }
     }
   },
   "tags": [
@@ -8612,6 +8700,11 @@
     {
       "name": "rbac",
       "description": "RBAC 角色与权限点 — 角色 CRUD、启用/禁用、权限分配、角色成员查询、用户角色分配/移除、内置角色保护（SPEC 13.1 / 13.2）。"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
     }
   ]
 }

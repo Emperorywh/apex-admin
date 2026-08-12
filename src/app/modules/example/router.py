@@ -110,7 +110,7 @@ async def create_item(
 
 
 @router.get(
-    "/{item_id}",
+    "/{itemId}",
     response_model=ExampleItemResponse,
     summary="查询单个示例条目",
     operation_id="get_example_item",
@@ -118,7 +118,7 @@ async def create_item(
 async def get_item(
     ctx: ContextDep,
     use_case: UseCaseDep,
-    item_id: Annotated[UUID, Path(description="条目 ID")],
+    item_id: Annotated[UUID, Path(alias="itemId", description="条目 ID")],
 ) -> ExampleItemResponse:
     """查询单个示例条目 — 不存在返回 404 problem+json（EXAMPLE.NOT_FOUND）。"""
 
@@ -142,9 +142,9 @@ async def list_items(
 ) -> dict[str, object]:
     """分页查询示例条目列表 — SPEC 9.4 分页排序.
 
-    分页参数: ``page``（默认 1）、``page_size``（默认 20）。
+    分页参数: ``page``（默认 1）、``pageSize``（默认 20）。
     排序参数: ``sort``，逗号分隔，``-`` 前缀降序。
-    排序字段白名单: ``name``、``created_at``、``updated_at``。
+    排序字段白名单（camelCase）: ``name``、``createdAt``、``updatedAt``。
     """
 
     return await use_case.list_items(
@@ -156,7 +156,7 @@ async def list_items(
 
 
 @router.put(
-    "/{item_id}",
+    "/{itemId}",
     response_model=ExampleItemResponse,
     summary="更新示例条目",
     operation_id="update_example_item",
@@ -165,7 +165,7 @@ async def update_item(
     request_body: ExampleItemUpdateRequest,
     ctx: ContextDep,
     use_case: UseCaseDep,
-    item_id: Annotated[UUID, Path(description="条目 ID")],
+    item_id: Annotated[UUID, Path(alias="itemId", description="条目 ID")],
 ) -> ExampleItemResponse:
     """更新示例条目 — 全量更新（PUT 语义，SPEC 9.2）。"""
 
@@ -173,7 +173,7 @@ async def update_item(
 
 
 @router.delete(
-    "/{item_id}",
+    "/{itemId}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="删除示例条目",
     operation_id="delete_example_item",
@@ -181,7 +181,7 @@ async def update_item(
 async def delete_item(
     ctx: ContextDep,
     use_case: UseCaseDep,
-    item_id: Annotated[UUID, Path(description="条目 ID")],
+    item_id: Annotated[UUID, Path(alias="itemId", description="条目 ID")],
 ) -> Response:
     """删除示例条目 — HTTP 204 无响应体（SPEC 9.3）。"""
 

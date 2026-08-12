@@ -163,7 +163,7 @@ def _create_post(
 
     response = client.post(
         "/api/v1/posts",
-        json={"code": code, "display_name": display_name},
+        json={"code": code, "displayName": display_name},
     )
     assert response.status_code == 201, response.text
     return response.json()
@@ -179,7 +179,7 @@ def _create_dept(
 
     response = client.post(
         "/api/v1/departments",
-        json={"code": code, "display_name": display_name},
+        json={"code": code, "displayName": display_name},
     )
     assert response.status_code == 201, response.text
     return response.json()
@@ -203,7 +203,7 @@ class TestPostCRUDAPI:
 
         response = api_client.post(
             "/api/v1/posts",
-            json={"code": "engineer", "display_name": "工程师"},
+            json={"code": "engineer", "displayName": "工程师"},
         )
         assert response.status_code == 201
         assert "location" in {k.lower() for k in response.headers}
@@ -220,7 +220,7 @@ class TestPostCRUDAPI:
         _create_post(api_client, code="dup", display_name="D1")
         response = api_client.post(
             "/api/v1/posts",
-            json={"code": "dup", "display_name": "D2"},
+            json={"code": "dup", "displayName": "D2"},
         )
         assert response.status_code == 409
         assert response.json()["code"] == "ORG.POST_ALREADY_EXISTS"
@@ -233,7 +233,7 @@ class TestPostCRUDAPI:
 
         response = api_client.post(
             "/api/v1/posts",
-            json={"code": "test", "display_name": "T", "bad": "field"},
+            json={"code": "test", "displayName": "T", "bad": "field"},
         )
         assert response.status_code == 422
 
@@ -270,10 +270,10 @@ class TestPostCRUDAPI:
         post = _create_post(api_client)
         response = api_client.put(
             f"/api/v1/posts/{post['id']}",
-            json={"display_name": "新名称", "description": "描述"},
+            json={"displayName": "新名称", "description": "描述"},
         )
         assert response.status_code == 200
-        assert response.json()["display_name"] == "新名称"
+        assert response.json()["displayName"] == "新名称"
 
     def test_enable_disable(self, api_client: TestClient) -> None:
         """启用禁用岗位返回正确状态。"""
@@ -323,7 +323,7 @@ class TestUserPostAssignmentAPI:
         post = _create_post(api_client)
         response = api_client.post(
             f"/api/v1/users/{user_id}/posts",
-            json={"post_id": post["id"]},
+            json={"postId": post["id"]},
         )
         assert response.status_code == 200
 
@@ -338,12 +338,12 @@ class TestUserPostAssignmentAPI:
         post = _create_post(api_client)
         r1 = api_client.post(
             f"/api/v1/users/{user_id}/posts",
-            json={"post_id": post["id"]},
+            json={"postId": post["id"]},
         )
         assert r1.status_code == 200
         r2 = api_client.post(
             f"/api/v1/users/{user_id}/posts",
-            json={"post_id": post["id"]},
+            json={"postId": post["id"]},
         )
         assert r2.status_code == 200
 
@@ -359,7 +359,7 @@ class TestUserPostAssignmentAPI:
         api_client.post(f"/api/v1/posts/{post['id']}/disable")
         response = api_client.post(
             f"/api/v1/users/{user_id}/posts",
-            json={"post_id": post["id"]},
+            json={"postId": post["id"]},
         )
         assert response.status_code == 409
         assert response.json()["code"] == "ORG.POST_DISABLED"
@@ -375,7 +375,7 @@ class TestUserPostAssignmentAPI:
         post = _create_post(api_client)
         api_client.post(
             f"/api/v1/users/{user_id}/posts",
-            json={"post_id": post["id"]},
+            json={"postId": post["id"]},
         )
         response = api_client.delete(
             f"/api/v1/users/{user_id}/posts/{post['id']}",
@@ -427,14 +427,14 @@ class TestUserDetailCrossModuleAggregation:
         # 设置主部门
         r_dept = api_client.put(
             f"/api/v1/users/{user_id}/department",
-            json={"department_id": dept["id"]},
+            json={"departmentId": dept["id"]},
         )
         assert r_dept.status_code == 200
 
         # 分配岗位
         r_post = api_client.post(
             f"/api/v1/users/{user_id}/posts",
-            json={"post_id": post["id"]},
+            json={"postId": post["id"]},
         )
         assert r_post.status_code == 200
 
@@ -445,12 +445,12 @@ class TestUserDetailCrossModuleAggregation:
 
         # department 字段存在且正确
         assert body["department"] is not None
-        assert body["department"]["department_code"] == "eng"
-        assert body["department"]["is_primary"] is True
+        assert body["department"]["departmentCode"] == "eng"
+        assert body["department"]["isPrimary"] is True
 
         # posts 字段存在且包含分配的岗位
         assert len(body["posts"]) == 1
-        assert body["posts"][0]["post_code"] == "dev"
+        assert body["posts"][0]["postCode"] == "dev"
 
     def test_user_detail_without_org_relations(
         self,

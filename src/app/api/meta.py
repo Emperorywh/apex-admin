@@ -11,12 +11,13 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Request
-from pydantic import BaseModel
+
+from app.core.api.schemas import ApiModel
 
 router = APIRouter(tags=["meta"])
 
 
-class MetaResponse(BaseModel):
+class MetaResponse(ApiModel):
     """应用元数据响应模型.
 
     返回应用名称、版本和当前运行环境。

@@ -5,7 +5,7 @@ SPEC 9.2 约定:
   - 请求参数使用明确的 Schema 校验。
 
 SPEC 9.3 约定:
-  - JSON 字段统一使用 snake_case。
+  - JSON 字段统一使用 camelCase。
   - 普通成功响应直接返回资源 Schema，不使用成功信封。
   - 创建成功返回 HTTP 201 + Location。
 """
@@ -15,9 +15,9 @@ from __future__ import annotations
 from datetime import datetime  # noqa: TC003
 from uuid import UUID  # noqa: TC003
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
-from app.core.api.schemas import StrictBaseModel
+from app.core.api.schemas import ApiModel, StrictBaseModel
 
 # ── 菜单请求 Schema ──────────────────────────────────────────────────────
 
@@ -167,7 +167,7 @@ class AssignRoleMenusRequest(StrictBaseModel):
 # ── 响应 Schema ──────────────────────────────────────────────────────────
 
 
-class MenuResponse(BaseModel):
+class MenuResponse(ApiModel):
     """菜单响应模型 — SPEC 9.3 / 15.1."""
 
     model_config = {"extra": "forbid"}
@@ -187,7 +187,7 @@ class MenuResponse(BaseModel):
     updated_at: datetime
 
 
-class MenuTreeResponse(BaseModel):
+class MenuTreeResponse(ApiModel):
     """菜单树节点响应 — SPEC 9.3 / 15.1 / 15.2.
 
     SPEC 23.5: ``visible`` 仅控制前端展示。当前用户菜单树端点不返回
@@ -212,7 +212,7 @@ class MenuTreeResponse(BaseModel):
     updated_at: datetime
 
 
-class RoleMenuIdsResponse(BaseModel):
+class RoleMenuIdsResponse(ApiModel):
     """角色菜单 ID 列表响应 — SPEC 15.1."""
 
     model_config = {"extra": "forbid"}
@@ -221,7 +221,7 @@ class RoleMenuIdsResponse(BaseModel):
     menu_ids: list[UUID]
 
 
-class PermissionCodesResponse(BaseModel):
+class PermissionCodesResponse(ApiModel):
     """当前用户权限编码响应 — SPEC 15.2."""
 
     model_config = {"extra": "forbid"}

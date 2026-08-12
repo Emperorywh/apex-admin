@@ -300,7 +300,7 @@ class TestAuditLogQueryAPI:
         assert body["items"] == []
         assert body["total"] == 0
         assert body["page"] == 1
-        assert body["page_size"] == 20
+        assert body["pageSize"] == 20
         assert body["pages"] == 0
 
     def test_list_audit_logs_with_data(
@@ -321,14 +321,14 @@ class TestAuditLogQueryAPI:
         # 验证响应字段
         item = body["items"][0]
         assert "id" in item
-        assert "actor_id" in item
-        assert "actor_display_name" in item
+        assert "actorId" in item
+        assert "actorDisplayName" in item
         assert "module" in item
         assert "action" in item
-        assert "resource_type" in item
-        assert "resource_id" in item
+        assert "resourceType" in item
+        assert "resourceId" in item
         assert "result" in item
-        assert "occurred_at" in item
+        assert "occurredAt" in item
 
     def test_filter_by_module(
         self,
@@ -376,11 +376,11 @@ class TestAuditLogQueryAPI:
             ),
         )
 
-        response = api_client.get("/api/v1/audit/logs?actor_id=user-A")
+        response = api_client.get("/api/v1/audit/logs?actorId=user-A")
         assert response.status_code == 200
         body = response.json()
         assert body["total"] == 1
-        assert body["items"][0]["actor_id"] == "user-A"
+        assert body["items"][0]["actorId"] == "user-A"
 
     def test_filter_by_result(
         self,
@@ -435,12 +435,12 @@ class TestAuditLogQueryAPI:
         )
 
         response = api_client.get(
-            "/api/v1/audit/logs?resource_type=user&resource_id=res-001",
+            "/api/v1/audit/logs?resourceType=user&resourceId=res-001",
         )
         assert response.status_code == 200
         body = response.json()
         assert body["total"] == 1
-        assert body["items"][0]["resource_type"] == "user"
+        assert body["items"][0]["resourceType"] == "user"
 
     def test_filter_by_time_range(
         self,
@@ -466,7 +466,7 @@ class TestAuditLogQueryAPI:
 
         # 只查询 2026 年的记录
         response = api_client.get(
-            "/api/v1/audit/logs?start_time=2026-01-01T00:00:00Z",
+            "/api/v1/audit/logs?startTime=2026-01-01T00:00:00Z",
         )
         assert response.status_code == 200
         body = response.json()
@@ -506,13 +506,13 @@ class TestAuditLogQueryAPI:
         for _ in range(5):
             asyncio.run(_seed_audit_log(migrated_database_url))
 
-        response = api_client.get("/api/v1/audit/logs?page=1&page_size=2")
+        response = api_client.get("/api/v1/audit/logs?page=1&pageSize=2")
         assert response.status_code == 200
         body = response.json()
         assert body["total"] == 5
         assert len(body["items"]) == 2
         assert body["page"] == 1
-        assert body["page_size"] == 2
+        assert body["pageSize"] == 2
         assert body["pages"] == 3
 
 
@@ -542,7 +542,7 @@ class TestLoginLogQueryAPI:
         assert len(body["items"]) == 1
         item = body["items"][0]
         assert "username" in item
-        assert "ip_address" in item
+        assert "ipAddress" in item
         assert "result" in item
 
     def test_filter_login_log_by_username(
@@ -591,11 +591,11 @@ class TestLoginLogQueryAPI:
             ),
         )
 
-        response = api_client.get("/api/v1/audit/login-logs?ip_address=10.0.0.2")
+        response = api_client.get("/api/v1/audit/login-logs?ipAddress=10.0.0.2")
         assert response.status_code == 200
         body = response.json()
         assert body["total"] == 1
-        assert body["items"][0]["ip_address"] == "10.0.0.2"
+        assert body["items"][0]["ipAddress"] == "10.0.0.2"
 
     def test_filter_login_log_by_result(
         self,
@@ -744,7 +744,7 @@ class TestAuditExportAPI:
         rows = list(reader)
         assert len(rows) >= 2
         assert "username" in rows[0]
-        assert "ip_address" in rows[0]
+        assert "ipAddress" in rows[0]
 
     def test_export_writes_new_audit_event(
         self,

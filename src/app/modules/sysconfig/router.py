@@ -8,10 +8,10 @@ SPEC 5.6: "Router 只能获得 Use Case"。
     POST   /configs                创建配置项
     GET    /configs                查询配置项列表（支持 group 过滤）
     GET    /configs/groups         查询配置分组列表
-    GET    /configs/{config_id}    查询配置项详情
-    PUT    /configs/{config_id}    更新配置项
-    POST   /configs/{config_id}/enable   启用配置项
-    POST   /configs/{config_id}/disable  禁用配置项
+    GET    /configs/{configId}    查询配置项详情
+    PUT    /configs/{configId}    更新配置项
+    POST   /configs/{configId}/enable   启用配置项
+    POST   /configs/{configId}/disable  禁用配置项
 """
 
 from __future__ import annotations
@@ -131,7 +131,10 @@ async def list_configs(
     ] = None,
     include_disabled: Annotated[
         bool,
-        Query(description="是否包含禁用状态的配置项（默认 true）"),
+        Query(
+            alias="includeDisabled",
+            description="是否包含禁用状态的配置项（默认 true）",
+        ),
     ] = True,
 ) -> list[ConfigResponse]:
     """查询配置项列表 — SPEC 16.1 按分组管理.
@@ -164,7 +167,7 @@ async def list_config_groups(
 
 
 @router.get(
-    "/configs/{config_id}",
+    "/configs/{configId}",
     response_model=ConfigResponse,
     summary="查询配置项详情",
     operation_id="get_config",
@@ -172,7 +175,7 @@ async def list_config_groups(
 async def get_config(
     ctx: ConfigReadCtx,
     use_case: UseCaseDep,
-    config_id: Annotated[UUID, Path(description="配置项 ID")],
+    config_id: Annotated[UUID, Path(alias="configId", description="配置项 ID")],
 ) -> ConfigResponse:
     """查询配置项详情 — SPEC 16.1.
 
@@ -185,7 +188,7 @@ async def get_config(
 
 
 @router.put(
-    "/configs/{config_id}",
+    "/configs/{configId}",
     response_model=ConfigResponse,
     summary="更新配置项",
     operation_id="update_config",
@@ -194,7 +197,7 @@ async def update_config(
     request_body: ConfigUpdateRequest,
     ctx: ConfigWriteCtx,
     use_case: UseCaseDep,
-    config_id: Annotated[UUID, Path(description="配置项 ID")],
+    config_id: Annotated[UUID, Path(alias="configId", description="配置项 ID")],
 ) -> ConfigResponse:
     """更新配置项 — SPEC 16.1.
 
@@ -207,7 +210,7 @@ async def update_config(
 
 
 @router.post(
-    "/configs/{config_id}/enable",
+    "/configs/{configId}/enable",
     response_model=ConfigResponse,
     summary="启用配置项",
     operation_id="enable_config",
@@ -215,7 +218,7 @@ async def update_config(
 async def enable_config(
     ctx: ConfigWriteCtx,
     use_case: UseCaseDep,
-    config_id: Annotated[UUID, Path(description="配置项 ID")],
+    config_id: Annotated[UUID, Path(alias="configId", description="配置项 ID")],
 ) -> ConfigResponse:
     """启用配置项 — SPEC 16.1.
 
@@ -227,7 +230,7 @@ async def enable_config(
 
 
 @router.post(
-    "/configs/{config_id}/disable",
+    "/configs/{configId}/disable",
     response_model=ConfigResponse,
     summary="禁用配置项",
     operation_id="disable_config",
@@ -235,7 +238,7 @@ async def enable_config(
 async def disable_config(
     ctx: ConfigWriteCtx,
     use_case: UseCaseDep,
-    config_id: Annotated[UUID, Path(description="配置项 ID")],
+    config_id: Annotated[UUID, Path(alias="configId", description="配置项 ID")],
 ) -> ConfigResponse:
     """禁用配置项 — SPEC 16.1.
 

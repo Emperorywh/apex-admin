@@ -7,20 +7,20 @@ SPEC 5.6: "Router 只能获得 Use Case"。
   字典类型管理 — ``/dict-types`` 前缀:
     POST   /dict-types                创建字典类型
     GET    /dict-types                查询字典类型列表
-    GET    /dict-types/{type_id}      查询字典类型详情
-    PUT    /dict-types/{type_id}      更新字典类型
-    POST   /dict-types/{type_id}/enable   启用字典类型
-    POST   /dict-types/{type_id}/disable  禁用字典类型
-    DELETE /dict-types/{type_id}      删除字典类型（含删除保护）
+    GET    /dict-types/{typeId}      查询字典类型详情
+    PUT    /dict-types/{typeId}      更新字典类型
+    POST   /dict-types/{typeId}/enable   启用字典类型
+    POST   /dict-types/{typeId}/disable  禁用字典类型
+    DELETE /dict-types/{typeId}      删除字典类型（含删除保护）
 
-  字典项管理 — ``/dict-types/{type_id}/items`` 前缀:
-    POST   /dict-types/{type_id}/items            创建字典项
-    GET    /dict-types/{type_id}/items            查询字典项列表
-    GET    /dict-types/{type_id}/items/{item_id}  查询字典项详情
-    PUT    /dict-types/{type_id}/items/{item_id}  更新字典项
-    POST   /dict-types/{type_id}/items/{item_id}/enable   启用字典项
-    POST   /dict-types/{type_id}/items/{item_id}/disable  禁用字典项
-    DELETE /dict-types/{type_id}/items/{item_id}  删除字典项
+  字典项管理 — ``/dict-types/{typeId}/items`` 前缀:
+    POST   /dict-types/{typeId}/items            创建字典项
+    GET    /dict-types/{typeId}/items            查询字典项列表
+    GET    /dict-types/{typeId}/items/{itemId}  查询字典项详情
+    PUT    /dict-types/{typeId}/items/{itemId}  更新字典项
+    POST   /dict-types/{typeId}/items/{itemId}/enable   启用字典项
+    POST   /dict-types/{typeId}/items/{itemId}/disable  禁用字典项
+    DELETE /dict-types/{typeId}/items/{itemId}  删除字典项
 """
 
 from __future__ import annotations
@@ -120,7 +120,10 @@ async def list_dict_types(
     use_case: UseCaseDep,
     include_disabled: Annotated[
         bool,
-        Query(description="是否包含禁用状态的字典类型（默认 true）"),
+        Query(
+            alias="includeDisabled",
+            description="是否包含禁用状态的字典类型（默认 true）",
+        ),
     ] = True,
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
@@ -137,7 +140,7 @@ async def list_dict_types(
 
 
 @router.get(
-    "/dict-types/{type_id}",
+    "/dict-types/{typeId}",
     response_model=DictTypeResponse,
     summary="查询字典类型详情",
     operation_id="get_dict_type",
@@ -145,7 +148,7 @@ async def list_dict_types(
 async def get_dict_type(
     ctx: DictReadCtx,
     use_case: UseCaseDep,
-    type_id: Annotated[UUID, Path(description="字典类型 ID")],
+    type_id: Annotated[UUID, Path(alias="typeId", description="字典类型 ID")],
 ) -> DictTypeResponse:
     """查询字典类型详情 — SPEC 17.1."""
 
@@ -154,7 +157,7 @@ async def get_dict_type(
 
 
 @router.put(
-    "/dict-types/{type_id}",
+    "/dict-types/{typeId}",
     response_model=DictTypeResponse,
     summary="更新字典类型",
     operation_id="update_dict_type",
@@ -163,7 +166,7 @@ async def update_dict_type(
     request_body: DictTypeUpdateRequest,
     ctx: DictWriteCtx,
     use_case: UseCaseDep,
-    type_id: Annotated[UUID, Path(description="字典类型 ID")],
+    type_id: Annotated[UUID, Path(alias="typeId", description="字典类型 ID")],
 ) -> DictTypeResponse:
     """更新字典类型 — SPEC 17.1.
 
@@ -175,7 +178,7 @@ async def update_dict_type(
 
 
 @router.post(
-    "/dict-types/{type_id}/enable",
+    "/dict-types/{typeId}/enable",
     response_model=DictTypeResponse,
     summary="启用字典类型",
     operation_id="enable_dict_type",
@@ -183,7 +186,7 @@ async def update_dict_type(
 async def enable_dict_type(
     ctx: DictWriteCtx,
     use_case: UseCaseDep,
-    type_id: Annotated[UUID, Path(description="字典类型 ID")],
+    type_id: Annotated[UUID, Path(alias="typeId", description="字典类型 ID")],
 ) -> DictTypeResponse:
     """启用字典类型 — SPEC 17.1."""
 
@@ -192,7 +195,7 @@ async def enable_dict_type(
 
 
 @router.post(
-    "/dict-types/{type_id}/disable",
+    "/dict-types/{typeId}/disable",
     response_model=DictTypeResponse,
     summary="禁用字典类型",
     operation_id="disable_dict_type",
@@ -200,7 +203,7 @@ async def enable_dict_type(
 async def disable_dict_type(
     ctx: DictWriteCtx,
     use_case: UseCaseDep,
-    type_id: Annotated[UUID, Path(description="字典类型 ID")],
+    type_id: Annotated[UUID, Path(alias="typeId", description="字典类型 ID")],
 ) -> DictTypeResponse:
     """禁用字典类型 — SPEC 17.1."""
 
@@ -209,7 +212,7 @@ async def disable_dict_type(
 
 
 @router.delete(
-    "/dict-types/{type_id}",
+    "/dict-types/{typeId}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="删除字典类型",
     operation_id="delete_dict_type",
@@ -217,7 +220,7 @@ async def disable_dict_type(
 async def delete_dict_type(
     ctx: DictWriteCtx,
     use_case: UseCaseDep,
-    type_id: Annotated[UUID, Path(description="字典类型 ID")],
+    type_id: Annotated[UUID, Path(alias="typeId", description="字典类型 ID")],
 ) -> None:
     """删除字典类型 — SPEC 17.1.
 
@@ -230,12 +233,12 @@ async def delete_dict_type(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 字典项管理 — /dict-types/{type_id}/items
+# 字典项管理 — /dict-types/{typeId}/items
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
 @router.post(
-    "/dict-types/{type_id}/items",
+    "/dict-types/{typeId}/items",
     response_model=DictItemResponse,
     status_code=status.HTTP_201_CREATED,
     summary="创建字典项",
@@ -246,7 +249,7 @@ async def create_dict_item(
     request_body: DictItemCreateRequest,
     ctx: DictWriteCtx,
     use_case: UseCaseDep,
-    type_id: Annotated[UUID, Path(description="字典类型 ID")],
+    type_id: Annotated[UUID, Path(alias="typeId", description="字典类型 ID")],
 ) -> DictItemResponse:
     """创建字典项 — HTTP 201 + Location（SPEC 9.3 / 17.2）.
 
@@ -259,7 +262,7 @@ async def create_dict_item(
 
 
 @router.get(
-    "/dict-types/{type_id}/items",
+    "/dict-types/{typeId}/items",
     response_model=list[DictItemResponse],
     summary="查询字典项列表",
     operation_id="list_dict_items",
@@ -267,10 +270,13 @@ async def create_dict_item(
 async def list_dict_items(
     ctx: DictReadCtx,
     use_case: UseCaseDep,
-    type_id: Annotated[UUID, Path(description="字典类型 ID")],
+    type_id: Annotated[UUID, Path(alias="typeId", description="字典类型 ID")],
     include_disabled: Annotated[
         bool,
-        Query(description="是否包含禁用状态的字典项（默认 true）"),
+        Query(
+            alias="includeDisabled",
+            description="是否包含禁用状态的字典项（默认 true）",
+        ),
     ] = True,
 ) -> list[DictItemResponse]:
     """查询字典项列表 — SPEC 17.2.
@@ -287,7 +293,7 @@ async def list_dict_items(
 
 
 @router.get(
-    "/dict-types/{type_id}/items/{item_id}",
+    "/dict-types/{typeId}/items/{itemId}",
     response_model=DictItemResponse,
     summary="查询字典项详情",
     operation_id="get_dict_item",
@@ -295,8 +301,8 @@ async def list_dict_items(
 async def get_dict_item(
     ctx: DictReadCtx,
     use_case: UseCaseDep,
-    type_id: Annotated[UUID, Path(description="字典类型 ID")],
-    item_id: Annotated[UUID, Path(description="字典项 ID")],
+    type_id: Annotated[UUID, Path(alias="typeId", description="字典类型 ID")],
+    item_id: Annotated[UUID, Path(alias="itemId", description="字典项 ID")],
 ) -> DictItemResponse:
     """查询字典项详情 — SPEC 17.2."""
 
@@ -305,7 +311,7 @@ async def get_dict_item(
 
 
 @router.put(
-    "/dict-types/{type_id}/items/{item_id}",
+    "/dict-types/{typeId}/items/{itemId}",
     response_model=DictItemResponse,
     summary="更新字典项",
     operation_id="update_dict_item",
@@ -314,8 +320,8 @@ async def update_dict_item(
     request_body: DictItemUpdateRequest,
     ctx: DictWriteCtx,
     use_case: UseCaseDep,
-    type_id: Annotated[UUID, Path(description="字典类型 ID")],
-    item_id: Annotated[UUID, Path(description="字典项 ID")],
+    type_id: Annotated[UUID, Path(alias="typeId", description="字典类型 ID")],
+    item_id: Annotated[UUID, Path(alias="itemId", description="字典项 ID")],
 ) -> DictItemResponse:
     """更新字典项 — SPEC 17.2.
 
@@ -327,7 +333,7 @@ async def update_dict_item(
 
 
 @router.post(
-    "/dict-types/{type_id}/items/{item_id}/enable",
+    "/dict-types/{typeId}/items/{itemId}/enable",
     response_model=DictItemResponse,
     summary="启用字典项",
     operation_id="enable_dict_item",
@@ -335,8 +341,8 @@ async def update_dict_item(
 async def enable_dict_item(
     ctx: DictWriteCtx,
     use_case: UseCaseDep,
-    type_id: Annotated[UUID, Path(description="字典类型 ID")],
-    item_id: Annotated[UUID, Path(description="字典项 ID")],
+    type_id: Annotated[UUID, Path(alias="typeId", description="字典类型 ID")],
+    item_id: Annotated[UUID, Path(alias="itemId", description="字典项 ID")],
 ) -> DictItemResponse:
     """启用字典项 — SPEC 17.2."""
 
@@ -345,7 +351,7 @@ async def enable_dict_item(
 
 
 @router.post(
-    "/dict-types/{type_id}/items/{item_id}/disable",
+    "/dict-types/{typeId}/items/{itemId}/disable",
     response_model=DictItemResponse,
     summary="禁用字典项",
     operation_id="disable_dict_item",
@@ -353,8 +359,8 @@ async def enable_dict_item(
 async def disable_dict_item(
     ctx: DictWriteCtx,
     use_case: UseCaseDep,
-    type_id: Annotated[UUID, Path(description="字典类型 ID")],
-    item_id: Annotated[UUID, Path(description="字典项 ID")],
+    type_id: Annotated[UUID, Path(alias="typeId", description="字典类型 ID")],
+    item_id: Annotated[UUID, Path(alias="itemId", description="字典项 ID")],
 ) -> DictItemResponse:
     """禁用字典项 — SPEC 17.2."""
 
@@ -363,7 +369,7 @@ async def disable_dict_item(
 
 
 @router.delete(
-    "/dict-types/{type_id}/items/{item_id}",
+    "/dict-types/{typeId}/items/{itemId}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="删除字典项",
     operation_id="delete_dict_item",
@@ -371,8 +377,8 @@ async def disable_dict_item(
 async def delete_dict_item(
     ctx: DictWriteCtx,
     use_case: UseCaseDep,
-    type_id: Annotated[UUID, Path(description="字典类型 ID")],
-    item_id: Annotated[UUID, Path(description="字典项 ID")],
+    type_id: Annotated[UUID, Path(alias="typeId", description="字典类型 ID")],
+    item_id: Annotated[UUID, Path(alias="itemId", description="字典项 ID")],
 ) -> None:
     """删除字典项 — SPEC 17.2."""
 

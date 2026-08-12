@@ -6,7 +6,7 @@ SPEC 9.2 约定:
   - 创建、更新、查询和响应模型按职责区分。
 
 SPEC 9.3 约定:
-  - JSON 字段统一使用 snake_case。
+  - JSON 字段统一使用 camelCase。
   - 时间字段统一为带时区的 ISO 8601 字符串。
   - 普通成功响应直接返回资源 Schema，不使用成功信封。
   - 敏感字段不得进入响应模型。
@@ -24,9 +24,9 @@ from __future__ import annotations
 from datetime import datetime  # noqa: TC003
 from uuid import UUID  # noqa: TC003
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
-from app.core.api.schemas import StrictBaseModel
+from app.core.api.schemas import ApiModel, StrictBaseModel
 from app.core.security.password import PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH
 
 # ── 管理端请求 Schema ──────────────────────────────────────────────────────
@@ -184,7 +184,36 @@ class SelfChangePasswordRequest(StrictBaseModel):
 # ── 响应 Schema ────────────────────────────────────────────────────────────
 
 
-class UserResponse(BaseModel):
+class UserDepartmentInfo(ApiModel):
+    """用户所属部门信息 — SPEC 11.1 / 14.3.
+
+    由 org 模块公开 Port 聚合的部门投影经 Pydantic 校验后嵌入
+    ``UserResponse``，JSON 键序列化为 camelCase（SPEC 9.3）。
+    """
+
+    model_config = {"extra": "forbid"}
+
+    department_id: UUID
+    department_code: str
+    department_name: str
+    is_primary: bool
+
+
+class UserPostInfo(ApiModel):
+    """用户岗位信息 — SPEC 11.1 / 14.2.
+
+    由 org 模块公开 Port 聚合的岗位投影经 Pydantic 校验后嵌入
+    ``UserResponse``，JSON 键序列化为 camelCase（SPEC 9.3）。
+    """
+
+    model_config = {"extra": "forbid"}
+
+    post_id: UUID
+    post_code: str
+    post_name: str
+
+
+class UserResponse(ApiModel):
     """用户响应模型 — SPEC 9.3 / 11.1 / 11.2.
 
     SPEC 9.3: "普通成功响应直接返回资源 Schema，不使用成功信封"。
@@ -195,9 +224,8 @@ class UserResponse(BaseModel):
     department 和 posts 由 org 模块公开 Port 聚合返回（SPEC 14.3）。
     G2 阶段（org 模块未接入时）department 为 None、posts 为空列表。
 
-    JSON 字段使用 snake_case，时间为带时区 ISO 8601 字符串。
-    响应模型不使用 ``extra="forbid"``（响应可能有扩展字段），
-    但字段命名遵循 snake_case 约定。
+    JSON 字段使用 camelCase（继承自 ``ApiModel``），
+    时间为带时区 ISO 8601 字符串。
     """
 
     model_config = {"extra": "forbid"}
@@ -212,5 +240,5 @@ class UserResponse(BaseModel):
     password_updated_at: datetime | None
     created_at: datetime
     updated_at: datetime
-    department: dict[str, object] | None = None
-    posts: list[dict[str, object]] = []
+    department: UserDepartmentInfo | None = None
+    posts: list[UserPostInfo] = []

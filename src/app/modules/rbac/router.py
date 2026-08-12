@@ -9,18 +9,18 @@ Router 通过 FastAPI 依赖注入获得 ``RbacUseCase``。
   角色管理 — ``/roles`` 前缀:
     POST   /roles                          创建角色
     GET    /roles                          分页查询
-    GET    /roles/{role_id}                查询详情（含权限和成员数）
-    PUT    /roles/{role_id}                更新角色
-    POST   /roles/{role_id}/enable         启用角色
-    POST   /roles/{role_id}/disable        禁用角色
-    DELETE /roles/{role_id}                删除角色（内置角色保护）
-    PUT    /roles/{role_id}/permissions    分配权限点
-    GET    /roles/{role_id}/members        查询角色成员
+    GET    /roles/{roleId}                查询详情（含权限和成员数）
+    PUT    /roles/{roleId}                更新角色
+    POST   /roles/{roleId}/enable         启用角色
+    POST   /roles/{roleId}/disable        禁用角色
+    DELETE /roles/{roleId}                删除角色（内置角色保护）
+    PUT    /roles/{roleId}/permissions    分配权限点
+    GET    /roles/{roleId}/members        查询角色成员
 
   用户角色 — ``/users`` 前缀:
-    GET    /users/{user_id}/roles          查询用户角色
-    PUT    /users/{user_id}/roles          为用户分配角色（全量替换）
-    DELETE /users/{user_id}/roles/{role_id} 移除用户角色
+    GET    /users/{userId}/roles          查询用户角色
+    PUT    /users/{userId}/roles          为用户分配角色（全量替换）
+    DELETE /users/{userId}/roles/{roleId} 移除用户角色
 """
 
 from __future__ import annotations
@@ -178,7 +178,7 @@ async def list_roles(
 
 
 @router.get(
-    "/roles/{role_id}",
+    "/roles/{roleId}",
     response_model=RoleDetailResponse,
     summary="查询角色详情",
     operation_id="get_role_detail",
@@ -186,7 +186,7 @@ async def list_roles(
 async def get_role_detail(
     ctx: RoleReadCtx,
     use_case: UseCaseDep,
-    role_id: Annotated[UUID, Path(description="角色 ID")],
+    role_id: Annotated[UUID, Path(alias="roleId", description="角色 ID")],
 ) -> RoleDetailResponse:
     """查询角色详情（含权限编码列表和成员数量）— SPEC 13.2.
 
@@ -197,7 +197,7 @@ async def get_role_detail(
 
 
 @router.put(
-    "/roles/{role_id}",
+    "/roles/{roleId}",
     response_model=RoleResponse,
     summary="更新角色",
     operation_id="update_role",
@@ -206,7 +206,7 @@ async def update_role(
     request_body: RoleUpdateRequest,
     ctx: RoleWriteCtx,
     use_case: UseCaseDep,
-    role_id: Annotated[UUID, Path(description="角色 ID")],
+    role_id: Annotated[UUID, Path(alias="roleId", description="角色 ID")],
 ) -> RoleResponse:
     """更新角色 — SPEC 13.2."""
 
@@ -214,7 +214,7 @@ async def update_role(
 
 
 @router.post(
-    "/roles/{role_id}/enable",
+    "/roles/{roleId}/enable",
     response_model=RoleResponse,
     summary="启用角色",
     operation_id="enable_role",
@@ -222,7 +222,7 @@ async def update_role(
 async def enable_role(
     ctx: RoleWriteCtx,
     use_case: UseCaseDep,
-    role_id: Annotated[UUID, Path(description="角色 ID")],
+    role_id: Annotated[UUID, Path(alias="roleId", description="角色 ID")],
 ) -> RoleResponse:
     """启用角色 — SPEC 13.2.
 
@@ -233,7 +233,7 @@ async def enable_role(
 
 
 @router.post(
-    "/roles/{role_id}/disable",
+    "/roles/{roleId}/disable",
     response_model=RoleResponse,
     summary="禁用角色",
     operation_id="disable_role",
@@ -241,7 +241,7 @@ async def enable_role(
 async def disable_role(
     ctx: RoleWriteCtx,
     use_case: UseCaseDep,
-    role_id: Annotated[UUID, Path(description="角色 ID")],
+    role_id: Annotated[UUID, Path(alias="roleId", description="角色 ID")],
 ) -> RoleResponse:
     """禁用角色 — SPEC 13.2.
 
@@ -253,7 +253,7 @@ async def disable_role(
 
 
 @router.delete(
-    "/roles/{role_id}",
+    "/roles/{roleId}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="删除角色",
     operation_id="delete_role",
@@ -261,7 +261,7 @@ async def disable_role(
 async def delete_role(
     ctx: RoleWriteCtx,
     use_case: UseCaseDep,
-    role_id: Annotated[UUID, Path(description="角色 ID")],
+    role_id: Annotated[UUID, Path(alias="roleId", description="角色 ID")],
 ) -> Response:
     """删除角色 — SPEC 13.2.
 
@@ -275,7 +275,7 @@ async def delete_role(
 
 
 @router.put(
-    "/roles/{role_id}/permissions",
+    "/roles/{roleId}/permissions",
     response_model=RoleDetailResponse,
     summary="为角色分配权限点",
     operation_id="assign_role_permissions",
@@ -284,7 +284,7 @@ async def assign_role_permissions(
     request_body: AssignPermissionsRequest,
     ctx: AssignmentWriteCtx,
     use_case: UseCaseDep,
-    role_id: Annotated[UUID, Path(description="角色 ID")],
+    role_id: Annotated[UUID, Path(alias="roleId", description="角色 ID")],
 ) -> RoleDetailResponse:
     """为角色分配权限点（全量替换）— SPEC 13.2.
 
@@ -295,7 +295,7 @@ async def assign_role_permissions(
 
 
 @router.get(
-    "/roles/{role_id}/members",
+    "/roles/{roleId}/members",
     response_model=PageResponse[RoleMemberResponse],
     summary="查询角色成员",
     operation_id="get_role_members",
@@ -303,7 +303,7 @@ async def assign_role_permissions(
 async def get_role_members(
     ctx: RoleReadCtx,
     use_case: UseCaseDep,
-    role_id: Annotated[UUID, Path(description="角色 ID")],
+    role_id: Annotated[UUID, Path(alias="roleId", description="角色 ID")],
     params: Annotated[PageParams, Depends()],
 ) -> dict[str, object]:
     """分页查询角色成员 — SPEC 13.2."""
@@ -317,19 +317,19 @@ async def get_role_members(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 用户角色 — /users/{user_id}/roles
+# 用户角色 — /users/{userId}/roles
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
 @router.get(
-    "/users/{user_id}/roles",
+    "/users/{userId}/roles",
     summary="查询用户角色",
     operation_id="get_user_roles",
 )
 async def get_user_roles(
     ctx: AssignmentWriteCtx,
     use_case: UseCaseDep,
-    user_id: Annotated[UUID, Path(description="用户 ID")],
+    user_id: Annotated[UUID, Path(alias="userId", description="用户 ID")],
 ) -> dict[str, object]:
     """查询用户的角色列表 — SPEC 13.2.
 
@@ -341,7 +341,7 @@ async def get_user_roles(
 
 
 @router.put(
-    "/users/{user_id}/roles",
+    "/users/{userId}/roles",
     summary="为用户分配角色",
     operation_id="assign_user_roles",
 )
@@ -349,7 +349,7 @@ async def assign_user_roles(
     request_body: AssignUserRolesRequest,
     ctx: AssignmentWriteCtx,
     use_case: UseCaseDep,
-    user_id: Annotated[UUID, Path(description="用户 ID")],
+    user_id: Annotated[UUID, Path(alias="userId", description="用户 ID")],
 ) -> dict[str, object]:
     """为用户分配角色（全量替换）— SPEC 13.2.
 
@@ -360,7 +360,7 @@ async def assign_user_roles(
 
 
 @router.delete(
-    "/users/{user_id}/roles/{role_id}",
+    "/users/{userId}/roles/{roleId}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="移除用户角色",
     operation_id="remove_user_role",
@@ -368,8 +368,8 @@ async def assign_user_roles(
 async def remove_user_role(
     ctx: AssignmentWriteCtx,
     use_case: UseCaseDep,
-    user_id: Annotated[UUID, Path(description="用户 ID")],
-    role_id: Annotated[UUID, Path(description="角色 ID")],
+    user_id: Annotated[UUID, Path(alias="userId", description="用户 ID")],
+    role_id: Annotated[UUID, Path(alias="roleId", description="角色 ID")],
 ) -> Response:
     """移除用户角色 — SPEC 13.2.
 

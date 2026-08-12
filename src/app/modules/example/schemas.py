@@ -6,7 +6,7 @@ SPEC 9.2 约定:
   - 创建、更新、查询和响应模型按职责区分。
 
 SPEC 9.3 约定:
-  - JSON 字段统一使用 snake_case。
+  - JSON 字段统一使用 camelCase。
   - 时间字段统一为带时区的 ISO 8601 字符串。
   - 普通成功响应直接返回资源 Schema，不使用成功信封。
 """
@@ -16,9 +16,9 @@ from __future__ import annotations
 from datetime import datetime  # noqa: TC003
 from uuid import UUID  # noqa: TC003
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
-from app.core.api.schemas import StrictBaseModel
+from app.core.api.schemas import ApiModel, StrictBaseModel
 
 
 class ExampleItemCreateRequest(StrictBaseModel):
@@ -55,12 +55,12 @@ class ExampleItemUpdateRequest(StrictBaseModel):
     )
 
 
-class ExampleItemResponse(BaseModel):
+class ExampleItemResponse(ApiModel):
     """示例条目响应模型 — SPEC 9.3.
 
     SPEC 9.3: "普通成功响应直接返回资源 Schema，不使用成功信封"。
     响应模型不使用 ``extra="forbid"``（响应可能有扩展字段）。
-    JSON 字段使用 snake_case，时间为带时区 ISO 8601 字符串。
+    JSON 字段使用 camelCase，时间为带时区 ISO 8601 字符串。
     """
 
     model_config = {"extra": "forbid"}

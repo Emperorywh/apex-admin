@@ -9,7 +9,7 @@ SPEC 12.2: 刷新响应仅返回新 Access Token，Refresh Token 仅经 Set-Cook
 SPEC 12.4: 登录和刷新响应必须设置 ``Cache-Control: no-store``
 （Cache-Control 头由 Router 设置，不在 Schema 中）。
 
-SPEC 9.3: JSON 字段统一使用 snake_case，时间为带时区 ISO 8601。
+SPEC 9.3: JSON 字段统一使用 camelCase，时间为带时区 ISO 8601。
 SPEC 23.2: "禁止记录和回显密码"。响应中不包含密码字段。
 """
 
@@ -18,9 +18,9 @@ from __future__ import annotations
 from datetime import datetime  # noqa: TC003
 from uuid import UUID  # noqa: TC003
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
-from app.core.api.schemas import StrictBaseModel
+from app.core.api.schemas import ApiModel, StrictBaseModel
 
 
 class LoginRequest(StrictBaseModel):
@@ -52,7 +52,7 @@ class LoginRequest(StrictBaseModel):
     )
 
 
-class LoginResponse(BaseModel):
+class LoginResponse(ApiModel):
     """登录成功响应 — SPEC 12.1.
 
     SPEC 12.1: "Access Token 仅在登录或刷新响应体中返回一次"。
@@ -76,7 +76,7 @@ class LoginResponse(BaseModel):
     expires_in: int = Field(description="Token 有效期（秒）")
 
 
-class RefreshResponse(BaseModel):
+class RefreshResponse(ApiModel):
     """刷新响应 — SPEC 12.2.
 
     SPEC 12.2: 刷新成功时响应体仅包含新 Access Token。新 Refresh Token
@@ -97,7 +97,7 @@ class RefreshResponse(BaseModel):
     expires_in: int = Field(description="Token 有效期（秒）")
 
 
-class SessionResponse(BaseModel):
+class SessionResponse(ApiModel):
     """活动会话响应 — SPEC 12.3.
 
     SPEC 12.3: "用户可以查看自己的活动会话"。
@@ -124,9 +124,23 @@ class SessionResponse(BaseModel):
     token_expires_at: datetime
 
 
-class LogoutResponse(BaseModel):
+class LogoutResponse(ApiModel):
     """退出登录响应."""
 
     model_config = {"extra": "forbid"}
 
     revoked_count: int = Field(description="被吊销的会话数量")
+
+
+class ForceOfflineResponse(ApiModel):
+    """管理员强制用户下线响应 — SPEC 12.3.
+
+    属性:
+        user_id:           被强制下线的目标用户 ID。
+        revoked_sessions:  被吊销的活动会话数量。
+    """
+
+    model_config = {"extra": "forbid"}
+
+    user_id: str = Field(description="目标用户 ID")
+    revoked_sessions: int = Field(description="被吊销的会话数量")

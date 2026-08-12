@@ -241,7 +241,7 @@ def _create_role(
 
     response = client.post(
         "/api/v1/roles",
-        json={"code": code, "display_name": display_name},
+        json={"code": code, "displayName": display_name},
     )
     assert response.status_code == 201, response.text
     return response.json()
@@ -287,7 +287,7 @@ def test_create_role_returns_201_with_location(
 
     response = api_client.post(
         "/api/v1/roles",
-        json={"code": "manager", "display_name": "管理者"},
+        json={"code": "manager", "displayName": "管理者"},
     )
     assert response.status_code == 201
     assert "Location" in response.headers
@@ -304,7 +304,7 @@ def test_create_duplicate_role_returns_409(api_client: TestClient) -> None:
     _create_role(api_client, code="dup")
     response = api_client.post(
         "/api/v1/roles",
-        json={"code": "dup", "display_name": "重复"},
+        json={"code": "dup", "displayName": "重复"},
     )
     assert response.status_code == 409
     assert response.json()["code"] == "RBAC.ROLE_ALREADY_EXISTS"
@@ -320,14 +320,14 @@ def test_list_roles_pagination(api_client: TestClient) -> None:
 
     response = api_client.get(
         "/api/v1/roles",
-        params={"page": 1, "page_size": 2},
+        params={"page": 1, "pageSize": 2},
     )
     assert response.status_code == 200
     body = response.json()
     # 内置 super_admin + 3 个新角色（超管角色在种子中创建）
     assert body["total"] >= 3
     assert body["page"] == 1
-    assert body["page_size"] == 2
+    assert body["pageSize"] == 2
 
 
 @pytest.mark.g2
@@ -340,7 +340,7 @@ def test_list_roles_sorting(api_client: TestClient) -> None:
 
     response = api_client.get(
         "/api/v1/roles",
-        params={"sort": "code", "page_size": 50},
+        params={"sort": "code", "pageSize": 50},
     )
     assert response.status_code == 200
     codes = [r["code"] for r in response.json()["items"]]
@@ -379,7 +379,7 @@ def test_get_role_detail(api_client: TestClient) -> None:
     response = api_client.get(f"/api/v1/roles/{role['id']}")
     assert response.status_code == 200
     assert response.json()["code"] == "detail_role"
-    assert "permission_codes" in response.json()
+    assert "permissionCodes" in response.json()
 
 
 @pytest.mark.g2
@@ -400,10 +400,10 @@ def test_update_role(api_client: TestClient) -> None:
     role = _create_role(api_client, code="upd_role")
     response = api_client.put(
         f"/api/v1/roles/{role['id']}",
-        json={"display_name": "更新后的名字"},
+        json={"displayName": "更新后的名字"},
     )
     assert response.status_code == 200
-    assert response.json()["display_name"] == "更新后的名字"
+    assert response.json()["displayName"] == "更新后的名字"
 
 
 @pytest.mark.g2
@@ -449,10 +449,10 @@ def test_assign_permissions_to_role(
 
     response = api_client.put(
         f"/api/v1/roles/{role['id']}/permissions",
-        json={"permission_codes": ["system:user:read", "system:user:write"]},
+        json={"permissionCodes": ["system:user:read", "system:user:write"]},
     )
     assert response.status_code == 200
-    assert set(response.json()["permission_codes"]) == {
+    assert set(response.json()["permissionCodes"]) == {
         "system:user:read",
         "system:user:write",
     }
@@ -491,7 +491,7 @@ def test_assign_and_remove_user_roles(
     # 分配角色
     response = api_client.put(
         f"/api/v1/users/{user_id}/roles",
-        json={"role_codes": ["user_role"]},
+        json={"roleCodes": ["user_role"]},
     )
     assert response.status_code == 200
     assert len(response.json()["role_ids"]) == 1

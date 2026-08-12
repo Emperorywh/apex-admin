@@ -1,9 +1,9 @@
 """分页与排序框架测试 — SPEC 9.4.
 
 覆盖:
-  - 分页默认值 page=1、page_size=20。
-  - page 最小 1、page_size 范围 1-100，越界返回 422。
-  - 响应固定 {items, total, page, page_size, pages}。
+  - 分页默认值 page=1、pageSize=20。
+  - page 最小 1、pageSize 范围 1-100，越界返回 422。
+  - 响应固定 {items, total, page, pageSize, pages}。
   - 排序解析：逗号分隔、``-`` 前缀降序、空白段忽略。
   - 排序白名单：非白名单字段返回参数错误 problem+json（400）。
   - total_pages 计算正确。
@@ -38,7 +38,7 @@ from app.core.errors.exceptions import ParameterError
 @pytest.mark.g1
 @pytest.mark.unit
 def test_page_params_defaults() -> None:
-    """分页参数默认值 page=1、page_size=20（SPEC 9.4）。"""
+    """分页参数默认值 page=1、pageSize=20（SPEC 9.4）。"""
 
     params = PageParams()
     assert params.page == 1
@@ -57,7 +57,7 @@ def test_page_params_offset_calculation() -> None:
 @pytest.mark.g1
 @pytest.mark.unit
 def test_page_params_unpacking() -> None:
-    """PageParams 支持 page, page_size 解包。"""
+    """PageParams 支持 page, pageSize 解包。"""
 
     params = PageParams(page=2, page_size=50)
     p, ps = params  # type: ignore[misc]
@@ -102,7 +102,7 @@ class _Item(BaseModel):
 @pytest.mark.g1
 @pytest.mark.unit
 def test_page_response_fixed_fields() -> None:
-    """PageResponse 固定包含 {items, total, page, page_size, pages}（SPEC 9.4）。"""
+    """PageResponse 固定包含 {items, total, page, pageSize, pages}（SPEC 9.4）。"""
 
     response = PageResponse[_Item](
         items=[_Item(id="1", name="a")],
@@ -111,11 +111,11 @@ def test_page_response_fixed_fields() -> None:
         page_size=20,
         pages=5,
     )
-    data = response.model_dump()
-    assert set(data.keys()) == {"items", "total", "page", "page_size", "pages"}
+    data = response.model_dump(by_alias=True)
+    assert set(data.keys()) == {"items", "total", "page", "pageSize", "pages"}
     assert data["total"] == 100
     assert data["page"] == 1
-    assert data["page_size"] == 20
+    assert data["pageSize"] == 20
     assert data["pages"] == 5
     assert len(data["items"]) == 1
 
@@ -174,7 +174,7 @@ def test_parse_sort_single_ascending() -> None:
 def test_parse_sort_single_descending() -> None:
     """单个降序字段（- 前缀）。"""
 
-    result = parse_sort("-created_at", frozenset({"name", "created_at"}))
+    result = parse_sort("-createdAt", frozenset({"name", "created_at"}))
     assert len(result) == 1
     assert result[0].name == "created_at"
     assert result[0].order == SortOrder.DESC
@@ -185,7 +185,7 @@ def test_parse_sort_single_descending() -> None:
 def test_parse_sort_multiple_fields() -> None:
     """逗号分隔多字段，保持声明顺序。"""
 
-    result = parse_sort("-created_at,name", frozenset({"name", "created_at"}))
+    result = parse_sort("-createdAt,name", frozenset({"name", "created_at"}))
     assert len(result) == 2
     assert result[0] == SortField(name="created_at", order=SortOrder.DESC)
     assert result[1] == SortField(name="name", order=SortOrder.ASC)
@@ -196,7 +196,7 @@ def test_parse_sort_multiple_fields() -> None:
 def test_parse_sort_ignores_empty_segments() -> None:
     """连续逗号或前后空白被忽略。"""
 
-    result = parse_sort("name,,created_at,", frozenset({"name", "created_at"}))
+    result = parse_sort("name,,createdAt,", frozenset({"name", "created_at"}))
     assert len(result) == 2
 
 
@@ -261,7 +261,7 @@ def _create_pagination_test_app() -> FastAPI:
 @pytest.mark.g1
 @pytest.mark.api
 def test_api_pagination_defaults() -> None:
-    """不带分页参数时使用默认值 page=1、page_size=20（SPEC 9.4）。"""
+    """不带分页参数时使用默认值 page=1、pageSize=20（SPEC 9.4）。"""
 
     app = _create_pagination_test_app()
     with TestClient(app) as client:
@@ -270,8 +270,8 @@ def test_api_pagination_defaults() -> None:
     assert response.status_code == 200
     data: dict[str, Any] = response.json()
     assert data["page"] == 1
-    assert data["page_size"] == 20
-    assert set(data.keys()) == {"items", "total", "page", "page_size", "pages"}
+    assert data["pageSize"] == 20
+    assert set(data.keys()) == {"items", "total", "page", "pageSize", "pages"}
 
 
 @pytest.mark.g1
@@ -281,12 +281,12 @@ def test_api_pagination_custom_values() -> None:
 
     app = _create_pagination_test_app()
     with TestClient(app) as client:
-        response = client.get("/api/v1/items?page=2&page_size=50")
+        response = client.get("/api/v1/items?page=2&pageSize=50")
 
     assert response.status_code == 200
     data = response.json()
     assert data["page"] == 2
-    assert data["page_size"] == 50
+    assert data["pageSize"] == 50
 
 
 @pytest.mark.g1
@@ -304,11 +304,11 @@ def test_api_pagination_page_below_minimum_returns_422() -> None:
 @pytest.mark.g1
 @pytest.mark.api
 def test_api_pagination_page_size_below_minimum_returns_422() -> None:
-    """page_size < 1 返回 422（SPEC 9.4）。"""
+    """pageSize < 1 返回 422（SPEC 9.4）。"""
 
     app = _create_pagination_test_app()
     with TestClient(app) as client:
-        response = client.get("/api/v1/items?page_size=0")
+        response = client.get("/api/v1/items?pageSize=0")
 
     assert response.status_code == 422
 
@@ -316,11 +316,11 @@ def test_api_pagination_page_size_below_minimum_returns_422() -> None:
 @pytest.mark.g1
 @pytest.mark.api
 def test_api_pagination_page_size_above_maximum_returns_422() -> None:
-    """page_size > 100 返回 422（SPEC 9.4）。"""
+    """pageSize > 100 返回 422（SPEC 9.4）。"""
 
     app = _create_pagination_test_app()
     with TestClient(app) as client:
-        response = client.get("/api/v1/items?page_size=101")
+        response = client.get("/api/v1/items?pageSize=101")
 
     assert response.status_code == 422
 
@@ -358,7 +358,7 @@ def test_api_sort_valid_field_returns_200() -> None:
 
     app = _create_sort_test_app()
     with TestClient(app) as client:
-        response = client.get("/api/v1/items?sort=-created_at,name")
+        response = client.get("/api/v1/items?sort=-createdAt,name")
 
     assert response.status_code == 200
     data = response.json()

@@ -5,7 +5,7 @@ SPEC 9.2 约定:
   - 请求参数使用明确的 Schema 校验。
 
 SPEC 9.3 约定:
-  - JSON 字段统一使用 snake_case。
+  - JSON 字段统一使用 camelCase。
   - 普通成功响应直接返回资源 Schema，不使用成功信封。
   - 创建成功返回 HTTP 201 + Location。
 """
@@ -15,9 +15,9 @@ from __future__ import annotations
 from datetime import datetime  # noqa: TC003
 from uuid import UUID  # noqa: TC003
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
-from app.core.api.schemas import StrictBaseModel
+from app.core.api.schemas import ApiModel, StrictBaseModel
 
 # ── 部门请求 Schema ──────────────────────────────────────────────────────
 
@@ -126,7 +126,7 @@ class DepartmentLeaderRequest(StrictBaseModel):
 # ── 响应 Schema ──────────────────────────────────────────────────────────
 
 
-class DepartmentResponse(BaseModel):
+class DepartmentResponse(ApiModel):
     """部门响应模型 — SPEC 9.3 / 14.1."""
 
     model_config = {"extra": "forbid"}
@@ -143,7 +143,7 @@ class DepartmentResponse(BaseModel):
     updated_at: datetime
 
 
-class DepartmentDetailResponse(BaseModel):
+class DepartmentDetailResponse(ApiModel):
     """部门详情响应（含子部门数量）— SPEC 9.3 / 14.1."""
 
     model_config = {"extra": "forbid"}
@@ -161,7 +161,7 @@ class DepartmentDetailResponse(BaseModel):
     updated_at: datetime
 
 
-class DepartmentTreeResponse(BaseModel):
+class DepartmentTreeResponse(ApiModel):
     """部门树节点响应 — SPEC 9.3 / 14.1."""
 
     model_config = {"extra": "forbid"}
@@ -265,7 +265,7 @@ class AssignUserPostRequest(StrictBaseModel):
 # ── 岗位与关系响应 Schema ──────────────────────────────────────────────────
 
 
-class PostResponse(BaseModel):
+class PostResponse(ApiModel):
     """岗位响应模型 — SPEC 9.3 / 14.2."""
 
     model_config = {"extra": "forbid"}
@@ -280,7 +280,7 @@ class PostResponse(BaseModel):
     updated_at: datetime
 
 
-class PostDetailResponse(BaseModel):
+class PostDetailResponse(ApiModel):
     """岗位详情响应（含关联用户数量）— SPEC 9.3 / 14.2."""
 
     model_config = {"extra": "forbid"}
@@ -296,7 +296,7 @@ class PostDetailResponse(BaseModel):
     updated_at: datetime
 
 
-class UserDepartmentResponse(BaseModel):
+class UserDepartmentResponse(ApiModel):
     """用户部门关系响应 — SPEC 14.3."""
 
     model_config = {"extra": "forbid"}
@@ -307,7 +307,7 @@ class UserDepartmentResponse(BaseModel):
     is_primary: bool
 
 
-class UserPostResponse(BaseModel):
+class UserPostResponse(ApiModel):
     """用户岗位关系响应 — SPEC 14.2."""
 
     model_config = {"extra": "forbid"}

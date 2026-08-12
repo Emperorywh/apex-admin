@@ -220,9 +220,9 @@ def test_login_success_returns_access_token_and_cookie(
     assert response.headers.get("cache-control") == "no-store"
 
     body = response.json()
-    assert body["token_type"] == "Bearer"
-    assert body["access_token"]
-    assert body["expires_in"] == 900
+    assert body["tokenType"] == "Bearer"
+    assert body["accessToken"]
+    assert body["expiresIn"] == 900
 
     # Refresh Token 仅经 Set-Cookie，不进入 JSON — SPEC 12.2
     assert "refresh_token" not in body
@@ -284,7 +284,7 @@ def _login_and_extract(
     client: TestClient,
     database_url: str,
 ) -> tuple[str, str]:
-    """登录并返回 (access_token, refresh_cookie_value)。"""
+    """登录并返回 (accessToken, refresh_cookie_value)。"""
 
     asyncio.run(_create_test_user(database_url))
     response = client.post(
@@ -293,7 +293,7 @@ def _login_and_extract(
     )
     assert response.status_code == 200
 
-    access_token = response.json()["access_token"]
+    access_token = response.json()["accessToken"]
 
     # 从 Set-Cookie 提取 refresh token 值
     cookies = response.cookies
@@ -320,7 +320,7 @@ def test_refresh_success_returns_new_access_token(
     )
     assert response.status_code == 200
     assert response.headers.get("cache-control") == "no-store"
-    assert response.json()["access_token"]
+    assert response.json()["accessToken"]
     assert "refresh_token" not in response.json()
 
 
@@ -452,7 +452,7 @@ def test_logout_others_keeps_current(
         headers={"Authorization": f"Bearer {access_token}"},
     )
     assert response.status_code == 200
-    assert response.json()["revoked_count"] == 0  # 只有当前一个会话
+    assert response.json()["revokedCount"] == 0  # 只有当前一个会话
 
     # 当前 Token 仍然有效
     sessions_resp = auth_client.get(
@@ -515,8 +515,8 @@ def test_force_offline_revokes_user_sessions(
 
     response = admin_client.post(f"/api/v1/auth/users/{user_id}/force-offline")
     assert response.status_code == 200
-    assert response.json()["user_id"] == user_id
-    assert response.json()["revoked_sessions"] == 0  # 无活跃会话
+    assert response.json()["userId"] == user_id
+    assert response.json()["revokedSessions"] == 0  # 无活跃会话
 
 
 @pytest.mark.g2

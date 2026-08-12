@@ -1,7 +1,7 @@
 """文件管理请求与响应 Schema — SPEC 9.2 / 9.3 / 19.2.
 
 SPEC 9.2: 创建、全量更新请求拒绝未知字段（``extra="forbid"``）。
-SPEC 9.3: JSON 字段统一 snake_case。
+SPEC 9.3: JSON 字段统一 camelCase。
 """
 
 from __future__ import annotations
@@ -9,10 +9,10 @@ from __future__ import annotations
 from datetime import datetime  # noqa: TC003
 from uuid import UUID  # noqa: TC003
 
-from pydantic import BaseModel
+from app.core.api.schemas import ApiModel
 
 
-class FileMetadataResponse(BaseModel):
+class FileMetadataResponse(ApiModel):
     """文件元数据响应模型 — SPEC 9.3 / 19.1."""
 
     model_config = {"extra": "forbid"}

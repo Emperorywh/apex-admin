@@ -14,7 +14,7 @@ SPEC 5.6: "Router 只能获得 Use Case，不得获得 AsyncSession、Repository
     GET    /auth/sessions             查看活动会话列表
 
   管理端点 — 需要认证 + 权限校验:
-    POST   /auth/users/{user_id}/force-offline  管理员强制用户下线
+    POST   /auth/users/{userId}/force-offline  管理员强制用户下线
 
 SPEC 12.4: 登录和刷新响应必须设置 ``Cache-Control: no-store``。
 SPEC 12.1: Access Token 仅在登录/刷新响应体中返回一次。
@@ -45,6 +45,7 @@ from app.modules.auth.dependencies import (
 )
 from app.modules.auth.permission import require_permission
 from app.modules.auth.schemas import (
+    ForceOfflineResponse,
     LoginRequest,
     LoginResponse,
     LogoutResponse,
@@ -259,7 +260,7 @@ async def login(
         expires_in=result.expires_in,
     )
     response = Response(
-        content=login_response.model_dump_json(),
+        content=login_response.model_dump_json(by_alias=True),
         media_type="application/json",
         status_code=status.HTTP_200_OK,
         headers={"Cache-Control": "no-store"},
@@ -321,7 +322,7 @@ async def refresh(
         expires_in=result.expires_in,
     )
     response = Response(
-        content=refresh_response.model_dump_json(),
+        content=refresh_response.model_dump_json(by_alias=True),
         media_type="application/json",
         status_code=status.HTTP_200_OK,
         headers={"Cache-Control": "no-store"},
@@ -369,7 +370,7 @@ async def logout(
     )
 
     response = Response(
-        content=result.model_dump_json(),
+        content=result.model_dump_json(by_alias=True),
         media_type="application/json",
         status_code=status.HTTP_200_OK,
     )
@@ -437,7 +438,8 @@ async def list_sessions(
 
 
 @router.post(
-    "/users/{user_id}/force-offline",
+    "/users/{userId}/force-offline",
+    response_model=ForceOfflineResponse,
     summary="管理员强制用户下线",
     operation_id="auth_force_offline",
 )
@@ -448,8 +450,8 @@ async def force_offline(
         Depends(require_permission("system:user:write")),
     ],
     use_case: UseCaseDep,
-    user_id: Annotated[UUID, Path(description="目标用户 ID")],
-) -> dict[str, object]:
+    user_id: Annotated[UUID, Path(alias="userId", description="目标用户 ID")],
+) -> ForceOfflineResponse:
     """管理员强制用户下线 — SPEC 12.3 / 18.1.
 
     SPEC 12.3: "管理员可以强制用户下线"。
@@ -468,7 +470,7 @@ async def force_offline(
         ip_address=ip_address,
         user_agent=user_agent,
     )
-    return {"user_id": str(user_id), "revoked_sessions": count}
+    return ForceOfflineResponse(user_id=str(user_id), revoked_sessions=count)
 
 
 # ── 辅助函数 ────────────────────────────────────────────────────────────────

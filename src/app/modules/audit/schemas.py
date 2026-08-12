@@ -1,8 +1,8 @@
 """审计查询请求与响应 Schema — SPEC 9.2 / 9.3 / 9.4 / 18.3.
 
 SPEC 9.2: 创建、全量更新请求拒绝未知字段（``extra="forbid"``）。
-SPEC 9.3: JSON 字段统一 snake_case。
-SPEC 9.4: 分页响应固定为 ``{items, total, page, page_size, pages}``。
+SPEC 9.3: JSON 字段统一 camelCase。
+SPEC 9.4: 分页响应固定为 ``{items, total, page, pageSize, pages}``。
 
 SPEC 18.3:
   - 分页查询登录日志与操作审计。
@@ -16,13 +16,19 @@ from datetime import datetime  # noqa: TC003
 from typing import Any
 from uuid import UUID  # noqa: TC003
 
-from pydantic import BaseModel
+from pydantic import field_serializer
+from pydantic.alias_generators import to_camel
 
 from app.core.api.pagination import PageResponse
+from app.core.api.schemas import ApiModel
 
 
-class AuditLogResponse(BaseModel):
-    """审计日志响应模型 — SPEC 9.3 / 18.3."""
+class AuditLogResponse(ApiModel):
+    """审计日志响应模型 — SPEC 9.3 / 18.3.
+
+    ``diff`` 的键为领域字段名（内部 snake_case），序列化时转换为
+    camelCase，与整体 JSON 命名约定一致（SPEC 9.3）。
+    """
 
     model_config = {"extra": "forbid"}
 
@@ -39,8 +45,19 @@ class AuditLogResponse(BaseModel):
     diff: dict[str, dict[str, Any]] | None
     occurred_at: datetime
 
+    @field_serializer("diff")
+    def _serialize_diff_keys(
+        self,
+        diff: dict[str, dict[str, Any]] | None,
+    ) -> dict[str, dict[str, Any]] | None:
+        """将 diff 的字段名键序列化为 camelCase（SPEC 9.3）。"""
 
-class LoginLogResponse(BaseModel):
+        if diff is None:
+            return None
+        return {to_camel(key): value for key, value in diff.items()}
+
+
+class LoginLogResponse(ApiModel):
     """登录日志响应模型 — SPEC 9.3 / 18.1 / 18.3."""
 
     model_config = {"extra": "forbid"}

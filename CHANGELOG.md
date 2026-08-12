@@ -4,6 +4,10 @@
 
 ## [Unreleased] — v0.1.0（初始基座）
 
+### 破坏性变更
+
+- **API 命名规范从 snake_case 全面切换为 camelCase**：请求体、响应体、查询参数、路径参数模板、problem+json 扩展字段（`requestId`）、审计导出 CSV 列头均改为 camelCase。分页参数 `page_size` → `pageSize`，排序字段值改为 camelCase（如 `sort=-createdAt`）。Python 内部字段与数据库列名保持 snake_case，由 `ApiModel` 基类（`alias_generator=to_camel`）在 API 边界自动转换；请求输入经 `populate_by_name=True` 兼容 snake_case，响应仅输出 camelCase。（SPEC 9.3 / 9.4 已同步修订）
+
 ### G1 Core Ready
 
 - 模块化单体架构与分层依赖契约（composition → api → application → domain）

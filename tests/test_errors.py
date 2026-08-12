@@ -4,7 +4,7 @@
   - 异常层级与错误码属性（SPEC 10.1）。
   - 错误码注册表格式校验、重复拒绝和元数据（SPEC 10.2）。
   - problem+json 响应固定字段与 Content-Type（SPEC 9.3）。
-  - urn type 规则与 request_id 一致性（SPEC 9.3）。
+  - urn type 规则与 requestId 一致性（SPEC 9.3）。
   - 字段校验错误 422 与 errors 数组（SPEC 9.3）。
   - 未处理异常 500 不含堆栈，服务端日志含完整堆栈（SPEC 23.3 / 24.1）。
   - 业务错误不被包装为 HTTP 200（SPEC 9.3）。
@@ -363,7 +363,7 @@ def _assert_problem_structure(
         "detail",
         "instance",
         "code",
-        "request_id",
+        "requestId",
     }
     assert set(data.keys()) >= required_fields
     assert data["status"] == expected_status
@@ -405,7 +405,7 @@ def test_business_error_has_all_fixed_fields_and_urn_type() -> None:
 @pytest.mark.g1
 @pytest.mark.unit
 def test_request_id_consistency_between_header_and_body() -> None:
-    """request_id 与响应头一致（SPEC 9.3 / 9.5）."""
+    """requestId 与响应头一致（SPEC 9.3 / 9.5）."""
 
     app = _create_test_app()
     with TestClient(app) as client:
@@ -416,7 +416,7 @@ def test_request_id_consistency_between_header_and_body() -> None:
 
     assert response.headers["X-Request-ID"] == "test-req-123"
     data = response.json()
-    assert data["request_id"] == "test-req-123"
+    assert data["requestId"] == "test-req-123"
 
 
 @pytest.mark.g1

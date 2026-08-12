@@ -163,9 +163,9 @@ def _create_dept(
 ) -> dict[str, object]:
     """通过 API 创建部门并返回响应体。"""
 
-    payload: dict[str, object] = {"code": code, "display_name": display_name}
+    payload: dict[str, object] = {"code": code, "displayName": display_name}
     if parent_id is not None:
-        payload["parent_id"] = parent_id
+        payload["parentId"] = parent_id
     response = client.post("/api/v1/departments", json=payload)
     assert response.status_code == 201, response.text
     return response.json()
@@ -189,7 +189,7 @@ class TestDepartmentCRUDAPI:
 
         response = api_client.post(
             "/api/v1/departments",
-            json={"code": "engineering", "display_name": "工程部"},
+            json={"code": "engineering", "displayName": "工程部"},
         )
         assert response.status_code == 201
         assert "location" in {k.lower() for k in response.headers}
@@ -206,7 +206,7 @@ class TestDepartmentCRUDAPI:
         _create_dept(api_client, code="dup", display_name="D1")
         response = api_client.post(
             "/api/v1/departments",
-            json={"code": "dup", "display_name": "D2"},
+            json={"code": "dup", "displayName": "D2"},
         )
         assert response.status_code == 409
         assert response.json()["code"] == "ORG.DEPT_ALREADY_EXISTS"
@@ -219,7 +219,7 @@ class TestDepartmentCRUDAPI:
 
         response = api_client.post(
             "/api/v1/departments",
-            json={"code": "test", "display_name": "T", "bad": "field"},
+            json={"code": "test", "displayName": "T", "bad": "field"},
         )
         assert response.status_code == 422
 
@@ -231,7 +231,7 @@ class TestDepartmentCRUDAPI:
         assert response.status_code == 200
         body = response.json()
         assert body["code"] == "hq"
-        assert body["child_count"] == 0
+        assert body["childCount"] == 0
 
     def test_get_detail_not_found_404(
         self,
@@ -249,10 +249,10 @@ class TestDepartmentCRUDAPI:
         dept = _create_dept(api_client)
         response = api_client.put(
             f"/api/v1/departments/{dept['id']}",
-            json={"display_name": "新名称", "description": "描述"},
+            json={"displayName": "新名称", "description": "描述"},
         )
         assert response.status_code == 200
-        assert response.json()["display_name"] == "新名称"
+        assert response.json()["displayName"] == "新名称"
 
     def test_enable_disable(self, api_client: TestClient) -> None:
         """启用和禁用部门。"""
@@ -283,12 +283,12 @@ class TestDepartmentCRUDAPI:
         child = _create_dept(api_client, code="child", display_name="C")
         response = api_client.put(
             f"/api/v1/departments/{child['id']}/hierarchy",
-            json={"parent_id": parent["id"], "sort_order": 3},
+            json={"parentId": parent["id"], "sortOrder": 3},
         )
         assert response.status_code == 200
         body = response.json()
-        assert body["parent_id"] == parent["id"]
-        assert body["sort_order"] == 3
+        assert body["parentId"] == parent["id"]
+        assert body["sortOrder"] == 3
 
     def test_adjust_hierarchy_direct_cycle_409(
         self,
@@ -299,7 +299,7 @@ class TestDepartmentCRUDAPI:
         dept = _create_dept(api_client, code="aa", display_name="A")
         response = api_client.put(
             f"/api/v1/departments/{dept['id']}/hierarchy",
-            json={"parent_id": dept["id"], "sort_order": 0},
+            json={"parentId": dept["id"], "sortOrder": 0},
         )
         assert response.status_code == 409
         assert response.json()["code"] == "ORG.DEPT_CYCLE_DETECTED"
@@ -325,7 +325,7 @@ class TestDepartmentCRUDAPI:
         )
         response = api_client.put(
             f"/api/v1/departments/{a['id']}/hierarchy",
-            json={"parent_id": str(c["id"]), "sort_order": 0},
+            json={"parentId": str(c["id"]), "sortOrder": 0},
         )
         assert response.status_code == 409
         assert response.json()["code"] == "ORG.DEPT_CYCLE_DETECTED"
@@ -341,10 +341,10 @@ class TestDepartmentCRUDAPI:
         dept = _create_dept(api_client)
         response = api_client.put(
             f"/api/v1/departments/{dept['id']}/leader",
-            json={"leader_id": user_id},
+            json={"leaderId": user_id},
         )
         assert response.status_code == 200
-        assert response.json()["leader_id"] == user_id
+        assert response.json()["leaderId"] == user_id
 
     def test_delete_leaf(self, api_client: TestClient) -> None:
         """删除叶子部门返回 204。"""
@@ -401,7 +401,7 @@ class TestDepartmentCRUDAPI:
         self,
         api_client: TestClient,
     ) -> None:
-        """include_disabled=false 时禁用部门被排除。"""
+        """includeDisabled=false 时禁用部门被排除。"""
 
         root = _create_dept(api_client, code="root", display_name="Root")
         _create_dept(
@@ -421,7 +421,7 @@ class TestDepartmentCRUDAPI:
             f"/api/v1/departments/{disabled_child['id']}/disable",
         )
         response = api_client.get(
-            "/api/v1/departments/tree?include_disabled=false",
+            "/api/v1/departments/tree?includeDisabled=false",
         )
         assert response.status_code == 200
         tree = response.json()

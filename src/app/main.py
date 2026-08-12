@@ -101,13 +101,20 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     docs_urls = resolve_docs_urls(settings)
     if docs_urls["docs_url"] is None:
-        _logger.info("API 文档端点已关闭")
+        _logger.info("api_docs_disabled")
     else:
-        _logger.info(
-            "API 文档端点已启用，请在服务地址后拼接以下路径访问",
-            docs_url=docs_urls["docs_url"],
-            redoc_url=docs_urls["redoc_url"],
-            openapi_url=docs_urls["openapi_url"],
+        print(  # noqa: T201 — 启动横幅面向终端用户，不走结构化日志
+            "\n"
+            "═══════════════════════════════════════════════════════════\n"
+            "  📖 API 文档端点\n"
+            "\n"
+            f"    Swagger UI :  {docs_urls['docs_url']}\n"
+            f"    ReDoc      :  {docs_urls['redoc_url']}\n"
+            f"    OpenAPI    :  {docs_urls['openapi_url']}\n"
+            "\n"
+            "    将上述路径拼接到 Uvicorn 启动地址后即可访问\n"
+            "    示例: http://127.0.0.1:8000/docs\n"
+            "═══════════════════════════════════════════════════════════\n",
         )
 
     yield
@@ -146,7 +153,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     configure_logging(settings)
 
     # OpenAPI 文档参数 — SPEC 9.6: 按模块 tag 分组，生产可关闭文档
-    from app.core.api.openapi import build_openapi_kwargs
+    from app.core.api.openapi import apply_openapi_security, build_openapi_kwargs
 
     openapi_kwargs = build_openapi_kwargs(settings)
 
@@ -156,6 +163,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
         **openapi_kwargs,
     )
+
+    # 注入 Bearer 安全方案 — Swagger UI 顶部出现 Authorize 按钮（SPEC 9.6 / 12.3）
+    apply_openapi_security(app)
 
     # 将配置存入应用状态，供端点和中间件读取
     app.state.settings = settings

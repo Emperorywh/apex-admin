@@ -103,19 +103,43 @@ async def list_audit_logs(
     ctx: AuditReadCtx,
     use_case: UseCaseDep,
     params: Annotated[PageParams, Depends()],
-    actor_id: Annotated[str | None, Query(description="操作者标识筛选")] = None,
+    actor_id: Annotated[
+        str | None,
+        Query(
+            alias="actorId",
+            description="操作者标识筛选",
+        ),
+    ] = None,
     module: Annotated[str | None, Query(description="操作模块筛选")] = None,
     action: Annotated[str | None, Query(description="审计动作筛选")] = None,
-    resource_type: Annotated[str | None, Query(description="资源类型筛选")] = None,
-    resource_id: Annotated[str | None, Query(description="资源标识筛选")] = None,
+    resource_type: Annotated[
+        str | None,
+        Query(
+            alias="resourceType",
+            description="资源类型筛选",
+        ),
+    ] = None,
+    resource_id: Annotated[
+        str | None,
+        Query(
+            alias="resourceId",
+            description="资源标识筛选",
+        ),
+    ] = None,
     result: Annotated[str | None, Query(description="操作结果筛选")] = None,
     start_time: Annotated[
         datetime | None,
-        Query(description="发生时间下界（含），ISO 8601"),
+        Query(
+            alias="startTime",
+            description="发生时间下界（含），ISO 8601",
+        ),
     ] = None,
     end_time: Annotated[
         datetime | None,
-        Query(description="发生时间上界（含），ISO 8601"),
+        Query(
+            alias="endTime",
+            description="发生时间上界（含），ISO 8601",
+        ),
     ] = None,
 ) -> AuditLogPageResponse:
     """分页查询审计日志 — SPEC 18.3.
@@ -157,19 +181,43 @@ async def list_audit_logs(
 async def export_audit_logs(
     ctx: AuditExportCtx,
     use_case: UseCaseDep,
-    actor_id: Annotated[str | None, Query(description="操作者标识筛选")] = None,
+    actor_id: Annotated[
+        str | None,
+        Query(
+            alias="actorId",
+            description="操作者标识筛选",
+        ),
+    ] = None,
     module: Annotated[str | None, Query(description="操作模块筛选")] = None,
     action: Annotated[str | None, Query(description="审计动作筛选")] = None,
-    resource_type: Annotated[str | None, Query(description="资源类型筛选")] = None,
-    resource_id: Annotated[str | None, Query(description="资源标识筛选")] = None,
+    resource_type: Annotated[
+        str | None,
+        Query(
+            alias="resourceType",
+            description="资源类型筛选",
+        ),
+    ] = None,
+    resource_id: Annotated[
+        str | None,
+        Query(
+            alias="resourceId",
+            description="资源标识筛选",
+        ),
+    ] = None,
     result: Annotated[str | None, Query(description="操作结果筛选")] = None,
     start_time: Annotated[
         datetime | None,
-        Query(description="发生时间下界（含），ISO 8601"),
+        Query(
+            alias="startTime",
+            description="发生时间下界（含），ISO 8601",
+        ),
     ] = None,
     end_time: Annotated[
         datetime | None,
-        Query(description="发生时间上界（含），ISO 8601"),
+        Query(
+            alias="endTime",
+            description="发生时间上界（含），ISO 8601",
+        ),
     ] = None,
 ) -> StreamingResponse:
     """流式导出审计日志为 CSV — SPEC 18.3.
@@ -198,7 +246,7 @@ async def export_audit_logs(
 
 
 @router.get(
-    "/audit/logs/{log_id}",
+    "/audit/logs/{logId}",
     response_model=AuditLogResponse,
     summary="查询审计日志详情",
     operation_id="get_audit_log",
@@ -206,7 +254,7 @@ async def export_audit_logs(
 async def get_audit_log(
     ctx: AuditReadCtx,
     use_case: UseCaseDep,
-    log_id: Annotated[UUID, Path(description="审计日志 ID")],
+    log_id: Annotated[UUID, Path(alias="logId", description="审计日志 ID")],
 ) -> AuditLogResponse:
     """查询单条审计日志详情 — SPEC 18.3."""
 
@@ -229,17 +277,32 @@ async def list_login_logs(
     ctx: AuditReadCtx,
     use_case: UseCaseDep,
     params: Annotated[PageParams, Depends()],
-    user_id: Annotated[str | None, Query(description="用户标识筛选")] = None,
+    user_id: Annotated[
+        str | None,
+        Query(alias="userId", description="用户标识筛选"),
+    ] = None,
     username: Annotated[str | None, Query(description="登录账号筛选")] = None,
-    ip_address: Annotated[str | None, Query(description="客户端 IP 筛选")] = None,
+    ip_address: Annotated[
+        str | None,
+        Query(
+            alias="ipAddress",
+            description="客户端 IP 筛选",
+        ),
+    ] = None,
     result: Annotated[str | None, Query(description="登录结果筛选")] = None,
     start_time: Annotated[
         datetime | None,
-        Query(description="发生时间下界（含），ISO 8601"),
+        Query(
+            alias="startTime",
+            description="发生时间下界（含），ISO 8601",
+        ),
     ] = None,
     end_time: Annotated[
         datetime | None,
-        Query(description="发生时间上界（含），ISO 8601"),
+        Query(
+            alias="endTime",
+            description="发生时间上界（含），ISO 8601",
+        ),
     ] = None,
 ) -> LoginLogPageResponse:
     """分页查询登录日志 — SPEC 18.1 / 18.3.
@@ -278,17 +341,32 @@ async def list_login_logs(
 async def export_login_logs(
     ctx: AuditExportCtx,
     use_case: UseCaseDep,
-    user_id: Annotated[str | None, Query(description="用户标识筛选")] = None,
+    user_id: Annotated[
+        str | None,
+        Query(alias="userId", description="用户标识筛选"),
+    ] = None,
     username: Annotated[str | None, Query(description="登录账号筛选")] = None,
-    ip_address: Annotated[str | None, Query(description="客户端 IP 筛选")] = None,
+    ip_address: Annotated[
+        str | None,
+        Query(
+            alias="ipAddress",
+            description="客户端 IP 筛选",
+        ),
+    ] = None,
     result: Annotated[str | None, Query(description="登录结果筛选")] = None,
     start_time: Annotated[
         datetime | None,
-        Query(description="发生时间下界（含），ISO 8601"),
+        Query(
+            alias="startTime",
+            description="发生时间下界（含），ISO 8601",
+        ),
     ] = None,
     end_time: Annotated[
         datetime | None,
-        Query(description="发生时间上界（含），ISO 8601"),
+        Query(
+            alias="endTime",
+            description="发生时间上界（含），ISO 8601",
+        ),
     ] = None,
 ) -> StreamingResponse:
     """流式导出登录日志为 CSV — SPEC 18.3."""
@@ -311,7 +389,7 @@ async def export_login_logs(
 
 
 @router.get(
-    "/audit/login-logs/{log_id}",
+    "/audit/login-logs/{logId}",
     response_model=LoginLogResponse,
     summary="查询登录日志详情",
     operation_id="get_login_log",
@@ -319,7 +397,7 @@ async def export_login_logs(
 async def get_login_log(
     ctx: AuditReadCtx,
     use_case: UseCaseDep,
-    log_id: Annotated[UUID, Path(description="登录日志 ID")],
+    log_id: Annotated[UUID, Path(alias="logId", description="登录日志 ID")],
 ) -> LoginLogResponse:
     """查询单条登录日志详情 — SPEC 18.3."""
 

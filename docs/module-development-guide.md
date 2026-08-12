@@ -87,17 +87,17 @@ async def create_item(...): ...
 
 ## 3. 如何定义请求和响应 Schema
 
-请求 Schema 继承 `StrictBaseModel`（`extra="forbid"`），拒绝未知字段（SPEC 9.2）。响应 Schema 使用普通 `BaseModel`。
+请求 Schema 继承 `StrictBaseModel`（`extra="forbid"`），拒绝未知字段（SPEC 9.2）。响应 Schema 继承 `ApiModel`（camelCase 序列化，SPEC 9.3）。
 
 ```python
 # src/app/modules/example/schemas.py
-from app.core.api.schemas import StrictBaseModel
+from app.core.api.schemas import ApiModel, StrictBaseModel
 
 class ExampleItemCreateRequest(StrictBaseModel):
     name: str = Field(min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=1000)
 
-class ExampleItemResponse(BaseModel):
+class ExampleItemResponse(ApiModel):
     id: UUID
     name: str
     description: str | None
@@ -107,7 +107,7 @@ class ExampleItemResponse(BaseModel):
 
 **规则**：
 - 创建（Create）、全量更新（Update PUT）和部分更新（Patch PATCH）请求统一 `extra="forbid"`（SPEC 9.2）。
-- JSON 字段使用 `snake_case`，时间字段使用带时区的 ISO 8601 字符串（SPEC 9.3）。
+- JSON 字段使用 `camelCase`（请求、响应和查询参数一致，Python 字段保持 snake_case，由 `ApiModel` 自动转换），时间字段使用带时区的 ISO 8601 字符串（SPEC 9.3）。
 - 普通成功响应直接返回资源 Schema，不使用 `{code, message, data}` 成功信封（SPEC 9.3）。
 - 创建成功返回 HTTP 201；无响应体的删除返回 HTTP 204（SPEC 9.3）。
 - 字符串长度、数值范围、格式和枚举具有 Pydantic 约束。

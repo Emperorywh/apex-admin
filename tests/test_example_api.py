@@ -107,7 +107,7 @@ def test_create_item_returns_201(api_client: TestClient) -> None:
     body = response.json()
     assert body["name"] == "api-test"
     assert "id" in body
-    assert "created_at" in body
+    assert "createdAt" in body
 
     # 事件处理器在事务内更新了数据库行（SPEC 5.7），
     # 通过后续 GET 验证事件处理器效果
@@ -166,13 +166,13 @@ def test_list_items_pagination(api_client: TestClient) -> None:
 
     response = api_client.get(
         "/api/v1/example/items",
-        params={"page": 1, "page_size": 2},
+        params={"page": 1, "pageSize": 2},
     )
     assert response.status_code == 200
     body = response.json()
     assert body["total"] == 3
     assert body["page"] == 1
-    assert body["page_size"] == 2
+    assert body["pageSize"] == 2
     assert body["pages"] == 2
     assert len(body["items"]) == 2
 
@@ -189,7 +189,7 @@ def test_list_items_sorting(api_client: TestClient) -> None:
     # 按名称升序
     response = api_client.get(
         "/api/v1/example/items",
-        params={"sort": "name", "page_size": 10},
+        params={"sort": "name", "pageSize": 10},
     )
     assert response.status_code == 200
     names = [item["name"] for item in response.json()["items"]]
@@ -198,7 +198,7 @@ def test_list_items_sorting(api_client: TestClient) -> None:
     # 按名称降序
     response = api_client.get(
         "/api/v1/example/items",
-        params={"sort": "-name", "page_size": 10},
+        params={"sort": "-name", "pageSize": 10},
     )
     assert response.status_code == 200
     names = [item["name"] for item in response.json()["items"]]

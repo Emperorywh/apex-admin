@@ -376,21 +376,21 @@ PostgreSQL
 - [ ] 无响应体的删除成功返回 HTTP 204。
 - [ ] 文件和流式响应不套 JSON 信封。
 - [ ] 错误响应固定采用 RFC 9457 `application/problem+json`。
-- [ ] 错误模型固定包含 `type`、`title`、`status`、`detail`、`instance`、`code` 和 `request_id`；业务错误的 `type` 固定为 `urn:` 加应用标识加 `problem` 加小写错误码，例如 `urn:apex:problem:user.not_found`，无业务错误码的框架级错误使用 `about:blank`。
+- [ ] 错误模型固定包含 `type`、`title`、`status`、`detail`、`instance`、`code` 和 `requestId`；业务错误的 `type` 固定为 `urn:` 加应用标识加 `problem` 加小写错误码，例如 `urn:apex:problem:user.not_found`，无业务错误码的框架级错误使用 `about:blank`。
 - [ ] 字段校验错误额外包含 `errors` 数组；数组元素固定包含 `field`、`reason` 和 `message`。
 - [ ] `detail` 和 `message` 只供展示，客户端业务判断只能使用稳定 `code`。
 - [ ] 响应结构不得把业务错误包装为 HTTP 200。
 - [ ] 响应字段具有稳定命名规范。
-- [ ] JSON 字段统一使用 `snake_case`，时间统一为带时区 ISO 8601 字符串。
+- [ ] JSON 字段统一使用 `camelCase`（请求、响应和查询参数一致），时间统一为带时区 ISO 8601 字符串。
 - [ ] 敏感字段不得进入响应模型。
 - [ ] API 文档准确展示实际响应结构。
 
 ### 9.4 分页、排序和筛选（G1）
 
-- [ ] 页码分页参数固定为 `page` 和 `page_size`，默认值分别为 1 和 20。
-- [ ] `page` 最小值为 1，`page_size` 范围为 1 至 100。
-- [ ] 页码分页响应固定为 `{items, total, page, page_size, pages}`。
-- [ ] 排序参数固定为 `sort`，使用逗号分隔字段，前缀 `-` 表示降序，例如 `-created_at,name`。
+- [ ] 页码分页参数固定为 `page` 和 `pageSize`，默认值分别为 1 和 20。
+- [ ] `page` 最小值为 1，`pageSize` 范围为 1 至 100。
+- [ ] 页码分页响应固定为 `{items, total, page, pageSize, pages}`。
+- [ ] 排序参数固定为 `sort`，使用逗号分隔字段，字段名使用 `camelCase`，前缀 `-` 表示降序，例如 `-createdAt,name`。
 - [ ] 排序字段使用每个查询显式声明的白名单，不在白名单内返回参数错误。
 - [ ] 筛选字段由具体模块显式声明。
 - [ ] 禁止将客户端输入直接拼接为 SQL。

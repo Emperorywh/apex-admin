@@ -10,29 +10,29 @@ Router 通过 FastAPI 依赖注入获得 ``OrgUseCase``。
   部门管理 — ``/departments`` 前缀:
     POST   /departments                       创建部门
     GET    /departments/tree                   查询部门树
-    GET    /departments/{department_id}        查询部门详情
-    PUT    /departments/{department_id}        更新部门
-    POST   /departments/{department_id}/enable 启用部门
-    POST   /departments/{department_id}/disable 禁用部门
-    PUT    /departments/{department_id}/hierarchy 调整层级与排序
-    PUT    /departments/{department_id}/leader 设置部门负责人
-    DELETE /departments/{department_id}        删除部门
+    GET    /departments/{departmentId}        查询部门详情
+    PUT    /departments/{departmentId}        更新部门
+    POST   /departments/{departmentId}/enable 启用部门
+    POST   /departments/{departmentId}/disable 禁用部门
+    PUT    /departments/{departmentId}/hierarchy 调整层级与排序
+    PUT    /departments/{departmentId}/leader 设置部门负责人
+    DELETE /departments/{departmentId}        删除部门
 
   岗位管理 — ``/posts`` 前缀:
     POST   /posts                              创建岗位
     GET    /posts                              查询岗位列表
-    GET    /posts/{post_id}                    查询岗位详情
-    PUT    /posts/{post_id}                    更新岗位
-    POST   /posts/{post_id}/enable             启用岗位
-    POST   /posts/{post_id}/disable            禁用岗位
-    DELETE /posts/{post_id}                    删除岗位
+    GET    /posts/{postId}                    查询岗位详情
+    PUT    /posts/{postId}                    更新岗位
+    POST   /posts/{postId}/enable             启用岗位
+    POST   /posts/{postId}/disable            禁用岗位
+    DELETE /posts/{postId}                    删除岗位
 
   用户组织关系 — ``/users`` 前缀:
-    PUT    /users/{user_id}/department         设置用户主部门
-    DELETE /users/{user_id}/department         移除用户主部门
-    POST   /users/{user_id}/posts              为用户分配岗位
-    DELETE /users/{user_id}/posts/{post_id}    移除用户岗位
-    GET    /users/{user_id}/org-info           查询用户组织关系
+    PUT    /users/{userId}/department         设置用户主部门
+    DELETE /users/{userId}/department         移除用户主部门
+    POST   /users/{userId}/posts              为用户分配岗位
+    DELETE /users/{userId}/posts/{postId}    移除用户岗位
+    GET    /users/{userId}/org-info           查询用户组织关系
 """
 
 from __future__ import annotations
@@ -150,7 +150,10 @@ async def get_department_tree(
     use_case: UseCaseDep,
     include_disabled: Annotated[
         bool,
-        Query(description="是否包含禁用状态的部门（默认 true）"),
+        Query(
+            alias="includeDisabled",
+            description="是否包含禁用状态的部门（默认 true）",
+        ),
     ] = True,
 ) -> list[DepartmentTreeResponse]:
     """查询部门树 — SPEC 14.1.
@@ -169,7 +172,7 @@ async def get_department_tree(
 
 
 @router.get(
-    "/departments/{department_id}",
+    "/departments/{departmentId}",
     response_model=DepartmentDetailResponse,
     summary="查询部门详情",
     operation_id="get_department_detail",
@@ -177,7 +180,7 @@ async def get_department_tree(
 async def get_department_detail(
     ctx: DeptReadCtx,
     use_case: UseCaseDep,
-    department_id: Annotated[UUID, Path(description="部门 ID")],
+    department_id: Annotated[UUID, Path(alias="departmentId", description="部门 ID")],
 ) -> DepartmentDetailResponse:
     """查询部门详情（含子部门数量）— SPEC 14.1.
 
@@ -189,7 +192,7 @@ async def get_department_detail(
 
 
 @router.put(
-    "/departments/{department_id}",
+    "/departments/{departmentId}",
     response_model=DepartmentResponse,
     summary="更新部门",
     operation_id="update_department",
@@ -198,7 +201,7 @@ async def update_department(
     request_body: DepartmentUpdateRequest,
     ctx: DeptWriteCtx,
     use_case: UseCaseDep,
-    department_id: Annotated[UUID, Path(description="部门 ID")],
+    department_id: Annotated[UUID, Path(alias="departmentId", description="部门 ID")],
 ) -> DepartmentResponse:
     """更新部门基本信息 — SPEC 14.1.
 
@@ -210,7 +213,7 @@ async def update_department(
 
 
 @router.post(
-    "/departments/{department_id}/enable",
+    "/departments/{departmentId}/enable",
     response_model=DepartmentResponse,
     summary="启用部门",
     operation_id="enable_department",
@@ -218,7 +221,7 @@ async def update_department(
 async def enable_department(
     ctx: DeptWriteCtx,
     use_case: UseCaseDep,
-    department_id: Annotated[UUID, Path(description="部门 ID")],
+    department_id: Annotated[UUID, Path(alias="departmentId", description="部门 ID")],
 ) -> DepartmentResponse:
     """启用部门 — SPEC 14.1."""
 
@@ -227,7 +230,7 @@ async def enable_department(
 
 
 @router.post(
-    "/departments/{department_id}/disable",
+    "/departments/{departmentId}/disable",
     response_model=DepartmentResponse,
     summary="禁用部门",
     operation_id="disable_department",
@@ -235,7 +238,7 @@ async def enable_department(
 async def disable_department(
     ctx: DeptWriteCtx,
     use_case: UseCaseDep,
-    department_id: Annotated[UUID, Path(description="部门 ID")],
+    department_id: Annotated[UUID, Path(alias="departmentId", description="部门 ID")],
 ) -> DepartmentResponse:
     """禁用部门 — SPEC 14.1.
 
@@ -248,7 +251,7 @@ async def disable_department(
 
 
 @router.put(
-    "/departments/{department_id}/hierarchy",
+    "/departments/{departmentId}/hierarchy",
     response_model=DepartmentResponse,
     summary="调整部门层级与排序",
     operation_id="adjust_department_hierarchy",
@@ -257,7 +260,7 @@ async def adjust_department_hierarchy(
     request_body: DepartmentHierarchyRequest,
     ctx: DeptWriteCtx,
     use_case: UseCaseDep,
-    department_id: Annotated[UUID, Path(description="部门 ID")],
+    department_id: Annotated[UUID, Path(alias="departmentId", description="部门 ID")],
 ) -> DepartmentResponse:
     """调整部门层级与排序 — SPEC 14.1.
 
@@ -274,7 +277,7 @@ async def adjust_department_hierarchy(
 
 
 @router.put(
-    "/departments/{department_id}/leader",
+    "/departments/{departmentId}/leader",
     response_model=DepartmentResponse,
     summary="设置部门负责人",
     operation_id="set_department_leader",
@@ -283,7 +286,7 @@ async def set_department_leader(
     request_body: DepartmentLeaderRequest,
     ctx: DeptWriteCtx,
     use_case: UseCaseDep,
-    department_id: Annotated[UUID, Path(description="部门 ID")],
+    department_id: Annotated[UUID, Path(alias="departmentId", description="部门 ID")],
 ) -> DepartmentResponse:
     """设置部门负责人 — SPEC 14.1.
 
@@ -297,7 +300,7 @@ async def set_department_leader(
 
 
 @router.delete(
-    "/departments/{department_id}",
+    "/departments/{departmentId}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="删除部门",
     operation_id="delete_department",
@@ -305,7 +308,7 @@ async def set_department_leader(
 async def delete_department(
     ctx: DeptWriteCtx,
     use_case: UseCaseDep,
-    department_id: Annotated[UUID, Path(description="部门 ID")],
+    department_id: Annotated[UUID, Path(alias="departmentId", description="部门 ID")],
 ) -> Response:
     """删除部门 — SPEC 14.1.
 
@@ -358,7 +361,10 @@ async def list_posts(
     use_case: UseCaseDep,
     include_disabled: Annotated[
         bool,
-        Query(description="是否包含禁用状态的岗位（默认 true）"),
+        Query(
+            alias="includeDisabled",
+            description="是否包含禁用状态的岗位（默认 true）",
+        ),
     ] = True,
 ) -> list[PostResponse]:
     """查询岗位列表 — SPEC 14.2."""
@@ -372,7 +378,7 @@ async def list_posts(
 
 
 @router.get(
-    "/posts/{post_id}",
+    "/posts/{postId}",
     response_model=PostDetailResponse,
     summary="查询岗位详情",
     operation_id="get_post_detail",
@@ -380,7 +386,7 @@ async def list_posts(
 async def get_post_detail(
     ctx: PostReadCtx,
     use_case: UseCaseDep,
-    post_id: Annotated[UUID, Path(description="岗位 ID")],
+    post_id: Annotated[UUID, Path(alias="postId", description="岗位 ID")],
 ) -> PostDetailResponse:
     """查询岗位详情 — SPEC 14.2.
 
@@ -392,7 +398,7 @@ async def get_post_detail(
 
 
 @router.put(
-    "/posts/{post_id}",
+    "/posts/{postId}",
     response_model=PostResponse,
     summary="更新岗位",
     operation_id="update_post",
@@ -401,7 +407,7 @@ async def update_post(
     request_body: PostUpdateRequest,
     ctx: PostWriteCtx,
     use_case: UseCaseDep,
-    post_id: Annotated[UUID, Path(description="岗位 ID")],
+    post_id: Annotated[UUID, Path(alias="postId", description="岗位 ID")],
 ) -> PostResponse:
     """更新岗位基本信息 — SPEC 14.2."""
 
@@ -410,7 +416,7 @@ async def update_post(
 
 
 @router.post(
-    "/posts/{post_id}/enable",
+    "/posts/{postId}/enable",
     response_model=PostResponse,
     summary="启用岗位",
     operation_id="enable_post",
@@ -418,7 +424,7 @@ async def update_post(
 async def enable_post(
     ctx: PostWriteCtx,
     use_case: UseCaseDep,
-    post_id: Annotated[UUID, Path(description="岗位 ID")],
+    post_id: Annotated[UUID, Path(alias="postId", description="岗位 ID")],
 ) -> PostResponse:
     """启用岗位 — SPEC 14.2."""
 
@@ -427,7 +433,7 @@ async def enable_post(
 
 
 @router.post(
-    "/posts/{post_id}/disable",
+    "/posts/{postId}/disable",
     response_model=PostResponse,
     summary="禁用岗位",
     operation_id="disable_post",
@@ -435,7 +441,7 @@ async def enable_post(
 async def disable_post(
     ctx: PostWriteCtx,
     use_case: UseCaseDep,
-    post_id: Annotated[UUID, Path(description="岗位 ID")],
+    post_id: Annotated[UUID, Path(alias="postId", description="岗位 ID")],
 ) -> PostResponse:
     """禁用岗位 — SPEC 14.2."""
 
@@ -444,7 +450,7 @@ async def disable_post(
 
 
 @router.delete(
-    "/posts/{post_id}",
+    "/posts/{postId}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="删除岗位",
     operation_id="delete_post",
@@ -452,7 +458,7 @@ async def disable_post(
 async def delete_post(
     ctx: PostWriteCtx,
     use_case: UseCaseDep,
-    post_id: Annotated[UUID, Path(description="岗位 ID")],
+    post_id: Annotated[UUID, Path(alias="postId", description="岗位 ID")],
 ) -> Response:
     """删除岗位 — SPEC 14.2.
 
@@ -464,12 +470,12 @@ async def delete_post(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 用户组织关系 — /users/{user_id} 前缀
+# 用户组织关系 — /users/{userId} 前缀
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
 @router.put(
-    "/users/{user_id}/department",
+    "/users/{userId}/department",
     summary="设置用户主部门",
     operation_id="assign_user_department",
 )
@@ -477,7 +483,7 @@ async def assign_user_department(
     request_body: AssignUserDepartmentRequest,
     ctx: PostWriteCtx,
     use_case: UseCaseDep,
-    user_id: Annotated[UUID, Path(description="用户 ID")],
+    user_id: Annotated[UUID, Path(alias="userId", description="用户 ID")],
 ) -> dict[str, object]:
     """设置用户主部门 — SPEC 14.3.
 
@@ -496,7 +502,7 @@ async def assign_user_department(
 
 
 @router.delete(
-    "/users/{user_id}/department",
+    "/users/{userId}/department",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="移除用户主部门",
     operation_id="remove_user_department",
@@ -504,7 +510,7 @@ async def assign_user_department(
 async def remove_user_department(
     ctx: PostWriteCtx,
     use_case: UseCaseDep,
-    user_id: Annotated[UUID, Path(description="用户 ID")],
+    user_id: Annotated[UUID, Path(alias="userId", description="用户 ID")],
 ) -> Response:
     """移除用户主部门 — SPEC 14.3.
 
@@ -516,7 +522,7 @@ async def remove_user_department(
 
 
 @router.post(
-    "/users/{user_id}/posts",
+    "/users/{userId}/posts",
     summary="为用户分配岗位",
     operation_id="assign_user_post",
 )
@@ -524,7 +530,7 @@ async def assign_user_post(
     request_body: AssignUserPostRequest,
     ctx: PostWriteCtx,
     use_case: UseCaseDep,
-    user_id: Annotated[UUID, Path(description="用户 ID")],
+    user_id: Annotated[UUID, Path(alias="userId", description="用户 ID")],
 ) -> dict[str, object]:
     """为用户分配岗位 — SPEC 14.2.
 
@@ -542,7 +548,7 @@ async def assign_user_post(
 
 
 @router.delete(
-    "/users/{user_id}/posts/{post_id}",
+    "/users/{userId}/posts/{postId}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="移除用户岗位",
     operation_id="remove_user_post",
@@ -550,8 +556,8 @@ async def assign_user_post(
 async def remove_user_post(
     ctx: PostWriteCtx,
     use_case: UseCaseDep,
-    user_id: Annotated[UUID, Path(description="用户 ID")],
-    post_id: Annotated[UUID, Path(description="岗位 ID")],
+    user_id: Annotated[UUID, Path(alias="userId", description="用户 ID")],
+    post_id: Annotated[UUID, Path(alias="postId", description="岗位 ID")],
 ) -> Response:
     """移除用户岗位 — SPEC 14.2.
 
@@ -564,14 +570,14 @@ async def remove_user_post(
 
 
 @router.get(
-    "/users/{user_id}/org-info",
+    "/users/{userId}/org-info",
     summary="查询用户组织关系",
     operation_id="get_user_org_info",
 )
 async def get_user_org_info(
     ctx: PostReadCtx,
     use_case: UseCaseDep,
-    user_id: Annotated[UUID, Path(description="用户 ID")],
+    user_id: Annotated[UUID, Path(alias="userId", description="用户 ID")],
 ) -> dict[str, object]:
     """查询用户组织关系（部门 + 岗位）— SPEC 14.3 / 11.1."""
 

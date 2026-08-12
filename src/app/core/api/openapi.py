@@ -12,9 +12,12 @@ SPEC 9.6 约定:
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from app.core.config import Environment, Settings
+
+if TYPE_CHECKING:
+    from fastapi import FastAPI
 
 # ── OpenAPI Tags 元数据 ──────────────────────────────────────────────────
 #
@@ -115,3 +118,109 @@ def _docs_explicitly_enabled(settings: Settings) -> bool:
     """
 
     return settings.ENABLE_API_DOCS
+
+
+# ── OpenAPI 安全方案（SPEC 9.6 / 12.1 / 12.3）─────────────────────────────
+#
+# 注册 HTTP Bearer 认证方案，使 Swagger UI 顶部出现 Authorize 按钮。
+# 登录后将 access_token 填入，Swagger 在后续请求中自动携带
+# ``Authorization: Bearer <token>``。
+#
+# 认证运行时逻辑仍由 app/modules/auth/dependencies.py 手动从 header
+# 提取不透明 Access Token（SPEC 12.1），此处仅声明文档层面的安全方案，
+# 不改动任何认证依赖。
+
+#: BearerAuth 安全方案 — 不透明 Access Token（非 JWT）。
+_BEARER_SECURITY_SCHEME: dict[str, Any] = {
+    "type": "http",
+    "scheme": "bearer",
+    "bearerFormat": "Opaque",
+    "description": (
+        "粘贴登录接口返回的 access_token（无需手写 Bearer 前缀）。"
+        "认证依赖从 Authorization: Bearer <token> 提取不透明 Access Token"
+        "（SPEC 12.1）。"
+    ),
+}
+
+#: 全局默认安全要求 — 受保护端点均需 Bearer Token。
+_DEFAULT_SECURITY: list[dict[str, list[str]]] = [{"BearerAuth": []}]
+
+#: 公开端点 tag — 这些端点豁免全局 Bearer 要求。
+_PUBLIC_TAGS: frozenset[str] = frozenset({"health", "meta", "metrics"})
+
+#: auth 模块的公开路径后缀 — 登录与刷新不需要 Access Token。
+_PUBLIC_AUTH_PATH_SUFFIXES: frozenset[str] = frozenset({"/auth/login", "/auth/refresh"})
+
+#: 需要遍历 operation 的 HTTP 方法集合。
+_HTTP_METHODS: frozenset[str] = frozenset(
+    {"get", "post", "put", "patch", "delete", "head", "options"},
+)
+
+
+def _is_public_operation(path: str, operation: dict[str, Any]) -> bool:
+    """判断一个 operation 是否为公开端点（豁免 Bearer 认证）.
+
+    判定规则:
+      - tag 属于公开 tag（health / meta / metrics）。
+      - 路径以登录或刷新后缀结尾（auth 模块的公开入口）。
+    """
+
+    tags = operation.get("tags", [])
+    if any(tag in _PUBLIC_TAGS for tag in tags):
+        return True
+    normalized = path.lower()
+    return any(normalized.endswith(suffix) for suffix in _PUBLIC_AUTH_PATH_SUFFIXES)
+
+
+def _mark_public_endpoints(schema: dict[str, Any]) -> None:
+    """为公开端点标注 ``security: []`` 以豁免全局 Bearer 要求."""
+
+    paths = schema.get("paths", {})
+    for path, path_item in paths.items():
+        if not isinstance(path_item, dict):
+            continue
+        for method, operation in path_item.items():
+            if method not in _HTTP_METHODS:
+                continue
+            if not isinstance(operation, dict):
+                continue
+            if _is_public_operation(path, operation):
+                operation["security"] = []
+
+
+def apply_openapi_security(app: FastAPI) -> None:
+    """为应用注册自定义 openapi 方法，注入 Bearer 安全方案 — SPEC 9.6 / 12.3.
+
+    覆盖 ``app.openapi``，在 FastAPI 自动生成的 OpenAPI schema 基础上注入:
+      - ``components.securitySchemes.BearerAuth``（HTTP Bearer 方案）。
+      - 全局 ``security`` 默认要求（所有端点默认需要 Bearer Token）。
+
+    公开端点（health / meta / metrics、auth 登录与刷新）通过
+    ``_mark_public_endpoints`` 标注 ``security: []`` 豁免。
+
+    Swagger UI 据此在页面顶部渲染 Authorize 🔓 按钮：登录后填入
+    access_token 即可全局授权，Swagger 自动在受保护请求中携带
+    ``Authorization: Bearer <token>``。
+
+    参数:
+        app: 待配置的 FastAPI 应用实例。
+    """
+
+    original_openapi = app.openapi
+
+    def custom_openapi() -> dict[str, Any]:
+        if app.openapi_schema is not None:
+            return app.openapi_schema
+        # 由原始方法生成 schema（内部会缓存到 app.openapi_schema）
+        schema = original_openapi()
+        # 注入 Bearer 安全方案
+        components = schema.setdefault("components", {})
+        security_schemes = components.setdefault("securitySchemes", {})
+        security_schemes["BearerAuth"] = _BEARER_SECURITY_SCHEME
+        # 全局默认安全要求
+        schema["security"] = _DEFAULT_SECURITY
+        # 公开端点豁免
+        _mark_public_endpoints(schema)
+        return schema
+
+    app.openapi = custom_openapi  # type: ignore[method-assign]

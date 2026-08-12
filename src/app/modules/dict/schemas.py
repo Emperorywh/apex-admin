@@ -1,7 +1,7 @@
 """数据字典请求与响应 Schema — SPEC 9.2 / 9.3 / 17.1 / 17.2.
 
 SPEC 9.2: 创建、全量更新请求拒绝未知字段（``extra="forbid"``）。
-SPEC 9.3: JSON 字段统一 snake_case。
+SPEC 9.3: JSON 字段统一 camelCase。
 
 SPEC 17.1:
   - 字典类型创建/更新。
@@ -18,9 +18,9 @@ from datetime import datetime  # noqa: TC003
 from typing import Any
 from uuid import UUID  # noqa: TC003
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
-from app.core.api.schemas import StrictBaseModel
+from app.core.api.schemas import ApiModel, StrictBaseModel
 
 # ── 字典类型请求/响应 ──────────────────────────────────────────────────────
 
@@ -74,7 +74,7 @@ class DictTypeUpdateRequest(StrictBaseModel):
     )
 
 
-class DictTypeResponse(BaseModel):
+class DictTypeResponse(ApiModel):
     """字典类型响应模型 — SPEC 9.3 / 17.1."""
 
     model_config = {"extra": "forbid"}
@@ -168,7 +168,7 @@ class DictItemUpdateRequest(StrictBaseModel):
     )
 
 
-class DictItemResponse(BaseModel):
+class DictItemResponse(ApiModel):
     """字典项响应模型 — SPEC 9.3 / 17.2."""
 
     model_config = {"extra": "forbid"}

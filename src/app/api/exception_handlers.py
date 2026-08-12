@@ -69,7 +69,7 @@ def _build_problem_body(
 ) -> dict[str, Any]:
     """构建 RFC 9457 problem+json 响应体.
 
-    SPEC 9.3: 固定包含 type/title/status/detail/instance/code/request_id。
+    SPEC 9.3: 固定包含 type/title/status/detail/instance/code/requestId。
     字段校验错误额外包含 ``errors`` 数组。
     """
 
@@ -80,7 +80,7 @@ def _build_problem_body(
         "detail": detail,
         "instance": instance,
         "code": code,
-        "request_id": request_id,
+        "requestId": request_id,
     }
     if errors is not None:
         body["errors"] = errors

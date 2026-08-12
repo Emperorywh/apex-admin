@@ -210,8 +210,8 @@ class TestUploadAPI:
         data = response.json()
         assert len(data) == 1
         assert data[0]["status"] == "ready"
-        assert data[0]["original_name"] == "test.png"
-        assert data[0]["file_extension"] == "png"
+        assert data[0]["originalName"] == "test.png"
+        assert data[0]["fileExtension"] == "png"
 
     def test_upload_txt_file(self, api_client: TestClient) -> None:
         """上传文本文件."""
@@ -223,7 +223,7 @@ class TestUploadAPI:
         assert response.status_code == 201
         data = response.json()
         assert data[0]["status"] == "ready"
-        assert data[0]["file_extension"] == "txt"
+        assert data[0]["fileExtension"] == "txt"
 
     def test_upload_forged_type_rejected(self, api_client: TestClient) -> None:
         """伪造文件类型被拒绝（400）."""

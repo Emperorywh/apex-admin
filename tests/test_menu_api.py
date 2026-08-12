@@ -291,9 +291,9 @@ def _create_menu(
 ) -> dict[str, object]:
     """通过 API 创建菜单并返回响应体。"""
 
-    payload: dict[str, object] = {"menu_type": menu_type, "title": title}
+    payload: dict[str, object] = {"menuType": menu_type, "title": title}
     if parent_id is not None:
-        payload["parent_id"] = parent_id
+        payload["parentId"] = parent_id
     if not visible:
         payload["visible"] = False
     if name is not None:
@@ -305,7 +305,7 @@ def _create_menu(
     if icon is not None:
         payload["icon"] = icon
     if sort_order:
-        payload["sort_order"] = sort_order
+        payload["sortOrder"] = sort_order
     response = client.post("/api/v1/menus", json=payload)
     assert response.status_code == 201, response.text
     return response.json()
@@ -326,12 +326,12 @@ class TestMenuCRUDAPI:
 
         response = api_client.post(
             "/api/v1/menus",
-            json={"menu_type": "directory", "title": "系统管理"},
+            json={"menuType": "directory", "title": "系统管理"},
         )
         assert response.status_code == 201
         assert "location" in {k.lower() for k in response.headers}
         body = response.json()
-        assert body["menu_type"] == "directory"
+        assert body["menuType"] == "directory"
         assert body["status"] == "active"
         assert body["visible"] is True
 
@@ -341,7 +341,7 @@ class TestMenuCRUDAPI:
         response = api_client.post(
             "/api/v1/menus",
             json={
-                "menu_type": "page",
+                "menuType": "page",
                 "title": "用户管理",
                 "name": "system_user",
                 "path": "/system/user",
@@ -362,20 +362,20 @@ class TestMenuCRUDAPI:
         response = api_client.post(
             "/api/v1/menus",
             json={
-                "menu_type": "link",
+                "menuType": "link",
                 "title": "外部链接",
                 "path": "https://example.com",
             },
         )
         assert response.status_code == 201
-        assert response.json()["menu_type"] == "link"
+        assert response.json()["menuType"] == "link"
 
     def test_create_with_visibility(self, api_client: TestClient) -> None:
         """创建菜单配置可见性 — SPEC 15.1."""
 
         response = api_client.post(
             "/api/v1/menus",
-            json={"menu_type": "page", "title": "Hidden", "visible": False},
+            json={"menuType": "page", "title": "Hidden", "visible": False},
         )
         assert response.status_code == 201
         assert response.json()["visible"] is False
@@ -385,7 +385,7 @@ class TestMenuCRUDAPI:
 
         response = api_client.post(
             "/api/v1/menus",
-            json={"menu_type": "page", "title": "T", "bad": "field"},
+            json={"menuType": "page", "title": "T", "bad": "field"},
         )
         assert response.status_code == 422
 
@@ -439,12 +439,12 @@ class TestMenuCRUDAPI:
         child = _create_menu(api_client, title="Child")
         response = api_client.put(
             f"/api/v1/menus/{child['id']}/hierarchy",
-            json={"parent_id": str(parent["id"]), "sort_order": 3},
+            json={"parentId": str(parent["id"]), "sortOrder": 3},
         )
         assert response.status_code == 200
         body = response.json()
-        assert body["parent_id"] == parent["id"]
-        assert body["sort_order"] == 3
+        assert body["parentId"] == parent["id"]
+        assert body["sortOrder"] == 3
 
     def test_adjust_hierarchy_direct_cycle_409(
         self,
@@ -455,7 +455,7 @@ class TestMenuCRUDAPI:
         menu = _create_menu(api_client)
         response = api_client.put(
             f"/api/v1/menus/{menu['id']}/hierarchy",
-            json={"parent_id": str(menu["id"]), "sort_order": 0},
+            json={"parentId": str(menu["id"]), "sortOrder": 0},
         )
         assert response.status_code == 409
         assert response.json()["code"] == "MENU.CYCLE_DETECTED"
@@ -471,7 +471,7 @@ class TestMenuCRUDAPI:
         c = _create_menu(api_client, title="C", parent_id=str(b["id"]))
         response = api_client.put(
             f"/api/v1/menus/{a['id']}/hierarchy",
-            json={"parent_id": str(c["id"]), "sort_order": 0},
+            json={"parentId": str(c["id"]), "sortOrder": 0},
         )
         assert response.status_code == 409
         assert response.json()["code"] == "MENU.CYCLE_DETECTED"
@@ -530,20 +530,20 @@ class TestRoleMenuAPI:
         # 第一次分配
         response = api_client.put(
             f"/api/v1/roles/{role_id}/menus",
-            json={"menu_ids": [str(menu["id"])]},
+            json={"menuIds": [str(menu["id"])]},
         )
         assert response.status_code == 200
         # 第二次相同分配 → 幂等
         response = api_client.put(
             f"/api/v1/roles/{role_id}/menus",
-            json={"menu_ids": [str(menu["id"])]},
+            json={"menuIds": [str(menu["id"])]},
         )
         assert response.status_code == 200
 
         # 查询确认
         response = api_client.get(f"/api/v1/roles/{role_id}/menus")
         assert response.status_code == 200
-        assert len(response.json()["menu_ids"]) == 1
+        assert len(response.json()["menuIds"]) == 1
 
     def test_remove_role_menu_idempotent(
         self,
@@ -559,7 +559,7 @@ class TestRoleMenuAPI:
         # 先分配
         api_client.put(
             f"/api/v1/roles/{role_id}/menus",
-            json={"menu_ids": [str(menu["id"])]},
+            json={"menuIds": [str(menu["id"])]},
         )
         # 第一次移除 → 204
         response = api_client.delete(
@@ -605,7 +605,7 @@ class TestCurrentUserMenuAPI:
         # 分配菜单给角色
         api_client.put(
             f"/api/v1/roles/{role_id}/menus",
-            json={"menu_ids": [str(root["id"]), str(child["id"])]},
+            json={"menuIds": [str(root["id"]), str(child["id"])]},
         )
 
         # 覆盖依赖模拟当前用户
@@ -664,7 +664,7 @@ class TestCurrentUserMenuAPI:
         menu = _create_menu(api_client, title="New")
         api_client.put(
             f"/api/v1/roles/{role_id}/menus",
-            json={"menu_ids": [str(menu["id"])]},
+            json={"menuIds": [str(menu["id"])]},
         )
 
         # 切回当前用户查询 → 立即看到新菜单
@@ -805,7 +805,7 @@ class TestMenuVisibilityNotAuthorization:
         # 尝试写入接口 → 403（即使菜单可见，无 write 权限被拒绝）
         response = api_client.post(
             "/api/v1/menus",
-            json={"menu_type": "page", "title": "Attempt"},
+            json={"menuType": "page", "title": "Attempt"},
         )
         assert response.status_code == 403
 

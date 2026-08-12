@@ -179,7 +179,7 @@ def _create_dict_item(
     payload: dict[str, object] = {
         "label": label,
         "value": value,
-        "sort_order": sort_order,
+        "sortOrder": sort_order,
     }
     if metadata is not None:
         payload["metadata"] = metadata
@@ -335,7 +335,7 @@ class TestDictItemAPI:
         )
         assert body["label"] == "紧急"
         assert body["value"] == "urgent"
-        assert body["sort_order"] == 3
+        assert body["sortOrder"] == 3
         assert body["metadata"] == {"color": "#ff0000", "icon": "alert"}
         assert body["description"] == "紧急级别"
 
@@ -349,12 +349,12 @@ class TestDictItemAPI:
         _create_dict_item(api_client, str(dt["id"]), value="same")
         response = api_client.post(
             f"/api/v1/dict-types/{dt['id']}/items",
-            json={"label": "B", "value": "same", "sort_order": 0},
+            json={"label": "B", "value": "same", "sortOrder": 0},
         )
         assert response.status_code == 409
 
     def test_list_items_ordered(self, api_client: TestClient) -> None:
-        """字典项列表按 sort_order 升序排列。"""
+        """字典项列表按 sortOrder 升序排列。"""
 
         dt = _create_dict_type(api_client, code="item_list", name="列表")
         _create_dict_item(
@@ -374,7 +374,7 @@ class TestDictItemAPI:
         response = api_client.get(f"/api/v1/dict-types/{dt['id']}/items")
         assert response.status_code == 200
         items = response.json()
-        assert [i["sort_order"] for i in items] == [0, 2]
+        assert [i["sortOrder"] for i in items] == [0, 2]
 
     def test_get_item(self, api_client: TestClient) -> None:
         """查询字典项详情。"""
@@ -397,7 +397,7 @@ class TestDictItemAPI:
             json={
                 "label": "新",
                 "value": "new",
-                "sort_order": 5,
+                "sortOrder": 5,
                 "metadata": {"k": "v"},
             },
         )
@@ -405,7 +405,7 @@ class TestDictItemAPI:
         body = response.json()
         assert body["label"] == "新"
         assert body["value"] == "new"
-        assert body["sort_order"] == 5
+        assert body["sortOrder"] == 5
 
     def test_enable_disable_item(self, api_client: TestClient) -> None:
         """启用和禁用字典项。"""
