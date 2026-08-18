@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<!-- 自定义 Swagger UI 文档页 — SPEC 9.6.
+
+模板占位符（由 app.core.api.swagger_ui 渲染时替换）:
+  - {{ APP_TITLE }}        应用名称
+  - {{ OPENAPI_URL }}      OpenAPI schema 地址
+  - {{ SWAGGER_CDN_BASE }} swagger-ui-dist 静态资源 CDN 基地址
+
+增强功能（原生 JS，无构建链）:
+  1. 接口搜索 — 启用 Swagger UI 内置过滤栏。
+  2. 单个 API 文档复制 — 每个接口卡片的"复制文档"按钮生成 Markdown。
+  3. 全局参数设置 — 顶栏面板维护 header/query 参数，请求自动携带。
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ APP_TITLE }} — API 文档</title>
+  <link rel="stylesheet" href="{{ SWAGGER_CDN_BASE }}/swagger-ui.css">
+  <style>
+    /* ── 增强功能样式（复制按钮 / 全局参数面板 / 提示条）────────────── */
+
+    /* 接口卡片上的"复制文档"按钮 — 使用 span 避免 button 嵌套问题 */
+    .apex-copy-btn {
+      flex: none;
+      margin-left: 8px;
+      padding: 2px 10px;
+      font-size: 12px;
+      line-height: 20px;
+      color: #508d2a;
+      border: 1px solid #b7d3a4;
+      border-radius: 3px;
+      background: #f3f9ee;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .apex-copy-btn:hover {
+      color: #3a6b1e;
+      border-color: #89bf04;
+    }
+
+    /* 顶栏"全局参数"按钮 — 融入 Swagger UI 深色顶栏 */
+    #swagger-ui .topbar .apex-topbar-btn {
+      margin-right: 10px;
+      padding: 6px 14px;
+      font-size: 13px;
+      color: #fff;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #swagger-ui .topbar .apex-topbar-btn:hover {
+      border-color: #89bf04;
+      color: #89bf04;
+    }
+
+    /* 操作反馈提示条 */
+    #apex-toast {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      z-index: 3000;
+      padding: 10px 20px;
+      font-size: 13px;
+      color: #fff;
+      background: rgba(27, 27, 27, 0.92);
+      border-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    #apex-toast.apex-toast-show {
+      opacity: 1;
+    }
+
+    /* 全局参数设置弹窗 */
+    .apex-modal-wrapper {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+    }
+    .apex-modal-wrapper.apex-modal-open {
+      display: flex;
+    }
+    .apex-modal-mask {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+    }
+    .apex-modal {
+      position: relative;
+      width: 560px;
+      max-width: calc(100vw - 32px);
+      max-height: calc(100vh - 64px);
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      border-radius: 6px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+    }
+    .apex-modal-header {
+      padding: 14px 20px;
+      font-size: 15px;
+      font-weight: 600;
+      border-bottom: 1px solid #ebebeb;
+    }
+    .apex-modal-body {
+      padding: 12px 20px 16px;
+      overflow-y: auto;
+    }
+    .apex-modal-tip {
+      margin: 0 0 12px;
+      font-size: 12px;
+      color: #8c8c8c;
+      line-height: 1.6;
+    }
+    .apex-params-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .apex-params-table th,
+    .apex-params-table td {
+      padding: 6px 6px;
+      border-bottom: 1px solid #f0f0f0;
+      text-align: left;
+      vertical-align: middle;
+    }
+    .apex-params-table input,
+    .apex-params-table select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 4px 8px;
+      font-size: 13px;
+      border: 1px solid #d9d9d9;
+      border-radius: 3px;
+    }
+    .apex-params-table input:focus,
+    .apex-params-table select:focus {
+      outline: none;
+      border-color: #89bf04;
+    }
+    .apex-p-delete {
+      padding: 2px 8px;
+      color: #cf1322;
+      background: transparent;
+      border: 1px solid #ffa39e;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .apex-p-delete:hover {
+      background: #fff1f0;
+    }
+    .apex-add-param {
+      margin-top: 10px;
+      padding: 4px 12px;
+      font-size: 13px;
+      color: #508d2a;
+      background: transparent;
+      border: 1px dashed #b7d3a4;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .apex-add-param:hover {
+      border-color: #89bf04;
+    }
+    .apex-modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 12px 20px;
+      border-top: 1px solid #ebebeb;
+    }
+    .apex-modal-footer button {
+      padding: 5px 16px;
+      font-size: 13px;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .apex-btn-cancel {
+      color: #595959;
+      background: #fff;
+      border: 1px solid #d9d9d9;
+    }
+    .apex-btn-primary {
+      color: #fff;
+      background: #4a8b2c;
+      border: 1px solid #4a8b2c;
+    }
+    .apex-btn-primary:hover {
+      background: #3a6b1e;
+    }
+  </style>
+</head>
+<body class="apex-docs-enhancements">
+  <div id="swagger-ui"></div>
+  <div id="apex-toast" role="status"></div>
+
+  <!-- 全局参数设置弹窗（功能 3） -->
+  <div id="apex-params-modal" class="apex-modal-wrapper" role="dialog" aria-modal="true">
+    <div class="apex-modal-mask" data-apex-close="1"></div>
+    <div class="apex-modal">
+      <div class="apex-modal-header">全局参数设置</div>
+      <div class="apex-modal-body">
+        <p class="apex-modal-tip">
+          此处维护的全局参数会在所有 "Try it out" 请求中自动携带
+          （header 加入请求头、query 拼接到 URL），配置保存在浏览器
+          localStorage 中，刷新页面后依然生效。适合统一填写
+          租户标识、调试标头等公共参数。
+        </p>
+        <table class="apex-params-table">
+          <thead>
+            <tr>
+              <th style="width: 35%">参数名</th>
+              <th style="width: 20%">位置</th>
+              <th style="width: 35%">值</th>
+              <th style="width: 10%">操作</th>
+            </tr>
+          </thead>
+          <tbody id="apex-params-tbody"></tbody>
+        </table>
+        <button type="button" class="apex-add-param" id="apex-add-param">+ 添加参数</button>
+      </div>
+      <div class="apex-modal-footer">
+        <button type="button" class="apex-btn-cancel" data-apex-close="1">取消</button>
+        <button type="button" class="apex-btn-primary" id="apex-params-save">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ SWAGGER_CDN_BASE }}/swagger-ui-bundle.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      var OPENAPI_URL = "{{ OPENAPI_URL }}";
+      var PARAMS_STORAGE_KEY = "apex.docs.globalParams";
+      var TOAST_DURATION_MS = 2000;
+
+      // ── Swagger UI 初始化 ────────────────────────────────────────────
+      //
+      // 关键配置:
+      //   filter                — 启用顶部过滤栏（功能 1: 接口搜索）。
+      //   persistAuthorization  — Authorize 填入的 Bearer Token 刷新后不丢失。
+      //   deepLinking           — URL 锚点定位到具体接口，便于分享。
+      //   requestInterceptor    — 注入全局参数（功能 3）。
+
+      window.ui = SwaggerUIBundle({
+        url: OPENAPI_URL,
+        dom_id: "#swagger-ui",
+        layout: "BaseLayout",
+        deepLinking: true,
+        filter: true,
+        persistAuthorization: true,
+        requestInterceptor: applyGlobalParams,
+      });
+
+      // ── 功能 3: 全局参数（localStorage 持久化 + 请求拦截注入）────────
+
+      function loadGlobalParams() {
+        try {
+          var raw = window.localStorage.getItem(PARAMS_STORAGE_KEY);
+          var parsed = raw ? JSON.parse(raw) : [];
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (err) {
+          return [];
+        }
+      }
+
+      function applyGlobalParams(req) {
+        var params = loadGlobalParams();
+        for (var i = 0; i < params.length; i++) {
+          var param = params[i];
+          if (!param.name) {
+            continue;
+          }
+          if (param.location === "header") {
+            req.headers = req.headers || {};
+            req.headers[param.name] = param.value;
+          } else if (param.location === "query") {
+            try {
+              var parsed = new URL(req.url);
+              parsed.searchParams.set(param.name, param.value);
+              req.url = parsed.toString();
+            } catch (err) {
+              // 相对地址时退化为字符串拼接
+              var joiner = req.url.indexOf("?") === -1 ? "?" : "&";
+              req.url += joiner + encodeURIComponent(param.name) +
+                "=" + encodeURIComponent(param.value);
+            }
+          }
+        }
+        return req;
+      }
+
+      // ── 全局参数弹窗交互 ─────────────────────────────────────────────
+
+      var paramsModal = document.getElementById("apex-params-modal");
+      var paramsTbody = document.getElementById("apex-params-tbody");
+
+      function appendParamRow(param) {
+        var row = document.createElement("tr");
+        row.innerHTML =
+          '<td><input class="apex-p-name" placeholder="如 X-Tenant-Id"></td>' +
+          '<td><select class="apex-p-in">' +
+          '<option value="header"' + (param.location !== "query" ? " selected" : "") +
+          ">header</option>" +
+          '<option value="query"' + (param.location === "query" ? " selected" : "") +
+          ">query</option>" +
+          "</select></td>" +
+          '<td><input class="apex-p-value" placeholder="参数值"></td>' +
+          '<td><button type="button" class="apex-p-delete">删除</button></td>';
+        row.querySelector(".apex-p-name").value = param.name || "";
+        row.querySelector(".apex-p-value").value = param.value || "";
+        row.querySelector(".apex-p-delete").addEventListener("click", function () {
+          row.remove();
+        });
+        paramsTbody.appendChild(row);
+      }
+
+      function openParamsModal() {
+        paramsTbody.innerHTML = "";
+        var params = loadGlobalParams();
+        if (params.length === 0) {
+          appendParamRow({ location: "header" });
+        } else {
+          params.forEach(appendParamRow);
+        }
+        paramsModal.classList.add("apex-modal-open");
+      }
+
+      function closeParamsModal() {
+        paramsModal.classList.remove("apex-modal-open");
+      }
+
+      function saveGlobalParams() {
+        var rows = Array.prototype.slice.call(
+          paramsTbody.querySelectorAll("tr"),
+        ).map(function (row) {
+          return {
+            name: row.querySelector(".apex-p-name").value.trim(),
+            location: row.querySelector(".apex-p-in").value,
+            value: row.querySelector(".apex-p-value").value,
+          };
+        }).filter(function (param) {
+          return param.name !== "";
+        });
+        window.localStorage.setItem(PARAMS_STORAGE_KEY, JSON.stringify(rows));
+        closeParamsModal();
+        showToast("已保存 " + rows.length + " 个全局参数，后续请求自动携带");
+      }
+
+      document.getElementById("apex-add-param").addEventListener(
+        "click",
+        function () {
+          appendParamRow({ location: "header" });
+        },
+      );
+      document.getElementById("apex-params-save").addEventListener(
+        "click",
+        saveGlobalParams,
+      );
+      paramsModal.addEventListener("click", function (event) {
+        if (event.target.getAttribute("data-apex-close")) {
+          closeParamsModal();
+        }
+      });
+
+      // ── 功能 2: 单个 API 文档复制（生成 Markdown）───────────────────
+
+      function copyOperationDoc(method, path) {
+        var markdown = "";
+        try {
+          var spec = window.ui.specSelectors.specJson().toJS();
+          markdown = buildApiMarkdown(spec, path, method);
+        } catch (err) {
+          markdown = "";
+        }
+        if (!markdown) {
+          showToast("未找到该接口的定义，无法生成文档");
+          return;
+        }
+        copyText(markdown).then(
+          function () {
+            showToast("已复制 " + method.toUpperCase() + " " + path +
+              " 的接口文档（Markdown）");
+          },
+          function () {
+            showToast("复制失败，请检查浏览器剪贴板权限");
+          },
+        );
+      }
+
+      /** 解析 OpenAPI 内部 $ref（仅支持 #/components/... 形式）。 */
+      function resolveRef(ref, spec) {
+        if (!ref || ref.indexOf("#/") !== 0) {
+          return null;
+        }
+        var node = spec;
+        var segments = ref.slice(2).split("/");
+        for (var i = 0; i < segments.length; i++) {
+          var key = segments[i].replace(/~1/g, "/").replace(/~0/g, "~");
+          if (!node || typeof node !== "object" || !(key in node)) {
+            return null;
+          }
+          node = node[key];
+        }
+        return node;
+      }
+
+      /** Schema 的简短类型描述（表格单元格用）。 */
+      function schemaTypeName(schema, spec) {
+        if (!schema) {
+          return "-";
+        }
+        if (schema.$ref) {
+          var name = schema.$ref.split("/").pop();
+          return name;
+        }
+        if (schema.allOf) {
+          return "object";
+        }
+        if (schema.type === "array") {
+          return "array<" + schemaTypeName(schema.items, spec) + ">";
+        }
+        if (schema.enum) {
+          return (schema.type || "string") + " 枚举(" + schema.enum.join("|") + ")";
+        }
+        return schema.type || "string";
+      }
+
+      /** 合并 allOf / $ref 后收集属性定义，返回属性行列表（null 表示无属性）。 */
+      function schemaPropertyRows(schema, spec, seen) {
+        seen = seen || {};
+        var collected = { props: {}, required: {} };
+        var collect = function (node) {
+          if (!node || typeof node !== "object") {
+            return;
+          }
+          if (node.$ref) {
+            if (seen[node.$ref]) {
+              return;
+            }
+            seen[node.$ref] = true;
+            collect(resolveRef(node.$ref, spec));
+            return;
+          }
+          if (node.allOf) {
+            node.allOf.forEach(collect);
+            return;
+          }
+          if (node.properties) {
+            Object.keys(node.properties).forEach(function (key) {
+              collected.props[key] = node.properties[key];
+            });
+            (node.required || []).forEach(function (key) {
+              collected.required[key] = true;
+            });
+          }
+        };
+        collect(schema);
+        var names = Object.keys(collected.props);
+        if (names.length === 0) {
+          return null;
+        }
+        return names.map(function (name) {
+          var prop = collected.props[name];
+          return "| `" + name + "` | " + schemaTypeName(prop, spec) + " | " +
+            (collected.required[name] ? "是" : "否") + " | " +
+            escapeCell(prop.description || prop.title) + " |";
+        });
+      }
+
+      /** 由 Schema 递归生成示例 JSON（带 $ref 循环保护）。 */
+      function buildExample(schema, spec, seen) {
+        if (!schema) {
+          return null;
+        }
+        if (schema.example !== undefined) {
+          return schema.example;
+        }
+        if (schema.default !== undefined) {
+          return schema.default;
+        }
+        if (schema.$ref) {
+          if (seen[schema.$ref]) {
+            return {};
+          }
+          seen[schema.$ref] = true;
+          return buildExample(resolveRef(schema.$ref, spec), spec, seen);
+        }
+        if (schema.allOf) {
+          var merged = {};
+          schema.allOf.forEach(function (part) {
+            var example = buildExample(part, spec, seen);
+            if (example && typeof example === "object") {
+              Object.assign(merged, example);
+            }
+          });
+          return merged;
+        }
+        if (schema.type === "array") {
+          return [buildExample(schema.items, spec, seen)];
+        }
+        if (schema.enum && schema.enum.length > 0) {
+          return schema.enum[0];
+        }
+        if (schema.properties) {
+          var obj = {};
+          Object.keys(schema.properties).forEach(function (key) {
+            obj[key] = buildExample(schema.properties[key], spec, seen);
+          });
+          return obj;
+        }
+        switch (schema.type) {
+          case "integer":
+          case "number":
+            return 0;
+          case "boolean":
+            return true;
+          case "string":
+            return schema.format === "date-time" ? "2026-08-18T00:00:00Z"
+              : schema.format || "string";
+          default:
+            return null;
+        }
+      }
+
+      /** Markdown 表格单元格转义（竖线与换行）。 */
+      function escapeCell(text) {
+        if (text === undefined || text === null || text === "") {
+          return "-";
+        }
+        return String(text).replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
+      }
+
+      /** 由 OpenAPI schema 生成单个接口的 Markdown 文档。 */
+      function buildApiMarkdown(spec, path, method) {
+        var pathItem = (spec.paths || {})[path];
+        var operation = pathItem && pathItem[method];
+        if (!operation) {
+          return "";
+        }
+        var md = [];
+        md.push("## " + method.toUpperCase() + " " + path);
+        if (operation.summary) {
+          md.push("", "**" + operation.summary + "**");
+        }
+        var tags = (operation.tags || []).join(" / ");
+        md.push("");
+        md.push("- **所属模块**: " + (tags || "-"));
+        if (operation.operationId) {
+          md.push("- **Operation ID**: `" + operation.operationId + "`");
+        }
+        if (operation.description) {
+          md.push("", operation.description);
+        }
+
+        var parameters = operation.parameters || [];
+        if (parameters.length > 0) {
+          md.push("", "### 请求参数", "");
+          md.push("| 参数名 | 位置 | 类型 | 必填 | 说明 |");
+          md.push("| --- | --- | --- | --- | --- |");
+          parameters.forEach(function (param) {
+            md.push("| `" + param.name + "` | " + param.in + " | " +
+              schemaTypeName(param.schema || param, spec) + " | " +
+              (param.required ? "是" : "否") + " | " +
+              escapeCell(param.description) + " |");
+          });
+        }
+
+        var bodyContent = operation.requestBody &&
+          operation.requestBody.content &&
+          operation.requestBody.content["application/json"];
+        if (bodyContent) {
+          var propRows = schemaPropertyRows(bodyContent.schema, spec);
+          if (propRows) {
+            md.push("", "### 请求体字段", "",
+              "| 字段 | 类型 | 必填 | 说明 |",
+              "| --- | --- | --- | --- |");
+            propRows.forEach(function (row) {
+              md.push(row);
+            });
+          }
+          var bodyExample = buildExample(bodyContent.schema, spec, {});
+          if (bodyExample !== null && bodyExample !== undefined) {
+            md.push("", "### 请求体示例", "", "```json",
+              JSON.stringify(bodyExample, null, 2), "```");
+          }
+        }
+
+        var responses = operation.responses || {};
+        var codes = Object.keys(responses);
+        if (codes.length > 0) {
+          md.push("", "### 响应", "",
+            "| 状态码 | 说明 |", "| --- | --- |");
+          codes.forEach(function (code) {
+            md.push("| " + code + " | " +
+              escapeCell(responses[code] && responses[code].description) + " |");
+          });
+          var okCode = codes.find(function (code) {
+            return code.charAt(0) === "2";
+          });
+          if (okCode) {
+            var okContent = responses[okCode].content &&
+              responses[okCode].content["application/json"];
+            if (okContent) {
+              var okExample = buildExample(okContent.schema, spec, {});
+              if (okExample !== null && okExample !== undefined) {
+                md.push("", "### 成功响应示例（" + okCode + "）", "",
+                  "```json", JSON.stringify(okExample, null, 2), "```");
+              }
+            }
+          }
+        }
+        return md.join("\n");
+      }
+
+      // ── 剪贴板与提示条 ───────────────────────────────────────────────
+
+      function copyText(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+          return navigator.clipboard.writeText(text);
+        }
+        // 非安全上下文（如局域网 http 访问）的回退方案
+        return new Promise(function (resolve, reject) {
+          var textarea = document.createElement("textarea");
+          textarea.value = text;
+          textarea.style.position = "fixed";
+          textarea.style.opacity = "0";
+          document.body.appendChild(textarea);
+          textarea.select();
+          try {
+            if (document.execCommand("copy")) {
+              resolve();
+            } else {
+              reject(new Error("execCommand copy failed"));
+            }
+          } finally {
+            document.body.removeChild(textarea);
+          }
+        });
+      }
+
+      var toastTimer = null;
+      function showToast(message) {
+        var toast = document.getElementById("apex-toast");
+        toast.textContent = message;
+        toast.classList.add("apex-toast-show");
+        if (toastTimer) {
+          window.clearTimeout(toastTimer);
+        }
+        toastTimer = window.setTimeout(function () {
+          toast.classList.remove("apex-toast-show");
+        }, TOAST_DURATION_MS);
+      }
+
+      // ── DOM 增强（复制按钮 + 顶栏按钮）──────────────────────────────
+      //
+      // Swagger UI 内部由 React 渲染，这里通过 MutationObserver 在
+      // 接口卡片渲染后注入原生 DOM，避免依赖其内部 React 实例。
+
+      var enhancePending = false;
+      function scheduleEnhance() {
+        if (enhancePending) {
+          return;
+        }
+        enhancePending = true;
+        window.requestAnimationFrame(function () {
+          enhancePending = false;
+          enhanceOpblocks();
+          ensureTopbarButton();
+        });
+      }
+
+      function enhanceOpblocks() {
+        var summaries = document.querySelectorAll(".opblock-summary");
+        Array.prototype.forEach.call(summaries, function (summary) {
+          if (summary.querySelector(".apex-copy-btn")) {
+            return;
+          }
+          // 方法: 新版类名 opblock-summary-method，旧版 opblock-method；
+          // 均未命中时回退到 opblock-<method> 类名推断。
+          var methodEl = summary.querySelector(
+            ".opblock-summary-method, .opblock-method",
+          );
+          var method = methodEl ? methodEl.textContent.trim().toLowerCase() : "";
+          var opblock = summary.closest(".opblock");
+          if (!method && opblock) {
+            var matched = opblock.className.match(
+              /opblock-(get|post|put|patch|delete|head|options)\b/,
+            );
+            if (matched) {
+              method = matched[1];
+            }
+          }
+          // 路径: 优先 data-path 属性（无 <wbr> 软换行干扰），回退文本。
+          var pathEl = summary.querySelector(".opblock-summary-path");
+          var path = "";
+          if (pathEl) {
+            path = pathEl.getAttribute("data-path") || pathEl.textContent.trim();
+          }
+          if (!method || !path) {
+            return;
+          }
+          var btn = document.createElement("span");
+          btn.className = "apex-copy-btn";
+          btn.textContent = "复制文档";
+          btn.title = "复制该接口的 Markdown 文档";
+          btn.addEventListener("click", function (event) {
+            event.stopPropagation();
+            event.preventDefault();
+            copyOperationDoc(method, path);
+          });
+          summary.appendChild(btn);
+        });
+      }
+
+      function ensureTopbarButton() {
+        if (document.getElementById("apex-params-topbar-btn")) {
+          return;
+        }
+        var wrapper = document.querySelector("#swagger-ui .topbar .topbar-wrapper");
+        if (!wrapper) {
+          return;
+        }
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.id = "apex-params-topbar-btn";
+        btn.className = "apex-topbar-btn";
+        btn.textContent = "⚙ 全局参数";
+        btn.title = "维护全局参数（header / query），所有调试请求自动携带";
+        btn.addEventListener("click", openParamsModal);
+        wrapper.appendChild(btn);
+      }
+
+      new MutationObserver(scheduleEnhance).observe(
+        document.getElementById("swagger-ui"),
+        { childList: true, subtree: true },
+      );
+      scheduleEnhance();
+    })();
+  </script>
+</body>
+</html>

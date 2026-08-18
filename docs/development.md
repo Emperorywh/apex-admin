@@ -89,6 +89,14 @@ uv run fastapi dev
 
 开发服务器默认监听 `http://localhost:8000`，提供自动重载和 OpenAPI 文档（`/docs`）。
 
+Swagger UI 文档页（`/docs`）在默认功能之外提供三项增强（SPEC 9.6）：
+
+- **接口搜索** — 页面顶部过滤栏，按模块 tag / 路径 / 摘要过滤接口。
+- **单个 API 文档复制** — 每个接口卡片上的"复制文档"按钮，生成该接口的 Markdown 文档（参数表、请求体示例、响应说明）并复制到剪贴板。
+- **全局参数设置** — 顶栏"⚙ 全局参数"按钮，维护全局 header / query 参数，所有 "Try it out" 请求自动携带，配置保存在浏览器 localStorage。
+
+文档页从 CDN 加载 swagger-ui-dist 静态资源，受限网络可通过环境变量 `APEX_SWAGGER_CDN_BASE` 切换源（默认 jsdelivr）。
+
 ## 3. 环境变量
 
 完整配置项见仓库根目录的 `.env.example`。

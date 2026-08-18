@@ -167,6 +167,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # 注入 Bearer 安全方案 — Swagger UI 顶部出现 Authorize 按钮（SPEC 9.6 / 12.3）
     apply_openapi_security(app)
 
+    # 自定义 Swagger UI 页面 — 接口搜索 / 单接口文档复制 / 全局参数设置（SPEC 9.6）
+    from app.core.api.swagger_ui import register_custom_swagger_ui
+
+    register_custom_swagger_ui(app, settings)
+
     # 将配置存入应用状态，供端点和中间件读取
     app.state.settings = settings
 

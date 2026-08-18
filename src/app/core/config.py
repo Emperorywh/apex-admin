@@ -96,6 +96,10 @@ class Settings(BaseSettings):
     # 生产环境默认关闭，显式设置为 true 可开启。
     ENABLE_API_DOCS: bool = True
 
+    # Swagger UI 静态资源 CDN 基地址（自定义文档页加载 swagger-ui-dist）。
+    # 默认 jsdelivr 公共 CDN；受限网络可切换为 npmmirror / unpkg 或自建源。
+    SWAGGER_CDN_BASE: str = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5"
+
     # ── 数据库配置 ────────────────────────────────────────────────────
     # SQLAlchemy 异步 URL，驱动固定 postgresql+psycopg（SPEC 5.4 / 8.1）。
     # 开发默认值指向 dev_db.py 供应的本地实例（端口 55432、用户 apex、
